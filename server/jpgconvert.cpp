@@ -17,13 +17,13 @@ namespace
 {
     struct jpeg_dest: jpeg_destination_mgr
     {
-        std::vector<unsigned char> buffer;
+        std::string buffer;
     };
     void my_init_destination(j_compress_ptr cinfo)
     {
         jpeg_dest *dest = static_cast<jpeg_dest*>(cinfo->dest);
         dest->buffer.resize(BLOCK_SIZE);
-        dest->next_output_byte = &(dest->buffer[0]);
+        dest->next_output_byte = (unsigned char*)&(dest->buffer[0]);
         dest->free_in_buffer = dest->buffer.size();
     }
 
@@ -32,7 +32,7 @@ namespace
         jpeg_dest *dest = static_cast<jpeg_dest*>(cinfo->dest);
         size_t oldsize = dest->buffer.size();
         dest->buffer.resize(oldsize + BLOCK_SIZE);
-        dest->next_output_byte = &(dest->buffer[oldsize]);
+        dest->next_output_byte = (unsigned char*)&(dest->buffer[oldsize]);
         dest->free_in_buffer = dest->buffer.size() - oldsize;
         return true;
     }
@@ -45,7 +45,7 @@ namespace
 }
 namespace camerasp
 {
-    std::vector<unsigned char> write_JPEG_dat (ImgInfo const& img)
+    std::string write_JPEG_dat (ImgInfo const& img)
     {
       struct jpeg_compress_struct cinfo;
       struct jpeg_error_mgr jerr;

@@ -24,8 +24,7 @@ namespace camerasp
       void xformbgr2rgb();
     };
     ImgInfo read_JPEG_file (std::string const& filename);
-    void write_JPEG_file (std::string const& filename, ImgInfo const& img);
-    std::string write_JPEG_dat (ImgInfo& img);
+    std::string write_JPEG_dat (ImgInfo const& img);
 }
   
 #endif
