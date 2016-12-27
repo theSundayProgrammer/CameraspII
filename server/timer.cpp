@@ -68,6 +68,7 @@ namespace camerasp
     {
       info.quality = 100;
       console->debug("Image Size = {0}", info.buffer.size());
+      info.xformbgr2rgb();
       return write_JPEG_dat(info);
     }
     else

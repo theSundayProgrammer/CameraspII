@@ -130,7 +130,7 @@ namespace camerasp
       {
         int k = 0;
         auto kv = parser.queries.begin();
-        if (kv->first == "prev") {
+        if (kv != parser.queries.end() &&  kv->first == "prev") {
           if (kv->second.empty() || !isinteger(kv->second, &k)) {
             k = 0;
           }

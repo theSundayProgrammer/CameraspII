@@ -4,4 +4,6 @@ x64/
 build/
 asio/
 *.jpg
+include/mmal
+include/vcos
 
