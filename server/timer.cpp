@@ -19,6 +19,12 @@ namespace camerasp
       int secs = backup["sample_period"].asInt();
       samplingPeriod = std::chrono::seconds(secs);
       pathname_prefix = backup["path_prefix"].asString();
+      quitFlag =0;
+      pending_count=0;
+     camera_.setWidth(640);
+     camera_.setHeight(480);
+     camera_.setISO(400);
+     camera_.open();
 
   }
   void periodic_frame_grabber::save_image(buffer_t const& buffer, std::string const& fName)
@@ -40,6 +46,7 @@ namespace camerasp
     }
     char intstr[8];
     sprintf(intstr, "%04d", file_number);
+    console->debug("path for image = {0}",pathname_prefix + intstr + ".jpg"); 
     save_image(buffer, pathname_prefix + intstr + ".jpg");
     --pending_count;
   }
@@ -75,6 +82,7 @@ namespace camerasp
     using namespace std::placeholders;
 
     if (!quitFlag) {
+    console->debug("timer active");
       auto current = high_resolution_timer::clock_type::now();
       auto diff = current - prev;
       auto next = curImg;

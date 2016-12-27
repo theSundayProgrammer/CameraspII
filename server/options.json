@@ -1,0 +1,24 @@
+// Configuration options
+{
+  "Camera": {
+    "height": 240,
+    "width": 320
+  },
+  "Logging": {
+    "path": "C:\\Projects\\CPP\\Camerasp\\logII",
+    "count": 5,
+    "size": 2,
+	"type": "debug"
+  },
+  "Data": {
+    "path_prefix": "C:\\Users\\Public\\Pictures\\backup",
+    "sample_period": 1,
+	"count": 1000
+  },
+  "Server": {
+    "port" : 8088
+  }
+}
+
+
+    

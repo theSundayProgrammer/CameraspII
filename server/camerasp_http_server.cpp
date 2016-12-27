@@ -27,7 +27,11 @@ std::shared_ptr<spdlog::logger> console;
 /// Define an HTTP server using std::string to store message bodies
 typedef http_server_type::http_connection_type http_connection;
 typedef http_server_type::chunk_type http_chunk_type;
+#ifdef RASPICAM_MOCK
 const std::string configPath = "./";
+#else
+const std::string configPath = "/srv/camerasp/";
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -52,7 +56,6 @@ int main(int argc, char *argv[])
     //int secs = backup["sample_period"].asInt();
     //camerasp::samplingPeriod = std::chrono::seconds(secs);
     //camerasp::pathname_prefix = backup["path_prefix"].asString();
-
     console = spd::rotating_logger_mt("console", logpath, 1024 * 1024 * size_mega_bytes, count_files);
     console->set_level(spd::level::debug);
     console->info("{0} at port {1}", app_name, port_number);
@@ -97,11 +100,12 @@ int main(int argc, char *argv[])
 #endif // #if defined(SIGQUIT)
 
     // register the handle_stop callback
-    signals_.async_wait([&http_server,&handler,&timer]
+    signals_.async_wait([&]
       (ASIO_ERROR_CODE const& error, int signal_number)
     { 
       handler.stop(error, signal_number, http_server);
       timer.stopCapture();
+      io_service.stop();
     });
   // Start the on two  worker threads server
       std::thread thread1{ [&io_service]() { io_service.run(); } };
