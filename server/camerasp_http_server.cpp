@@ -32,30 +32,23 @@ const std::string configPath = "./";
 #else
 const std::string configPath = "/srv/camerasp/";
 #endif
-
 int main(int argc, char *argv[])
 {
   namespace spd = spdlog;
   using camerasp::Handler;
   using namespace std::placeholders;
   std::string app_name(argv[0]);
-  //ToDo: name magic number
-  unsigned short port_number(8080);
+  unsigned port_number=8088;
   try {
     auto root = camerasp::get_DOM(configPath + "options.json");
     auto server_config = root["Server"];
     if (!server_config.empty())
       port_number = server_config["port"].asInt();
-    Json::Value log_config = root["Logging"];
-    Json::Value json_path = log_config["path"];
+    auto log_config = root["Logging"];
+    auto json_path = log_config["path"];
     auto logpath = json_path.asString();
-    int size_mega_bytes = log_config["size"].asInt();
-    int count_files = log_config["count"].asInt();
-    //Json::Value backup = root["Data"];
-    //camerasp::max_file_count = backup["count"].asInt();
-    //int secs = backup["sample_period"].asInt();
-    //camerasp::samplingPeriod = std::chrono::seconds(secs);
-    //camerasp::pathname_prefix = backup["path_prefix"].asString();
+    auto size_mega_bytes = log_config["size"].asInt();
+    auto count_files = log_config["count"].asInt();
     console = spd::rotating_logger_mt("console", logpath, 1024 * 1024 * size_mega_bytes, count_files);
     console->set_level(spd::level::debug);
     console->info("{0} at port {1}", app_name, port_number);

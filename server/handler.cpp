@@ -58,6 +58,8 @@ const std::string response_body
 //////////////////////////////////////////////////////////////////////////////
 namespace camerasp
 {
+
+ bool isinteger(const std::string & s, int* k);
   Handler::Handler(periodic_frame_grabber&  timer) :
     timer_(timer) {}
 
@@ -127,12 +129,12 @@ namespace camerasp
       else if (parser.command == "/getImage")
       {
         int k = 0;
-        //auto kv = url.queries.begin();
-        //if (kv->first == "prev") {
-        //  if (kv->second.empty() || !isinteger(kv->second, &k)) {
-        //    k = 0;
-        //  }
-        //}
+        auto kv = parser.queries.begin();
+        if (kv->first == "prev") {
+          if (kv->second.empty() || !isinteger(kv->second, &k)) {
+            k = 0;
+          }
+        }
         auto resp = getGETResponse(k);
         connection->send(std::move(resp.first), std::move(resp.second));
       }

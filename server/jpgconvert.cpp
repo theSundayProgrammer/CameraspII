@@ -45,7 +45,7 @@ namespace
 }
 namespace camerasp
 {
-    std::string write_JPEG_dat (ImgInfo const& img)
+    std::string write_JPEG_dat (img_info const& img)
     {
       struct jpeg_compress_struct cinfo;
       struct jpeg_error_mgr jerr;

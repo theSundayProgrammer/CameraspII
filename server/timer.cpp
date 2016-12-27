@@ -53,7 +53,7 @@ namespace camerasp
 
   buffer_t periodic_frame_grabber::grabPicture() {
     //At any point in time only one instance of this function will be running
-    ImgInfo info;
+    img_info info;
     console->debug("Height = {0}, Width= {1}", camera_.getHeight(), camera_.getWidth());
     auto siz = camera_.getImageBufferSize();
     info.buffer.resize(siz);

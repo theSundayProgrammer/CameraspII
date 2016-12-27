@@ -12,7 +12,7 @@ namespace camerasp
 {
   typedef std::string buffer_t;
 
-    struct ImgInfo
+    struct img_info
     {
       buffer_t  buffer ;
       unsigned int image_height;
@@ -23,8 +23,8 @@ namespace camerasp
       void put_scan_line(JSAMPLE *,  int row_stride) ;
       void xformbgr2rgb();
     };
-    ImgInfo read_JPEG_file (std::string const& filename);
-    std::string write_JPEG_dat (ImgInfo const& img);
+    img_info  read_JPEG_file (std::string const& filename);
+    std::string write_JPEG_dat (img_info const& img);
 }
   
 #endif

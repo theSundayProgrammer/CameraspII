@@ -1,4 +1,4 @@
- //////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 // Copyright (c) Joseph Mariadassou
 // theSundayProgrammer@gmail.com
 // adapted from Raspicam sample code
@@ -15,7 +15,6 @@
 #include <fstream>
 #include <sstream>
 #include <camerasp/utils.hpp>
-//returns the value of a command line param. If not found, defvalue is returned
 namespace camerasp{
   
   UrlParser::UrlParser(std::string const& s) {
@@ -82,4 +81,13 @@ namespace camerasp{
       }
       return root;
     }
+ bool isinteger(const std::string & s, int* k)
+{
+  if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false;
+
+  char * p;
+  *k = strtol(s.c_str(), &p, 10);
+
+  return (*p == 0);
+}
 }

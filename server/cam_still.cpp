@@ -103,11 +103,10 @@ namespace camerasp
       MMAL_BUFFER_HEADER_FLAG_TRANSMISSION_FAILED;
     unsigned int flags = buffer->flags;
 
+    mmal_buffer_header_release(buffer);
     if (END_FLAG & flags) {
         sem_post(userdata->mutex);
-    }
-    mmal_buffer_header_release(buffer);
-    if (port->is_enabled) {
+    } else if (port->is_enabled) {
       MMAL_BUFFER_HEADER_T *new_buffer =
         mmal_queue_get(userdata->encoderPool->queue);
       if (new_buffer)
@@ -119,7 +118,6 @@ namespace camerasp
            release();
         }
         cam_still::cam_still() {
-            setDefaults();
             camera = NULL;
             encoder = NULL;
             encoder_connection = NULL;
@@ -127,7 +125,8 @@ namespace camerasp
             camera_still_port = NULL;
             encoder_input_port = NULL;
             encoder_output_port = NULL;
-		_isInitialized=false;
+          	_isInitialized=false;
+            setDefaults();
         }
   void cam_still::setDefaults() {
     width = 640;
@@ -154,8 +153,7 @@ namespace camerasp
     changedSettings = true;
     horizontalFlip = false;
     verticalFlip = false;
-    //roi.x = params->roi.y = 0.0;
-    //roi.w = params->roi.h = 1.0;
+    sem_init(&mutex, 0, 0);
   }
 
   void cam_still::commitParameters() {
@@ -430,8 +428,6 @@ namespace camerasp
   {
     initialize();
     int ret = 0;
-    sem_t mutex;
-    sem_init(&mutex, 0, 0);
     RASPICAM_USERDATA *userdata = new RASPICAM_USERDATA();
     userdata->encoderPool = encoder_pool;
     userdata->mutex = &mutex;
@@ -441,6 +437,7 @@ namespace camerasp
     encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *) userdata;
     if (startCapture()) {
       sem_destroy(&mutex);
+    sem_init(&mutex, 0, 0);
       return -1;
     }
     sem_wait(&mutex);

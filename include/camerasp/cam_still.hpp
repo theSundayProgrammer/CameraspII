@@ -106,7 +106,7 @@ namespace camerasp {
     MMAL_STATUS_T connectPorts(MMAL_PORT_T *output_port, MMAL_PORT_T *input_port, MMAL_CONNECTION_T **connection);
 
     bool _isInitialized;
-
+    sem_t mutex;
 
 
 
