@@ -126,9 +126,9 @@ namespace camerasp
             encoder_input_port = NULL;
             encoder_output_port = NULL;
           	_isInitialized=false;
-            setDefaults();
+            set_defaults();
         }
-  void cam_still::setDefaults() {
+  void cam_still::set_defaults() {
     width = 640;
     height = 480;
     encoding = RASPICAM_ENCODING_BMP;
@@ -150,14 +150,14 @@ namespace camerasp
     //colourEffects.u = 128;
     //colourEffects.v = 128;
     rotation = 0;
-    changedSettings = true;
+    changed_settings = true;
     horizontalFlip = false;
     verticalFlip = false;
     sem_init(&mutex, 0, 0);
   }
 
-  void cam_still::commitParameters() {
-    if (!changedSettings)
+  void cam_still::commit_parameters() {
+    if (!changed_settings)
       return;
     commitSharpness();
     commitContrast();
@@ -208,7 +208,7 @@ namespace camerasp
       encoder_output_port->format->encoding = convertEncoding(encoding);
       mmal_port_format_commit(encoder_output_port);
     }
-    changedSettings = false;
+    changed_settings = false;
   }
 
   MMAL_STATUS_T
@@ -229,16 +229,16 @@ namespace camerasp
     return status;
   }
 
-  int cam_still::createCamera() {
+  int cam_still::create_camera() {
     if (mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA, &camera)) {
       console->error(API_NAME ": Failed to create camera component.");
-      destroyCamera();
+      destroy_camera();
       return -1;
     }
 
     if (!camera->output_num) {
       console->error(API_NAME ": Camera does not have output ports!");
-      destroyCamera();
+      destroy_camera();
       return -1;
     }
 
@@ -247,7 +247,7 @@ namespace camerasp
     // Enable the camera, and tell it its control callback function
     if (mmal_port_enable(camera->control, control_callback)) {
       console->error(API_NAME ": Could not enable control port.");
-      destroyCamera();
+      destroy_camera();
       return -1;
     }
 
@@ -269,7 +269,7 @@ namespace camerasp
       MMAL_SUCCESS)
       console->error(API_NAME ": Could not set port parameters.");
 
-    commitParameters();
+    commit_parameters();
 
     MMAL_ES_FORMAT_T *format = camera_still_port->format;
     format->encoding = MMAL_ENCODING_OPAQUE;
@@ -289,13 +289,13 @@ namespace camerasp
 
     if (mmal_port_format_commit(camera_still_port)) {
       console->error(API_NAME ": Camera still format could not be set.");
-      destroyCamera();
+      destroy_camera();
       return -1;
     }
 
     if (mmal_component_enable(camera)) {
       console->error(API_NAME ": Camera component could not be enabled.");
-      destroyCamera();
+      destroy_camera();
       return -1;
     }
 
@@ -306,24 +306,24 @@ namespace camerasp
           camera_still_port->buffer_size))) {
       console->error(API_NAME
         ": Failed to create buffer header pool for camera.");
-      destroyCamera();
+      destroy_camera();
       return -1;
     }
 
     return 0;
   }
 
-  int cam_still::createEncoder() {
+  int cam_still::create_encoder() {
     if (mmal_component_create
     (MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER, &encoder)) {
       console->error(API_NAME ": Could not create encoder component.");
-      destroyEncoder();
+      destroy_encoder();
       return -1;
     }
     if (!encoder->input_num || !encoder->output_num) {
       console->
         error(API_NAME ": Encoder does not have input/output ports.");
-      destroyEncoder();
+      destroy_encoder();
       return -1;
     }
 
@@ -346,12 +346,12 @@ namespace camerasp
     if (mmal_port_format_commit(encoder_output_port)) {
       console->error(API_NAME
         ": Could not set format on encoder output port.");
-      destroyEncoder();
+      destroy_encoder();
       return -1;
     }
     if (mmal_component_enable(encoder)) {
       console->error(API_NAME ": Could not enable encoder component.");
-      destroyEncoder();
+      destroy_encoder();
       return -1;
     }
     if (!
@@ -361,20 +361,20 @@ namespace camerasp
           encoder_output_port->buffer_size))) {
       console->error(API_NAME
         ": Failed to create buffer header pool for encoder output port.");
-      destroyEncoder();
+      destroy_encoder();
       return -1;
     }
     return 0;
   }
 
-  void cam_still::destroyCamera() {
+  void cam_still::destroy_camera() {
     if (camera) {
       mmal_component_destroy(camera);
       camera = NULL;
     }
   }
 
-  void cam_still::destroyEncoder() {
+  void cam_still::destroy_encoder() {
     if (encoder_pool) {
       mmal_port_pool_destroy(encoder->output[0], encoder_pool);
     }
@@ -389,8 +389,8 @@ namespace camerasp
     if (!_isInitialized)
       return;
     mmal_connection_destroy(encoder_connection);
-    destroyEncoder();
-    destroyCamera();
+   destroy_encoder();
+   destroy_camera();
     console->info(API_NAME ": release called");
     _isInitialized = false;
   }
@@ -398,14 +398,14 @@ namespace camerasp
   int cam_still::initialize() {
     if (_isInitialized)
       return 0;
-    if (createCamera()) {
+    if (create_camera()) {
       console->error(API_NAME ": Failed to create camera component.");
-      destroyCamera();
+      destroy_camera();
       return -1;
     }
-    else if (createEncoder()) {
+    else if (create_encoder()) {
       console->error(API_NAME ": Failed to create encoder component.");
-      destroyCamera();
+      destroy_camera();
       return -1;
     }
     else {
@@ -423,7 +423,7 @@ namespace camerasp
     return 0;
   }
 
-    int cam_still::takePicture(unsigned char *preallocated_data,
+    int cam_still::take_picture(unsigned char *preallocated_data,
       unsigned int *length)
   {
     initialize();
@@ -435,28 +435,27 @@ namespace camerasp
     userdata->offset = 0;
     userdata->length = *length;
     encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *) userdata;
-    if (startCapture()) {
+    if (start_capture()) {
       sem_destroy(&mutex);
     sem_init(&mutex, 0, 0);
       return -1;
     }
     sem_wait(&mutex);
     sem_destroy(&mutex);
-    stopCapture();
+    stop_capture();
     *length =  userdata->offset ;
     return 0;
   }
 
-  size_t cam_still::getImageBufferSize() const
+  size_t cam_still::image_buffer_size() const
   {
     return width * height * 3 + 54;	//oversize the buffer so to fit BMP images
   }
 
-
-  int cam_still::startCapture() {
+  int cam_still::start_capture() {
     // If the parameters were changed and this function wasn't called, it will be called here
     // However if the parameters weren't changed, the function won't do anything - it will return right away
-    commitParameters();
+    commit_parameters();
 
     if (encoder_output_port->is_enabled) {
       console->error(API_NAME
@@ -491,40 +490,40 @@ namespace camerasp
     return 0;
   }
 
-  void cam_still::stopCapture() {
+  void cam_still::stop_capture() {
     if (!encoder_output_port->is_enabled)
       return;
     if (mmal_port_disable(encoder_output_port))
       delete (RASPICAM_USERDATA *)encoder_output_port->userdata;
   }
 
-  void cam_still::setWidth(unsigned int width)  {
+  void cam_still::set_width(unsigned int width)  {
     this->width = width;
-    changedSettings = true;
+    changed_settings = true;
   }
 
-  void cam_still::setHeight(unsigned int height)  {
+  void cam_still::set_height(unsigned int height)  {
     this->height = height;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setCaptureSize(unsigned int width, unsigned int height)  {
-    setWidth(width);
-    setHeight(height);
+    set_width(width);
+    set_height(height);
   }
 
   void cam_still::setBrightness(unsigned int brightness)  {
     if (brightness > 100)
       brightness = brightness % 100;
     this->brightness = brightness;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setQuality(unsigned int quality)  {
     if (quality > 100)
       quality = 100;
     this->quality = quality;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setRotation(int rotation)  {
@@ -533,12 +532,12 @@ namespace camerasp
     if (rotation >= 360)
       rotation = rotation % 360;
     this->rotation = rotation;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setISO(int iso)  {
     this->iso = iso;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setSharpness(int sharpness)  {
@@ -547,7 +546,7 @@ namespace camerasp
     if (sharpness > 100)
       sharpness = 100;
     this->sharpness = sharpness;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setContrast(int contrast)  {
@@ -556,7 +555,7 @@ namespace camerasp
     if (contrast > 100)
       contrast = 100;
     this->contrast = contrast;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setSaturation(int saturation)  {
@@ -565,42 +564,42 @@ namespace camerasp
     if (saturation > 100)
       saturation = 100;
     this->saturation = saturation;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setEncoding(RASPICAM_ENCODING encoding)  {
     this->encoding = encoding;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setExposure(RASPICAM_EXPOSURE exposure)  {
     this->exposure = exposure;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setAWB(RASPICAM_AWB awb)  {
     this->awb = awb;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setImageEffect(RASPICAM_IMAGE_EFFECT imageEffect)  {
     this->imageEffect = imageEffect;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setMetering(RASPICAM_METERING metering)  {
     this->metering = metering;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setHorizontalFlip(bool hFlip)  {
     horizontalFlip = hFlip;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   void cam_still::setVerticalFlip(bool vFlip)  {
     verticalFlip = vFlip;
-    changedSettings = true;
+    changed_settings = true;
   }
 
   unsigned int cam_still::getWidth()  {

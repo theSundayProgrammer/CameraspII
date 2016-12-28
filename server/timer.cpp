@@ -23,8 +23,8 @@ namespace camerasp
       pathname_prefix = backup["path_prefix"].asString();
       quit_flag =0;
       pending_count=0;
-     camera_.setWidth(640);
-     camera_.setHeight(480);
+     camera_.set_width(640);
+     camera_.set_height(480);
      camera_.setISO(400);
      camera_.open();
 
@@ -53,13 +53,13 @@ namespace camerasp
     --pending_count;
   }
 
-  buffer_t periodic_frame_grabber::grabPicture() {
+  buffer_t periodic_frame_grabber::grab_picture() {
     //At any point in time only one instance of this function will be running
     img_info info;
     console->debug("Height = {0}, Width= {1}", camera_.getHeight(), camera_.getWidth());
-    auto siz = camera_.getImageBufferSize();
+    auto siz = camera_.image_buffer_size();
     info.buffer.resize(siz);
-    camera_.takePicture((unsigned char*)(&info.buffer[0]), &siz);
+    camera_.take_picture((unsigned char*)(&info.buffer[0]), &siz);
     info.image_height = camera_.getHeight();
     info.image_width = camera_.getWidth();
     info.quality = 100;
@@ -89,7 +89,7 @@ namespace camerasp
       auto current = high_resolution_timer::clock_type::now();
       auto diff = current - prev;
       auto next = cur_img;
-      auto buffer = grabPicture();
+      auto buffer = grab_picture();
       {
         std::lock_guard<std::mutex> lock(image_buffers[next].m);
         image_buffers[next].buffer.swap(buffer);
@@ -113,7 +113,7 @@ namespace camerasp
   }
 
 
-  void periodic_frame_grabber::setTimer() {
+  void periodic_frame_grabber::set_timer() {
     using namespace std::placeholders;
     try {
       prev = high_resolution_timer::clock_type::now();
@@ -124,7 +124,7 @@ namespace camerasp
       console->error("Error: {}..", e.what());
     }
   }
-  std::string  periodic_frame_grabber::getImage(unsigned int k) {
+  std::string  periodic_frame_grabber::get_image(unsigned int k) {
 
     auto next =  (k > current_count && current_count < max_size)?
         0:
@@ -134,14 +134,14 @@ namespace camerasp
     auto& imagebuffer = image_buffers[next].buffer;
     return std::string(imagebuffer.begin(), imagebuffer.end());
   }
-  void periodic_frame_grabber::startCapture()
+  void periodic_frame_grabber::start_capture()
   {
     if (quit_flag) {
-      setTimer();
+      set_timer();
       quit_flag = 0;
     }
   }
-  void periodic_frame_grabber::stopCapture()
+  void periodic_frame_grabber::stop_capture()
   {
     if (0 == quit_flag)  quit_flag = 1;
   }

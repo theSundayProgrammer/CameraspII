@@ -20,19 +20,17 @@ namespace camerasp{
   std::string lower_case(std::string const& str);
   Json::Value get_DOM(std::string const& path);
   /// A string to send in responses.
-  struct UrlParser {
+  struct url_parser {
     std::string command;
     std::map<std::string, std::string> queries;
-    UrlParser(std::string const& s);
+    url_parser(std::string const& s);
   };
   //////image capture timer
   class cam_still;
-  extern std::chrono::seconds samplingPeriod;
-  extern int max_file_count;
-  extern std::string  pathname_prefix;
   typedef asio::basic_waitable_timer<std::chrono::steady_clock>   high_resolution_timer;
   void setTimer(high_resolution_timer& timer, cam_still&);
-  std::string  getImage(unsigned int k);
+  std::string  get_image(unsigned int k);
 
+ bool is_integer(const std::string & s, int* k);
 
 }

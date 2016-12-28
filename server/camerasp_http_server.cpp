@@ -28,9 +28,9 @@ std::shared_ptr<spdlog::logger> console;
 typedef http_server_type::http_connection_type http_connection;
 typedef http_server_type::chunk_type http_chunk_type;
 #ifdef RASPICAM_MOCK
-const std::string configPath = "./";
+const std::string config_path = "./";
 #else
-const std::string configPath = "/srv/camerasp/";
+const std::string config_path = "/srv/camerasp/";
 #endif
 int main(int argc, char *argv[])
 {
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
   std::string app_name(argv[0]);
   unsigned port_number=8088;
   try {
-    auto root = camerasp::get_DOM(configPath + "options.json");
+    auto root = camerasp::get_DOM(config_path + "options.json");
     auto server_config = root["Server"];
     if (!server_config.empty())
       port_number = server_config["port"].asInt();
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     asio::io_service io_service;
     camerasp::periodic_frame_grabber timer(io_service, root["Data"]);
     Handler handler(timer);
-    timer.setTimer();
+    timer.set_timer();
     http_server_type http_server(io_service);
     http_server.request_received_event(std::bind(&Handler::request,std::ref(handler),_1,_2, _3));
 
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
       (ASIO_ERROR_CODE const& error, int signal_number)
     { 
       handler.stop(error, signal_number, http_server);
-      timer.stopCapture();
+      timer.stop_capture();
       io_service.stop();
     });
   // Start the on two  worker threads server

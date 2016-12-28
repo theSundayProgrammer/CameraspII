@@ -17,7 +17,7 @@
 #include <camerasp/utils.hpp>
 namespace camerasp{
   
-  UrlParser::UrlParser(std::string const& s) {
+  url_parser::url_parser(std::string const& s) {
       std::string uri = s;
       //filter out anything after '#'
       auto pos = uri.find('#');
@@ -81,7 +81,7 @@ namespace camerasp{
       }
       return root;
     }
- bool isinteger(const std::string & s, int* k)
+ bool is_integer(const std::string & s, int* k)
 {
   if (s.empty()) return false;
 

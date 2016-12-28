@@ -13,7 +13,7 @@ namespace camerasp
 
   class periodic_frame_grabber
   {
-    struct Imagebuffer
+    struct image_buffer
     {
       std::mutex m;
       buffer_t buffer;
@@ -21,9 +21,9 @@ namespace camerasp
 
   public:
     periodic_frame_grabber(asio::io_context& io_service, Json::Value const&);
-    std::string  getImage(unsigned int k);
-    void setTimer();
-    void stopCapture();
+    std::string  get_image(unsigned int k);
+    void set_timer();
+    void stop_capture();
 
   private:
     static void save_image(buffer_t const& buffer, std::string const& fName);
@@ -31,9 +31,9 @@ namespace camerasp
     //need a better way of handling file save
     void save_file(int file_number);
 
-    buffer_t grabPicture();
+    buffer_t grab_picture();
     void handle_timeout(const asio::error_code&);
-    void startCapture();
+    void start_capture();
 
   private:
     cam_still camera_;
@@ -42,7 +42,7 @@ namespace camerasp
     int max_file_count;
     std::string  pathname_prefix;
     enum { max_size = 100 };
-    Imagebuffer image_buffers[max_size];
+    image_buffer image_buffers[max_size];
     std::atomic<unsigned> pending_count, current_count;
     std::atomic<bool> quit_flag;
     high_resolution_timer::clock_type::time_point prev;

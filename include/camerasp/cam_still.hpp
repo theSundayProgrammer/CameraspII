@@ -76,7 +76,7 @@ namespace camerasp {
     RASPICAM_AWB awb;
     RASPICAM_IMAGE_EFFECT imageEffect;
     RASPICAM_METERING metering;
-    bool changedSettings;
+    bool changed_settings;
     bool horizontalFlip;
     bool verticalFlip;
 
@@ -97,12 +97,12 @@ namespace camerasp {
     void commitImageEffect();
     void commitMetering();
     void commitFlips();
-    int startCapture();
-    int createCamera();
-    int createEncoder();
-    void destroyCamera();
-    void destroyEncoder();
-    void setDefaults();
+    int start_capture();
+    int create_camera();
+    int create_encoder();
+    void destroy_camera();
+    void destroy_encoder();
+    void set_defaults();
     MMAL_STATUS_T connectPorts(MMAL_PORT_T *output_port, MMAL_PORT_T *input_port, MMAL_CONNECTION_T **connection);
 
     bool _isInitialized;
@@ -116,12 +116,12 @@ namespace camerasp {
     int initialize();
     void release();
     bool open();
-    int takePicture(unsigned char * preallocated_data, unsigned int* length);
-    void stopCapture();
+    int take_picture(unsigned char * preallocated_data, unsigned int* length);
+    void stop_capture();
 
-    void commitParameters();
-    void setWidth(unsigned int width);
-    void setHeight(unsigned int height);
+    void commit_parameters();
+    void set_width(unsigned int width);
+    void set_height(unsigned int height);
     void setCaptureSize(unsigned int width, unsigned int height);
     void setBrightness(unsigned int brightness);
     void setQuality(unsigned int quality);
@@ -140,7 +140,7 @@ namespace camerasp {
 
     unsigned int getWidth();
     unsigned int getHeight();
-    size_t getImageBufferSize() const;
+    size_t image_buffer_size() const;
     unsigned int getBrightness();
     unsigned int getRotation();
     unsigned int getQuality();

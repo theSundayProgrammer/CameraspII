@@ -59,7 +59,6 @@ const std::string response_body
 namespace camerasp
 {
 
- bool isinteger(const std::string & s, int* k);
   Handler::Handler(periodic_frame_grabber&  timer) :
     timer_(timer) {}
 
@@ -120,7 +119,7 @@ namespace camerasp
       response.add_server_header();
       response.add_date_header();
       console->debug("Request: {0}", request.uri());
-      UrlParser parser(request.uri());
+      url_parser parser(request.uri());
       console->debug("Parsed request: {0}", parser.command);
       if (parser.command == "/hello")
       {
@@ -133,9 +132,8 @@ namespace camerasp
           console->debug("{0} = {1}", kv.first, kv.second);
         auto kv = parser.queries.begin();
         if (kv != parser.queries.end() &&  kv->first == "prev") {
-          if (kv->second.empty() || !isinteger(kv->second, &k)) {
+          if (kv->second.empty() || !is_integer(kv->second, &k)) {
             k = 0;
-      console->debug("prev: {0}", k);
           }
         }
         auto resp = getGETResponse(k);
@@ -265,7 +263,7 @@ namespace camerasp
     response.add_date_header();
     console->info("image number={0}", k);
     response.add_header("Content-Type", "image/jpeg");
-    auto responsebody = timer_.getImage(k);
+    auto responsebody = timer_.get_image(k);
     response.add_content_length_header(responsebody.size());
     
     return std::make_pair(response, responsebody);
