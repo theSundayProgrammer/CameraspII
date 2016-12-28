@@ -129,10 +129,13 @@ namespace camerasp
       else if (parser.command == "/getImage")
       {
         int k = 0;
+        for (auto kv :  parser.queries)
+          console->debug("{0} = {1}", kv.first, kv.second);
         auto kv = parser.queries.begin();
         if (kv != parser.queries.end() &&  kv->first == "prev") {
           if (kv->second.empty() || !isinteger(kv->second, &k)) {
             k = 0;
+      console->debug("prev: {0}", k);
           }
         }
         auto resp = getGETResponse(k);

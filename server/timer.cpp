@@ -13,13 +13,14 @@ namespace camerasp
   periodic_frame_grabber::periodic_frame_grabber(
     asio::io_context& io_service,
     Json::Value const& backup)
-    : timer_(io_service)
+    : timer_(io_service),
+      cur_img(0)
   {
       max_file_count = backup["count"].asInt();
       int secs = backup["sample_period"].asInt();
-      samplingPeriod = std::chrono::seconds(secs);
+      sampling_period = std::chrono::seconds(secs);
       pathname_prefix = backup["path_prefix"].asString();
-      quitFlag =0;
+      quit_flag =0;
       pending_count=0;
      camera_.setWidth(640);
      camera_.setHeight(480);
@@ -41,8 +42,8 @@ namespace camerasp
   void periodic_frame_grabber::save_file(int file_number) {
     buffer_t buffer;
     {
-      std::lock_guard<std::mutex> lock(imagebuffers[file_number].m);
-      buffer = imagebuffers[file_number].buffer;
+      std::lock_guard<std::mutex> lock(image_buffers[file_number].m);
+      buffer = image_buffers[file_number].buffer;
     }
     char intstr[8];
     sprintf(intstr, "%04d", file_number);
@@ -82,15 +83,15 @@ namespace camerasp
     //At any point in time only one instance of this function will be running
     using namespace std::placeholders;
 
-    if (!quitFlag) {
+    if (!quit_flag) {
     console->debug("timer active");
       auto current = high_resolution_timer::clock_type::now();
       auto diff = current - prev;
-      auto next = curImg;
+      auto next = cur_img;
       auto buffer = grabPicture();
       {
-        std::lock_guard<std::mutex> lock(imagebuffers[next].m);
-        imagebuffers[next].buffer.swap(buffer);
+        std::lock_guard<std::mutex> lock(image_buffers[next].m);
+        image_buffers[next].buffer.swap(buffer);
       }
       int files_in_queue = ++pending_count;
       if (files_in_queue < max_file_count / 10 || files_in_queue < 10)
@@ -101,10 +102,10 @@ namespace camerasp
       {
         --pending_count;
       }
-      if (currentCount < maxSize) ++currentCount;
-      curImg = (curImg + 1) % maxSize;
+      if (current_count < maxSize) ++current_count;
+      cur_img = (cur_img + 1) % maxSize;
       //console->info("Prev Data Size {0}; time elapse {1}s..", buffer.size(), diff.count());
-      timer_.expires_at(prev + 2 * samplingPeriod);
+      timer_.expires_at(prev + 2 * sampling_period);
       prev = current;
       timer_.async_wait(std::bind(&periodic_frame_grabber::handle_timeout, this, _1));
     }
@@ -115,7 +116,7 @@ namespace camerasp
     using namespace std::placeholders;
     try {
       prev = high_resolution_timer::clock_type::now();
-      timer_.expires_at(prev + samplingPeriod);
+      timer_.expires_at(prev + sampling_period);
       timer_.async_wait(std::bind(&periodic_frame_grabber::handle_timeout, this, _1));
     }
     catch (std::exception& e) {
@@ -124,24 +125,24 @@ namespace camerasp
   }
   std::string  periodic_frame_grabber::getImage(unsigned int k) {
 
-    if (k > currentCount && currentCount < maxSize)
-      k = currentCount - 1;
-    auto next = (curImg + maxSize - 1 - k) % maxSize;
+    auto next =  (k > current_count && current_count < maxSize)?
+        0:
+       (cur_img + maxSize - 1 - k) % maxSize;
     console->info("Image number = {0}", next);
-    std::lock_guard<std::mutex> lock(imagebuffers[next].m);
-    auto& imagebuffer = imagebuffers[next].buffer;
+    std::lock_guard<std::mutex> lock(image_buffers[next].m);
+    auto& imagebuffer = image_buffers[next].buffer;
     return std::string(imagebuffer.begin(), imagebuffer.end());
   }
   void periodic_frame_grabber::startCapture()
   {
-    if (quitFlag) {
+    if (quit_flag) {
       setTimer();
-      quitFlag = 0;
+      quit_flag = 0;
     }
   }
   void periodic_frame_grabber::stopCapture()
   {
-    if (0 == quitFlag)  quitFlag = 1;
+    if (0 == quit_flag)  quit_flag = 1;
   }
 
 }

@@ -83,11 +83,11 @@ namespace camerasp{
     }
  bool isinteger(const std::string & s, int* k)
 {
-  if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false;
+  if (s.empty()) return false;
 
   char * p;
   *k = strtol(s.c_str(), &p, 10);
 
-  return (*p == 0);
+  return true;//(*p == 0);
 }
 }

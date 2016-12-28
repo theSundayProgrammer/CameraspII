@@ -38,15 +38,15 @@ namespace camerasp
   private:
     cam_still camera_;
     high_resolution_timer timer_;
-    std::chrono::seconds samplingPeriod;
+    std::chrono::seconds sampling_period;
     int max_file_count;
     std::string  pathname_prefix;
     enum { maxSize = 100 };
-    Imagebuffer imagebuffers[maxSize];
-    std::atomic<unsigned> pending_count, currentCount;
-    std::atomic<bool> quitFlag;
+    Imagebuffer image_buffers[maxSize];
+    std::atomic<unsigned> pending_count, current_count;
+    std::atomic<bool> quit_flag;
     high_resolution_timer::clock_type::time_point prev;
-    unsigned curImg;
+    unsigned cur_img;
 
   };
 }
