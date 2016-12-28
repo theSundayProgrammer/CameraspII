@@ -14,7 +14,8 @@ namespace camerasp
     asio::io_context& io_service,
     Json::Value const& backup)
     : timer_(io_service),
-      cur_img(0)
+      cur_img(0),
+      current_count(0)
   {
       max_file_count = backup["count"].asInt();
       int secs = backup["sample_period"].asInt();
@@ -102,8 +103,8 @@ namespace camerasp
       {
         --pending_count;
       }
-      if (current_count < maxSize) ++current_count;
-      cur_img = (cur_img + 1) % maxSize;
+      if (current_count < max_size) ++current_count;
+      cur_img = (cur_img + 1) % max_size;
       //console->info("Prev Data Size {0}; time elapse {1}s..", buffer.size(), diff.count());
       timer_.expires_at(prev + 2 * sampling_period);
       prev = current;
@@ -125,9 +126,9 @@ namespace camerasp
   }
   std::string  periodic_frame_grabber::getImage(unsigned int k) {
 
-    auto next =  (k > current_count && current_count < maxSize)?
+    auto next =  (k > current_count && current_count < max_size)?
         0:
-       (cur_img + maxSize - 1 - k) % maxSize;
+       (cur_img + max_size - 1 - k) % max_size;
     console->info("Image number = {0}", next);
     std::lock_guard<std::mutex> lock(image_buffers[next].m);
     auto& imagebuffer = image_buffers[next].buffer;

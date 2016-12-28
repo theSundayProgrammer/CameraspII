@@ -41,8 +41,8 @@ namespace camerasp
     std::chrono::seconds sampling_period;
     int max_file_count;
     std::string  pathname_prefix;
-    enum { maxSize = 100 };
-    Imagebuffer image_buffers[maxSize];
+    enum { max_size = 100 };
+    Imagebuffer image_buffers[max_size];
     std::atomic<unsigned> pending_count, current_count;
     std::atomic<bool> quit_flag;
     high_resolution_timer::clock_type::time_point prev;
