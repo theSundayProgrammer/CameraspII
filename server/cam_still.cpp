@@ -592,78 +592,78 @@ namespace camerasp
     changed_settings = true;
   }
 
-  void cam_still::setHorizontalFlip(bool hFlip)  {
+  void cam_still::set_horizontal_flip(bool hFlip)  {
     horizontalFlip = hFlip;
     changed_settings = true;
   }
 
-  void cam_still::setVerticalFlip(bool vFlip)  {
+  void cam_still::set_vertical_flip(bool vFlip)  {
     verticalFlip = vFlip;
     changed_settings = true;
   }
 
-  unsigned int cam_still::getWidth()  {
+  unsigned int cam_still::get_width()  {
     return width;
   }
 
-  unsigned int cam_still::getHeight()  {
+  unsigned int cam_still::get_height()  {
     return height;
   }
 
-  unsigned int cam_still::getBrightness()
+  unsigned int cam_still::get_brightness()
   {
     return brightness;
   }
 
-  unsigned int cam_still::getRotation()  {
+  unsigned int cam_still::get_rotation()  {
     return rotation;
   }
 
-  unsigned int cam_still::getQuality()  {
+  unsigned int cam_still::get_quality()  {
     return quality;
   }
 
-  int cam_still::getISO()  {
+  int cam_still::get_ISO()  {
     return iso;
   }
 
-  int cam_still::getSharpness()  {
+  int cam_still::get_sharpness()  {
     return sharpness;
   }
 
-  int cam_still::getContrast()  {
+  int cam_still::get_contrast()  {
     return contrast;
   }
 
-  int cam_still::getSaturation()  {
+  int cam_still::get_saturation()  {
     return saturation;
   }
 
-  RASPICAM_ENCODING cam_still::getEncoding()  {
+  RASPICAM_ENCODING cam_still::get_encoding()  {
     return encoding;
   }
 
-  RASPICAM_EXPOSURE cam_still::getExposure()  {
+  RASPICAM_EXPOSURE cam_still::get_exposure()  {
     return exposure;
   }
 
-  RASPICAM_AWB cam_still::getAWB()  {
+  RASPICAM_AWB cam_still::get_AWB()  {
     return awb;
   }
 
-  RASPICAM_IMAGE_EFFECT cam_still::getImageEffect()  {
+  RASPICAM_IMAGE_EFFECT cam_still::get_image_effect()  {
     return imageEffect;
   }
 
-  RASPICAM_METERING cam_still::getMetering()  {
+  RASPICAM_METERING cam_still::get_metering()  {
     return metering;
   }
 
-  bool cam_still::isHorizontallyFlipped()  {
+  bool cam_still::is_horizontally_flipped()  {
     return horizontalFlip;
   }
 
-  bool cam_still::isVerticallyFlipped()  {
+  bool cam_still::is_vertically_flipped()  {
     return verticalFlip;
   }
 

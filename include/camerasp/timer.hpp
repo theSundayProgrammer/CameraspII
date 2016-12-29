@@ -24,7 +24,8 @@ namespace camerasp
     std::string  get_image(unsigned int k);
     void set_timer();
     void stop_capture();
-
+    errno_t set_vertical_flip(bool on);
+    errno_t set_horizontal_flip(bool on);
   private:
     static void save_image(buffer_t const& buffer, std::string const& fName);
 

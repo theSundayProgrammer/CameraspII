@@ -49,11 +49,6 @@ const std::string response_command_fail =
 "</html>\r\n";
 
 /// A string to send in responses.
-const std::string response_body
-(std::string("<html>\r\n") +
-  std::string("<head><title>Accepted</title></head>\r\n") +
-  std::string("<body><h1>200 Accepted</h1></body>\r\n") +
-  std::string("</html>\r\n"));
 
 //////////////////////////////////////////////////////////////////////////////
 namespace camerasp
@@ -74,15 +69,39 @@ namespace camerasp
     http_server.shutdown();
   }
 
- 
+  void Handler::handle_image(
+    http_connection::shared_pointer connection,
+    via::http::rx_request const& request,
+      url_parser& parser)
+  {
+        int k = 0;
+        for (auto kv :  parser.queries)
+          console->debug("{0} = {1}", kv.first, kv.second);
+        auto kv = parser.queries.begin();
+        if (kv != parser.queries.end() &&  kv->first == "prev") {
+          if (kv->second.empty() || !is_integer(kv->second, &k)) {
+            k = 0;
+          }
+        }
+        auto resp = get_image(k);
+        connection->send(std::move(resp.first), std::move(resp.second));
+  }
+
   void Handler::handle_hello(
     http_connection::shared_pointer connection,
-    via::http::rx_request const& request, 
-    via::http::tx_response& response)
+    via::http::rx_request const& request,
+      url_parser& parser)
   {
-    if ((request.method() == "GET") ||
-      (request.method() == "POST") ||
-      (request.method() == "PUT"))
+const std::string response_body
+(std::string("<html>\r\n") +
+  std::string("<head><title>Accepted</title></head>\r\n") +
+  std::string("<body><h1>200 Accepted</h1></body>\r\n") +
+  std::string("</html>\r\n"));
+    via::http::tx_response response(via::http::response_status::code::OK);
+      // add the server and date headers
+      response.add_server_header();
+      response.add_date_header();
+    if ((request.method() == "GET") )
     {
       response.set_status(via::http::response_status::code::OK);
       // send the body in an unbuffered response i.e. in ConstBuffers
@@ -98,8 +117,7 @@ namespace camerasp
     else
     {
       response.set_status(via::http::response_status::code::METHOD_NOT_ALLOWED);
-      response.add_header(via::http::header_field::id::ALLOW,
-        "GET, HEAD, POST, PUT");
+      response.add_header(via::http::header_field::id::ALLOW, "GET, HEAD");
       connection->send(std::move(response));
     }
   }
@@ -113,31 +131,34 @@ namespace camerasp
       // Get the last request on this connection.
       via::http::rx_request const& request(connection->request());
 
-      // Set the default response to 404 Not Found
-      via::http::tx_response response(via::http::response_status::code::NOT_FOUND);
-      // add the server and date headers
-      response.add_server_header();
-      response.add_date_header();
       console->debug("Request: {0}", request.uri());
       url_parser parser(request.uri());
       console->debug("Parsed request: {0}", parser.command);
       if (parser.command == "/hello")
       {
-        this->handle_hello(connection, request, response);
+        this->handle_hello(connection, request, parser );
       }
-      else if (parser.command == "/getImage")
+      else if (parser.command == "/image")
       {
-        int k = 0;
-        for (auto kv :  parser.queries)
-          console->debug("{0} = {1}", kv.first, kv.second);
-        auto kv = parser.queries.begin();
-        if (kv != parser.queries.end() &&  kv->first == "prev") {
-          if (kv->second.empty() || !is_integer(kv->second, &k)) {
-            k = 0;
+        this->handle_image(connection, request, parser );
+      }
+      else if (parser.command == "/flip")
+      {
+          auto kv = parser.queries.begin();
+          bool set_val = kv->second == "true";
+          if (kv->first == "horizontal") {
+            timer_.set_horizontal_flip(set_val);
+            send_standard_response(connection, response_command_success);
           }
-        }
-        auto resp = getGETResponse(k);
-        connection->send(std::move(resp.first), std::move(resp.second));
+          else if (kv->first == "vertical")
+          {
+            timer_.set_vertical_flip(set_val);
+            send_standard_response(connection, response_command_success);
+          }
+          else
+           {
+            send_standard_response(connection, response_command_fail);
+          }
       }
       else
       {
@@ -251,11 +272,11 @@ namespace camerasp
     response.add_date_header();
     response.add_header("Content-Type", "text/html");
     response.add_header("charset", "utf-8");
-    response.add_content_length_header(response_missing_file.size());
-    connection->send(response, response_missing_file);
+    response.add_content_length_header(str.size());
+    connection->send(response, str);
   }
   std::pair<via::http::tx_response, std::string>
-    Handler::getGETResponse(int k)
+    Handler::get_image(int k)
   {
     // output the request
     via::http::tx_response response(via::http::response_status::code::OK);
@@ -271,4 +292,3 @@ namespace camerasp
 
 
 }
-//////////////////////////////////////////////////////////////////////////////

@@ -134,27 +134,27 @@ namespace camerasp {
     void setAWB(RASPICAM_AWB awb);
     void setImageEffect(RASPICAM_IMAGE_EFFECT imageEffect);
     void setMetering(RASPICAM_METERING metering);
-    void setHorizontalFlip(bool hFlip);
-    void setVerticalFlip(bool vFlip);
+    void set_horizontal_flip(bool hFlip);
+    void set_vertical_flip(bool vFlip);
     void setEncoding(RASPICAM_ENCODING encoding);
 
-    unsigned int getWidth();
-    unsigned int getHeight();
+    unsigned int get_width();
+    unsigned int get_height();
     size_t image_buffer_size() const;
-    unsigned int getBrightness();
-    unsigned int getRotation();
-    unsigned int getQuality();
-    int getISO();
-    int getSharpness();
-    int getContrast();
-    int getSaturation();
-    RASPICAM_ENCODING getEncoding();
-    RASPICAM_EXPOSURE getExposure();
-    RASPICAM_AWB getAWB();
-    RASPICAM_IMAGE_EFFECT getImageEffect();
-    RASPICAM_METERING getMetering();
-    bool isHorizontallyFlipped();
-    bool isVerticallyFlipped();
+    unsigned int get_brightness();
+    unsigned int get_rotation();
+    unsigned int get_quality();
+    int get_ISO();
+    int get_sharpness();
+    int get_contrast();
+    int get_saturation();
+    RASPICAM_ENCODING get_encoding();
+    RASPICAM_EXPOSURE get_exposure();
+    RASPICAM_AWB get_AWB();
+    RASPICAM_IMAGE_EFFECT get_image_effect();
+    RASPICAM_METERING get_metering();
+    bool is_horizontally_flipped();
+    bool is_vertically_flipped();
 
     //Returns an id of the camera. We assume the camera id is the one of the raspberry
     //the id is obtained using raspberry serial number obtained in /proc/cpuinfo

@@ -56,12 +56,12 @@ namespace camerasp
   buffer_t periodic_frame_grabber::grab_picture() {
     //At any point in time only one instance of this function will be running
     img_info info;
-    console->debug("Height = {0}, Width= {1}", camera_.getHeight(), camera_.getWidth());
+    console->debug("Height = {0}, Width= {1}", camera_.get_height(), camera_.get_width());
     auto siz = camera_.image_buffer_size();
     info.buffer.resize(siz);
     camera_.take_picture((unsigned char*)(&info.buffer[0]), &siz);
-    info.image_height = camera_.getHeight();
-    info.image_width = camera_.getWidth();
+    info.image_height = camera_.get_height();
+    info.image_width = camera_.get_width();
     info.quality = 100;
     info.row_stride = info.image_width * 3;
 
@@ -146,5 +146,14 @@ namespace camerasp
     if (0 == quit_flag)  quit_flag = 1;
   }
 
+  errno_t periodic_frame_grabber::set_vertical_flip(bool val)
+  {
+    camera_.set_vertical_flip(val);
+    return 0;
+  }
+  errno_t  periodic_frame_grabber::set_horizontal_flip(bool val)
+  {
+     camera_.set_horizontal_flip(val);
+    return 0;
+  }
 }
-

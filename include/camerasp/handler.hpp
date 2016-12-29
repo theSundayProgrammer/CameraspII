@@ -15,6 +15,7 @@ typedef http_server_type::http_connection_type http_connection;
 typedef http_server_type::chunk_type http_chunk_type;
 namespace camerasp {
   class periodic_frame_grabber;
+  class url_parser;
   class Handler {
   public:
     Handler(periodic_frame_grabber&);
@@ -70,12 +71,16 @@ namespace camerasp {
       std::string const& str);
 
   private:
+
+    void handle_image(
+      http_connection::shared_pointer connection,
+      via::http::rx_request const& request,
+      url_parser&);
     void handle_hello(
       http_connection::shared_pointer connection,
       via::http::rx_request const& request,
-      via::http::tx_response& response);
-
-    std::pair<via::http::tx_response, std::string >  getGETResponse(int k);
+      url_parser&);
+    std::pair<via::http::tx_response, std::string >  get_image(int k);
     periodic_frame_grabber& timer_;
   };
 }
