@@ -1,6 +1,6 @@
 
 INCLUDES = -I ../include
-CXX_FLAGS = -pthread -DASIO_STANDALONE -Wtrigraphs
+CXX_FLAGS = -pthread -DASIO_STANDALONE -Wno-trigraphs
 BUILD_DIR=./build
 CXX=g++-6
 
