@@ -132,13 +132,13 @@ namespace camerasp
     console->info("Image number = {0}", next);
     std::lock_guard<std::mutex> lock(image_buffers[next].m);
     auto& imagebuffer = image_buffers[next].buffer;
-    return std::string(imagebuffer.begin(), imagebuffer.end());
+    return std::string(imagebuffer.data(), imagebuffer.length());
   }
   void periodic_frame_grabber::start_capture()
   {
     if (quit_flag) {
-      set_timer();
       quit_flag = 0;
+      set_timer();
     }
   }
   void periodic_frame_grabber::stop_capture()
