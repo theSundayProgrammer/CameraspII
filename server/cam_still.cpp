@@ -38,6 +38,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ****************************************************************/
 
+#ifndef RASPICAM_MOCK
 #include <fstream>
 #include <camerasp/cam_still.hpp>
 #include <mmal/mmal.h>
@@ -423,8 +424,7 @@ namespace camerasp
     return 0;
   }
 
-    int cam_still::take_picture(unsigned char *preallocated_data,
-      unsigned int *length)
+    int cam_still::take_picture(unsigned char *preallocated_data, size_t *length)
   {
     initialize();
     int ret = 0;
@@ -445,11 +445,6 @@ namespace camerasp
     stop_capture();
     *length =  userdata->offset ;
     return 0;
-  }
-
-  size_t cam_still::image_buffer_size() const
-  {
-    return width * height * 3 + 54;	//oversize the buffer so to fit BMP images
   }
 
   int cam_still::start_capture() {
@@ -495,176 +490,6 @@ namespace camerasp
       return;
     if (mmal_port_disable(encoder_output_port))
       delete (RASPICAM_USERDATA *)encoder_output_port->userdata;
-  }
-
-  void cam_still::set_width(unsigned int width)  {
-    this->width = width;
-    changed_settings = true;
-  }
-
-  void cam_still::set_height(unsigned int height)  {
-    this->height = height;
-    changed_settings = true;
-  }
-
-  void cam_still::setCaptureSize(unsigned int width, unsigned int height)  {
-    set_width(width);
-    set_height(height);
-  }
-
-  void cam_still::setBrightness(unsigned int brightness)  {
-    if (brightness > 100)
-      brightness = brightness % 100;
-    this->brightness = brightness;
-    changed_settings = true;
-  }
-
-  void cam_still::setQuality(unsigned int quality)  {
-    if (quality > 100)
-      quality = 100;
-    this->quality = quality;
-    changed_settings = true;
-  }
-
-  void cam_still::setRotation(int rotation)  {
-    while (rotation < 0)
-      rotation += 360;
-    if (rotation >= 360)
-      rotation = rotation % 360;
-    this->rotation = rotation;
-    changed_settings = true;
-  }
-
-  void cam_still::setISO(int iso)  {
-    this->iso = iso;
-    changed_settings = true;
-  }
-
-  void cam_still::setSharpness(int sharpness)  {
-    if (sharpness < -100)
-      sharpness = -100;
-    if (sharpness > 100)
-      sharpness = 100;
-    this->sharpness = sharpness;
-    changed_settings = true;
-  }
-
-  void cam_still::setContrast(int contrast)  {
-    if (contrast < -100)
-      contrast = -100;
-    if (contrast > 100)
-      contrast = 100;
-    this->contrast = contrast;
-    changed_settings = true;
-  }
-
-  void cam_still::setSaturation(int saturation)  {
-    if (saturation < -100)
-      saturation = -100;
-    if (saturation > 100)
-      saturation = 100;
-    this->saturation = saturation;
-    changed_settings = true;
-  }
-
-  void cam_still::setEncoding(RASPICAM_ENCODING encoding)  {
-    this->encoding = encoding;
-    changed_settings = true;
-  }
-
-  void cam_still::setExposure(RASPICAM_EXPOSURE exposure)  {
-    this->exposure = exposure;
-    changed_settings = true;
-  }
-
-  void cam_still::setAWB(RASPICAM_AWB awb)  {
-    this->awb = awb;
-    changed_settings = true;
-  }
-
-  void cam_still::setImageEffect(RASPICAM_IMAGE_EFFECT imageEffect)  {
-    this->imageEffect = imageEffect;
-    changed_settings = true;
-  }
-
-  void cam_still::setMetering(RASPICAM_METERING metering)  {
-    this->metering = metering;
-    changed_settings = true;
-  }
-
-  void cam_still::set_horizontal_flip(bool hFlip)  {
-    horizontalFlip = hFlip;
-    changed_settings = true;
-  }
-
-  void cam_still::set_vertical_flip(bool vFlip)  {
-    verticalFlip = vFlip;
-    changed_settings = true;
-  }
-
-  unsigned int cam_still::get_width()  {
-    return width;
-  }
-
-  unsigned int cam_still::get_height()  {
-    return height;
-  }
-
-  unsigned int cam_still::get_brightness()
-  {
-    return brightness;
-  }
-
-  unsigned int cam_still::get_rotation()  {
-    return rotation;
-  }
-
-  unsigned int cam_still::get_quality()  {
-    return quality;
-  }
-
-  int cam_still::get_ISO()  {
-    return iso;
-  }
-
-  int cam_still::get_sharpness()  {
-    return sharpness;
-  }
-
-  int cam_still::get_contrast()  {
-    return contrast;
-  }
-
-  int cam_still::get_saturation()  {
-    return saturation;
-  }
-
-  RASPICAM_ENCODING cam_still::get_encoding()  {
-    return encoding;
-  }
-
-  RASPICAM_EXPOSURE cam_still::get_exposure()  {
-    return exposure;
-  }
-
-  RASPICAM_AWB cam_still::get_AWB()  {
-    return awb;
-  }
-
-  RASPICAM_IMAGE_EFFECT cam_still::get_image_effect()  {
-    return imageEffect;
-  }
-
-  RASPICAM_METERING cam_still::get_metering()  {
-    return metering;
-  }
-
-  bool cam_still::is_horizontally_flipped()  {
-    return horizontalFlip;
-  }
-
-  bool cam_still::is_vertically_flipped()  {
-    return verticalFlip;
   }
 
   void cam_still::commitBrightness()  {
@@ -962,3 +787,5 @@ namespace camerasp
 
 
 }
+#endif
+

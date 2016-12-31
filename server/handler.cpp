@@ -21,12 +21,8 @@
 #include <json/reader.h>
 #include <camerasp/utils.hpp>
 #include <camerasp/handler.hpp>
-#ifdef RASPICAM_MOCK
-#include <camerasp/raspicamMock.hpp>
-#else
-#include <camerasp/cam_still.hpp>
-#endif
 #include <camerasp/timer.hpp>
+#include <camerasp/cam_still.hpp>
 typedef http_server_type::http_connection_type http_connection;
 typedef http_server_type::chunk_type http_chunk_type;
 const std::string response_missing_file =

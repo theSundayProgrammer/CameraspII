@@ -2,11 +2,7 @@
 #include <camerasp/utils.hpp>
 #include <mutex>
 #include <jpeg/jpgconvert.h>
-#ifdef RASPICAM_MOCK
-#include <camerasp/raspicamMock.hpp>
-#else
 #include <camerasp/cam_still.hpp>
-#endif // RASPICAM_MOCK
 #include <json/json.h>
 namespace camerasp
 {

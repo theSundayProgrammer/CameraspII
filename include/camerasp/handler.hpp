@@ -4,11 +4,7 @@
 
 #include <via/comms/tcp_adaptor.hpp>
 #include <via/http_server.hpp>
-#ifdef RASPICAM_MOCK
-#include <camerasp/raspicamMock.hpp>
-#else
 #include <camerasp/cam_still.hpp>
-#endif
 
 typedef via::http_server<via::comms::tcp_adaptor, std::string,true> http_server_type;
 typedef http_server_type::http_connection_type http_connection;

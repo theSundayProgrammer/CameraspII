@@ -12,7 +12,6 @@
 #include <setjmp.h>
 #include <vector>
 #define BLOCK_SIZE 16384
-#ifndef RASPICAM_MOCK
 namespace 
 {
     struct jpeg_dest: jpeg_destination_mgr
@@ -102,4 +101,3 @@ namespace camerasp
     }
 }
 
-#endif
