@@ -5,13 +5,13 @@
     "width": 320
   },
   "Logging": {
-    "path": "C:\\Projects\\CPP\\Camerasp\\logII",
+    "path": "/home/chakra/data",
     "count": 5,
     "size": 2,
 	"type": "debug"
   },
   "Data": {
-    "path_prefix": "C:\\Users\\Public\\Pictures\\backup",
+    "path_prefix": "/home/chakra/data/backup",
     "sample_period": 1,
 	"count": 1000
   },

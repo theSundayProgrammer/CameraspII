@@ -7,10 +7,9 @@
 #include <string>
 #include <vector>
 #include <iterator>
-
+#include <camerasp/types.hpp>
 namespace camerasp
 {
-  typedef std::string buffer_t;
 
     struct img_info
     {
@@ -24,7 +23,7 @@ namespace camerasp
       void xformbgr2rgb();
     };
     img_info  read_JPEG_file (std::string const& filename);
-    std::string write_JPEG_dat (img_info const& img);
+    buffer_t write_JPEG_dat (img_info const& img);
 }
   
 #endif

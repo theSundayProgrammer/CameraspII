@@ -80,8 +80,22 @@ namespace camerasp
           }
         }
         auto resp = get_image(k);
+        console->debug("size of data sent= {0}", resp.second.size());
         connection->send(std::move(resp.first), std::move(resp.second));
   }
+  /*{
+    via::http::tx_response response(via::http::response_status::code::OK);
+      // add the server and date headers
+      response.add_server_header();
+      response.add_date_header();
+      int k=0;
+    console->info("image number={0}", k);
+    response.add_header("Content-Type", "image/jpeg");
+    auto responsebody = timer_.get_image(k);
+    response.add_content_length_header(responsebody.size());
+    connection->send(response,responsebody);
+  }*/
+
 
   void Handler::handle_hello(
     http_connection::shared_pointer connection,
@@ -99,7 +113,6 @@ const std::string response_body
       response.add_date_header();
     if ((request.method() == "GET") )
     {
-      response.set_status(via::http::response_status::code::OK);
       // send the body in an unbuffered response i.e. in ConstBuffers
       // ok because the response_body is persistent data
       connection->send(std::move(response),
@@ -107,7 +120,6 @@ const std::string response_body
     }
     else if (request.method() == "HEAD")
     {
-      response.set_status(via::http::response_status::code::OK);
       connection->send(std::move(response));
     }
     else
@@ -170,11 +182,10 @@ const std::string response_body
   /// If not, it responds with a 200 OK response with some HTML in the body.
   void Handler::request(http_connection::weak_pointer weak_ptr,
                        via::http::rx_request const& request,
-                       std::string const& body)
+                       buffer_t const& body)
   {
     console->debug ( "Rx request: {0}" , request.to_string());
     console->debug ("Rx headers: {0}", request.headers().to_string());
-    console->debug("Rx body: {0}", body);
 
     // Don't respond to chunked requests until the last chunk is received
     if (!request.is_chunked())
@@ -185,7 +196,7 @@ const std::string response_body
   /// Outputs the chunk header and body to console->debug.
   void Handler::chunk(http_connection::weak_pointer weak_ptr,
                      http_chunk_type const& chunk,
-                     std::string const& data)
+                     buffer_t const& data)
   {
     if (chunk.is_last())
     {
@@ -194,8 +205,6 @@ const std::string response_body
       // Only send a response to the last chunk.
       respond_to_request(weak_ptr);
     }
-    else
-      console->debug("Rx chunk, size: {0} "  " data: {1}", chunk.size() , data);
   }
 
   /// A handler for HTTP requests containing an "Expect: 100-continue" header.
@@ -204,7 +213,7 @@ const std::string response_body
   /// response.
   void Handler::expect_continue(http_connection::weak_pointer weak_ptr,
                                via::http::rx_request const& request,
-                               std::string const& /* body */)
+                               buffer_t const& /* body */)
   {
     static const auto MAX_LENGTH(1024);
 
@@ -227,7 +236,7 @@ const std::string response_body
   /// A handler for the signal sent when an invalid HTTP mesasge is received.
   void Handler::invalid_request(http_connection::weak_pointer weak_ptr,
                                via::http::rx_request const&, // request,
-                               std::string const& /* body */)
+                               buffer_t const& /* body */)
   {
     console->debug("Invalid request from ");
     http_connection::shared_pointer connection(weak_ptr.lock());
@@ -269,9 +278,10 @@ const std::string response_body
     response.add_header("Content-Type", "text/html");
     response.add_header("charset", "utf-8");
     response.add_content_length_header(str.size());
-    connection->send(response, str);
+    buffer_t ostr(str.begin(),str.end());
+    connection->send(response, ostr);
   }
-  std::pair<via::http::tx_response, std::string>
+  std::pair<via::http::tx_response, buffer_t>
     Handler::get_image(int k)
   {
     // output the request

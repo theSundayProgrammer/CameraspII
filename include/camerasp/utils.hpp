@@ -29,7 +29,7 @@ namespace camerasp{
   class cam_still;
   typedef asio::basic_waitable_timer<std::chrono::steady_clock>   high_resolution_timer;
   void setTimer(high_resolution_timer& timer, cam_still&);
-  std::string  get_image(unsigned int k);
+  //std::string  get_image(unsigned int k);
 
  bool is_integer(const std::string & s, int* k);
 

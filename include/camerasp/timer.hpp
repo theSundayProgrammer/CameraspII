@@ -18,7 +18,7 @@ namespace camerasp
   public:
     periodic_frame_grabber(asio::io_context& io_service, Json::Value const&);
    ~periodic_frame_grabber(){}
-    std::string  get_image(unsigned int k);
+    buffer_t  get_image(unsigned int k);
     void set_timer();
     void stop_capture();
     errno_t set_vertical_flip(bool on);

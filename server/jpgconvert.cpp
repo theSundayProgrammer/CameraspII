@@ -16,7 +16,7 @@ namespace
 {
     struct jpeg_dest: jpeg_destination_mgr
     {
-        std::string buffer;
+        camerasp::buffer_t buffer;
     };
     void my_init_destination(j_compress_ptr cinfo)
     {
@@ -44,7 +44,7 @@ namespace
 }
 namespace camerasp
 {
-    std::string write_JPEG_dat (img_info const& img)
+    buffer_t write_JPEG_dat (img_info const& img)
     {
       struct jpeg_compress_struct cinfo;
       struct jpeg_error_mgr jerr;

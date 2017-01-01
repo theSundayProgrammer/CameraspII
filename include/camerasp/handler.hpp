@@ -5,8 +5,9 @@
 #include <via/comms/tcp_adaptor.hpp>
 #include <via/http_server.hpp>
 #include <camerasp/cam_still.hpp>
+#include <camerasp/types.hpp>
 
-typedef via::http_server<via::comms::tcp_adaptor, std::string,true> http_server_type;
+typedef via::http_server<via::comms::tcp_adaptor, camerasp::buffer_t> http_server_type;
 typedef http_server_type::http_connection_type http_connection;
 typedef http_server_type::chunk_type http_chunk_type;
 namespace camerasp {
@@ -18,7 +19,7 @@ namespace camerasp {
     void request(
       http_connection::weak_pointer weak_ptr,
       via::http::rx_request const& request,
-      std::string const& body);
+      buffer_t const& body);
 
     void respond_to_request(http_connection::weak_pointer weak_ptr);
 
@@ -27,7 +28,7 @@ namespace camerasp {
     void chunk(
       http_connection::weak_pointer weak_ptr,
       http_chunk_type const& chunk,
-      std::string const& data);
+      buffer_t const& data);
 
 
     /// A handler for HTTP requests containing an "Expect: 100-continue" header.
@@ -37,14 +38,14 @@ namespace camerasp {
     void expect_continue(
       http_connection::weak_pointer weak_ptr,
       via::http::rx_request const& request,
-      std::string const& /* body */);
+      buffer_t const& /* body */);
 
 
     /// A handler for the signal sent when an invalid HTTP mesasge is received.
     void invalid_request(
       http_connection::weak_pointer weak_ptr,
       via::http::rx_request const&, // request,
-      std::string const& /* body */);
+      buffer_t const& /* body */);
 
 
     /// A handler for the signal sent when an HTTP socket is connected.
@@ -76,7 +77,7 @@ namespace camerasp {
       http_connection::shared_pointer connection,
       via::http::rx_request const& request,
       url_parser&);
-    std::pair<via::http::tx_response, std::string >  get_image(int k);
+    std::pair<via::http::tx_response, buffer_t >  get_image(int k);
     periodic_frame_grabber& timer_;
   };
 }

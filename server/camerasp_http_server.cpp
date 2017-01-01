@@ -49,7 +49,8 @@ int main(int argc, char *argv[])
     auto logpath = json_path.asString();
     auto size_mega_bytes = log_config["size"].asInt();
     auto count_files = log_config["count"].asInt();
-    console = spd::rotating_logger_mt("console", logpath, 1024 * 1024 * size_mega_bytes, count_files);
+    //console = spd::rotating_logger_mt("console", logpath, 1024 * 1024 * size_mega_bytes, count_files);
+    console = spd::stdout_color_mt("console");
     console->set_level(spd::level::debug);
     console->info("{0} at port {1}", app_name, port_number);
     // create an io_service for the server
@@ -101,11 +102,7 @@ int main(int argc, char *argv[])
       io_service.stop();
     });
   // Start the on two  worker threads server
-      std::thread thread1{ [&io_service]() { io_service.run(); } };
-      std::thread thread2{ [&io_service]() { io_service.run(); } };
       io_service.run();
-      thread1.join();
-      thread2.join();
     console->info("io_service.run complete, shutdown successful");
   }
   catch (Json::LogicError& err) {

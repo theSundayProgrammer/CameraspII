@@ -48,7 +48,7 @@ namespace camerasp
     }
     char intstr[8];
     sprintf(intstr, "%04d", file_number);
-    console->debug("path for image = {0}",pathname_prefix + intstr + ".jpg"); 
+//    console->debug("path for image = {0}",pathname_prefix + intstr + ".jpg"); 
     save_image(buffer, pathname_prefix + intstr + ".jpg");
     --pending_count;
   }
@@ -56,7 +56,7 @@ namespace camerasp
   buffer_t periodic_frame_grabber::grab_picture() {
     //At any point in time only one instance of this function will be running
     img_info info;
-    console->debug("Height = {0}, Width= {1}", camera_.get_height(), camera_.get_width());
+//    console->debug("Height = {0}, Width= {1}", camera_.get_height(), camera_.get_width());
     auto siz = camera_.image_buffer_size();
     info.buffer.resize(siz);
     camera_.take_picture((unsigned char*)(&info.buffer[0]), &siz);
@@ -69,7 +69,7 @@ namespace camerasp
     if (info.image_height > 0 && info.image_width > 0)
     {
       info.quality = 100;
-      console->debug("Image Size = {0}", info.buffer.size());
+      //console->debug("Image Size = {0}", info.buffer.size());
       info.xformbgr2rgb();
       return write_JPEG_dat(info);
     }
@@ -85,7 +85,7 @@ namespace camerasp
     using namespace std::placeholders;
 
     if (!quit_flag) {
-    console->debug("timer active");
+    //console->debug("timer active");
       auto current = high_resolution_timer::clock_type::now();
       auto diff = current - prev;
       auto next = cur_img;
@@ -124,15 +124,15 @@ namespace camerasp
       console->error("Error: {}..", e.what());
     }
   }
-  std::string  periodic_frame_grabber::get_image(unsigned int k) {
+  buffer_t  periodic_frame_grabber::get_image(unsigned int k) {
 
     auto next =  (k > current_count && current_count < max_size)?
         0:
        (cur_img + max_size - 1 - k) % max_size;
     console->info("Image number = {0}", next);
     std::lock_guard<std::mutex> lock(image_buffers[next].m);
-    auto& imagebuffer = image_buffers[next].buffer;
-    return std::string(imagebuffer.data(), imagebuffer.length());
+    auto imagebuffer = image_buffers[next].buffer;
+    return buffer_t(imagebuffer.begin(), imagebuffer.end());
   }
   void periodic_frame_grabber::start_capture()
   {
