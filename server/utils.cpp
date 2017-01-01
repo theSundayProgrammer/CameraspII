@@ -26,7 +26,7 @@ namespace camerasp{
       }
       //detect command which may end with '?' if there are parameters
       std::smatch m;
-      std::regex e("([^?]*)(\\??)");
+      std::regex e("([^?]*)(\\\?\?)");
       if (std::regex_search(uri, m, e)) {
         command = m[1];
         //Command detected; now get parameter values "key=value&key=value"
