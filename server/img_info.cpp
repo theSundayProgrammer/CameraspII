@@ -21,8 +21,9 @@ void camerasp::img_info::xformbgr2rgb()
     }
   }
 }
-//JSAMPROW camerasp::img_info::get_scan_line(int scan_line,  int stride) const
-//{
-//  return  reinterpret_cast<JSAMPROW>(const_cast<char *>(&buffer[BMP_HEADER_SIZE + scan_line*row_stride]));
-//}
-
+#ifndef RASPICAM_MOCK
+JSAMPROW camerasp::img_info::get_scan_line(int scan_line,  int stride) const
+{
+  return  reinterpret_cast<JSAMPROW>(const_cast<char *>(&buffer[BMP_HEADER_SIZE + scan_line*row_stride]));
+}
+#endif

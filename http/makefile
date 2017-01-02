@@ -1,7 +1,7 @@
 INCLUDES = -I ../include
 CXX_FLAGS = -std=c++14 -pthread -DASIO_STANDALONE -Wno-trigraphs
 BUILD_DIR=./build
-CXX=g++
+CXX=g++-6
 
 
 srcs = $(wildcard *.cpp)

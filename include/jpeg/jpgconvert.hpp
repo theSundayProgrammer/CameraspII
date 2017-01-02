@@ -9,7 +9,7 @@
 #ifdef RASPICAM_MOCK
 typedef unsigned char JSAMPLE;
 #else
-#include <jpeg.h>
+#include <jpeglib.h>
 #endif
 namespace camerasp
 {
@@ -21,7 +21,9 @@ namespace camerasp
       unsigned int image_width;
       unsigned int row_stride;
       unsigned int quality;
-      //JSAMPROW get_scan_line(int scan_line,  int row_stride) const;
+#ifndef RASPICAM_MOCK
+      JSAMPROW get_scan_line(int scan_line,  int row_stride) const;
+#endif
       void put_scan_line(JSAMPLE *,  int row_stride) ;
       void xformbgr2rgb();
     };
