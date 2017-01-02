@@ -2,7 +2,9 @@
 #include <camerasp/utils.hpp>
 #include <camerasp/cam_still.hpp>
 #include <vector>
-#include <jpeg/jpgconvert.h>
+//#include <jpeg/jpgconvert.h>
+//char const* img_path = "/home/chakra/data/Joe.bmp";
+char const* img_path = "C:\\Users\\Public\\Pictures\\fig3.jpg";
 namespace camerasp
 {
   cam_still::cam_still(void) {
@@ -29,13 +31,12 @@ namespace camerasp
 
   int cam_still::take_picture(unsigned char* data, size_t *length)
   {
-    char const* img_path="/home/chakra/data/Joe.bmp";
     console->debug("retrieve");
     std::string buffer;
     FILE *fp = nullptr;
     fopen_s(&fp, img_path, "rb");
+    int k = 0;
     if (fp) {
-      size_t k = 0;
       for (int c = getc(fp); c != EOF; c = getc(fp)) {
           *data++=c;
           ++k; 

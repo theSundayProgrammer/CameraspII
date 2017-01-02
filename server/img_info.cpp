@@ -1,4 +1,4 @@
-#include <jpeg/jpgconvert.h>
+#include <jpeg/jpgconvert.hpp>
 #define BMP_HEADER_SIZE 54
 void camerasp::img_info::put_scan_line(JSAMPLE *data, int row_stride) 
 {
@@ -21,8 +21,8 @@ void camerasp::img_info::xformbgr2rgb()
     }
   }
 }
-JSAMPROW camerasp::img_info::get_scan_line(int scan_line,  int stride) const
-{
-  return  reinterpret_cast<JSAMPROW>(const_cast<char *>(&buffer[BMP_HEADER_SIZE + scan_line*row_stride]));
-}
+//JSAMPROW camerasp::img_info::get_scan_line(int scan_line,  int stride) const
+//{
+//  return  reinterpret_cast<JSAMPROW>(const_cast<char *>(&buffer[BMP_HEADER_SIZE + scan_line*row_stride]));
+//}
 

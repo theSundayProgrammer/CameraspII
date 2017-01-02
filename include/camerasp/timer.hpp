@@ -1,9 +1,10 @@
 #pragma once
 #include <camerasp/utils.hpp>
 #include <mutex>
-#include <jpeg/jpgconvert.h>
+//#include <jpeg/jpgconvert.h>
 #include <camerasp/cam_still.hpp>
 #include <json/json.h>
+#include <camerasp/types.hpp>
 namespace camerasp
 {
 

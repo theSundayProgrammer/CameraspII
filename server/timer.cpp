@@ -7,6 +7,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include <camerasp/timer.hpp>
+#include <jpeg/jpgconvert.hpp>
 namespace camerasp
 {
   
@@ -54,12 +55,14 @@ namespace camerasp
   }
 
   buffer_t periodic_frame_grabber::grab_picture() {
-    //At any point in time only one instance of this function will be running
+
+    //  At any point in time only one instance of this function will be running
     img_info info;
-//    console->debug("Height = {0}, Width= {1}", camera_.get_height(), camera_.get_width());
+    //  console->debug("Height = {0}, Width= {1}", camera_.get_height(), camera_.get_width());
     auto siz = camera_.image_buffer_size();
     info.buffer.resize(siz);
     camera_.take_picture((unsigned char*)(&info.buffer[0]), &siz);
+
     info.image_height = camera_.get_height();
     info.image_width = camera_.get_width();
     info.quality = 100;
@@ -69,9 +72,13 @@ namespace camerasp
     if (info.image_height > 0 && info.image_width > 0)
     {
       info.quality = 100;
-      //console->debug("Image Size = {0}", info.buffer.size());
+#ifndef RASPICAM_MOCK
       info.xformbgr2rgb();
       return write_JPEG_dat(info);
+#else
+      info.buffer.resize(siz);
+      return info.buffer;
+#endif // !RASPICAM_MOCK
     }
     else
     {

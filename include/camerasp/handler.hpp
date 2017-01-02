@@ -12,7 +12,7 @@ typedef http_server_type::http_connection_type http_connection;
 typedef http_server_type::chunk_type http_chunk_type;
 namespace camerasp {
   class periodic_frame_grabber;
-  class url_parser;
+  struct url_parser;
   class Handler {
   public:
     Handler(periodic_frame_grabber&);

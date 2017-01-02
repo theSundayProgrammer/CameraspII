@@ -16,7 +16,11 @@
 #include "connection.hpp"
 #include "via/no_except.hpp"
 #ifdef HTTP_SSL
+  #ifdef ASIO_STANDALONE
+    #include <asio/ssl/context.hpp>
+  #else
   #include <boost/asio/ssl/context.hpp>
+  #endif
 #endif
 #include <set>
 #include <string>

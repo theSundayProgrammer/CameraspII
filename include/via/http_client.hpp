@@ -4,7 +4,7 @@
 #pragma once
 
 //////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2013-2015 Ken Barker
+// Copyright (c) 2013-2016 Ken Barker
 // (ken dot barker at via-technology dot co dot uk)
 //
 // Distributed under the Boost Software License, Version 1.0.
@@ -84,7 +84,7 @@ namespace via
     // Variables
 
     std::shared_ptr<connection_type> connection_; ///< the comms connection
-    ASIO::deadline_timer timer_;             ///< a deadline timer
+    ASIO_TIMER timer_;                            ///< a deadline timer
     http::response_receiver<Container> rx_;         ///< the response receiver
     std::string host_name_;                         ///< the name of the host
     std::string port_name_;                         ///< the port name / number
@@ -197,7 +197,11 @@ namespace via
       // attempt to reconnect in period_ miliseconds
       if (period_ > 0)
       {
+#ifdef ASIO_STANDALONE
+        timer_.expires_from_now(std::chrono::milliseconds(period_));
+#else
         timer_.expires_from_now(boost::posix_time::milliseconds(period_));
+#endif
         weak_pointer weak_ptr(weak_from_this());
         timer_.async_wait([weak_ptr](ASIO_ERROR_CODE const& error)
                            { timeout_handler(weak_ptr, error); });
