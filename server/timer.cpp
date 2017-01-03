@@ -41,15 +41,10 @@ namespace camerasp
     }
   }
   //need a better way of handling file save
-  void periodic_frame_grabber::save_file(int file_number) {
-    buffer_t buffer;
-    {
-      std::lock_guard<std::mutex> lock(image_buffers[file_number].m);
-      buffer = image_buffers[file_number].buffer;
-    }
+  void periodic_frame_grabber::save_file(buffer_t& buffer, unsigned int file_number) {
+    
     char intstr[8];
     sprintf(intstr, "%04d", file_number);
-//    console->debug("path for image = {0}",pathname_prefix + intstr + ".jpg"); 
     save_image(buffer, pathname_prefix + intstr + ".jpg");
     --pending_count;
   }
@@ -97,18 +92,19 @@ namespace camerasp
       auto diff = current - prev;
       auto next = cur_img;
       auto buffer = grab_picture();
-      {
-        std::lock_guard<std::mutex> lock(image_buffers[next].m);
-        image_buffers[next].buffer.swap(buffer);
-      }
+      
       int files_in_queue = ++pending_count;
       if (files_in_queue < max_file_count / 10 || files_in_queue < 10)
       {
-        asio::post(timer_.get_io_context(), std::bind(&periodic_frame_grabber::save_file, this, next));
+        save_file(buffer, next);
       }
       else
       {
         --pending_count;
+      }
+      {
+        std::lock_guard<std::mutex> lock(image_buffers[next].m);
+        image_buffers[next].buffer.swap(buffer);
       }
       if (current_count < max_size) ++current_count;
       cur_img = (cur_img + 1) % max_size;

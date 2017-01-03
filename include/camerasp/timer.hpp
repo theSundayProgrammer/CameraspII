@@ -28,7 +28,7 @@ namespace camerasp
     static void save_image(buffer_t const& buffer, std::string const& fName);
 
     //need a better way of handling file save
-    void save_file(int file_number);
+    void save_file(buffer_t&,unsigned int);
 
     buffer_t grab_picture();
     void handle_timeout(const asio::error_code&);
