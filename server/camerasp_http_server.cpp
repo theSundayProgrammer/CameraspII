@@ -49,8 +49,8 @@ int main(int argc, char *argv[])
     auto logpath = json_path.asString();
     auto size_mega_bytes = log_config["size"].asInt();
     auto count_files = log_config["count"].asInt();
-    //console = spd::rotating_logger_mt("console", logpath, 1024 * 1024 * size_mega_bytes, count_files);
-    console = spd::stdout_color_mt("console");
+    console = spd::rotating_logger_mt("camerasp", logpath, 1024 * 1024 * size_mega_bytes, count_files);
+    //console = spd::stdout_color_mt("console");
     console->set_level(spd::level::debug);
     console->info("{0} at port {1}", app_name, port_number);
     // create an io_service for the server
