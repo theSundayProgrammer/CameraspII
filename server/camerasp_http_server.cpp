@@ -102,7 +102,11 @@ int main(int argc, char *argv[])
       io_service.stop();
     });
   // Start the on two  worker threads server
+      //std::thread thread1{ [&io_service]() { io_service.run(); } };
+      //std::thread thread2{ [&io_service]() { io_service.run(); } };
       io_service.run();
+      //thread1.join();
+      //thread2.join();
     console->info("io_service.run complete, shutdown successful");
   }
   catch (Json::LogicError& err) {

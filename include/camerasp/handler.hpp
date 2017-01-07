@@ -8,6 +8,8 @@
 #include <camerasp/types.hpp>
 
 typedef via::http_server<via::comms::tcp_adaptor, camerasp::buffer_t> http_server_type;
+// set use_strand = true if using strand
+
 typedef http_server_type::http_connection_type http_connection;
 typedef http_server_type::chunk_type http_chunk_type;
 namespace camerasp {
