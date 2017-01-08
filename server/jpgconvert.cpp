@@ -6,7 +6,7 @@
 // 
 //////////////////////////////////////////////////////////////////////////////
 
-
+#if !defined(RASPICAM_MOCK)
 #include <stdio.h>
 #include <jpeg/jpgconvert.hpp>
 #include <setjmp.h>
@@ -101,3 +101,4 @@ namespace camerasp
     }
 }
 
+#endif

@@ -3,8 +3,8 @@
 #include <camerasp/cam_still.hpp>
 #include <vector>
 //#include <jpeg/jpgconvert.h>
-//char const* img_path = "/home/chakra/data/Joe.bmp";
-char const* img_path = "C:\\Users\\Public\\Pictures\\fig3.jpg";
+char const* img_path = "/home/chakra/data/test.jpg";
+//char const* img_path = "C:\\Users\\Public\\Pictures\\fig3.jpg";
 namespace camerasp
 {
   cam_still::cam_still(void) {
