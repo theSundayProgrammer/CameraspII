@@ -22,12 +22,11 @@ namespace camerasp
       int secs = backup["sample_period"].asInt();
       sampling_period = std::chrono::seconds(secs);
       pathname_prefix = backup["path_prefix"].asString();
-      quit_flag =0;
+      quit_flag =1;
       pending_count=0;
      camera_.set_width(640);
      camera_.set_height(480);
      camera_.setISO(400);
-     camera_.open();
 
   }
   void periodic_frame_grabber::save_image(buffer_t const& buffer, std::string const& fName)
@@ -108,10 +107,13 @@ namespace camerasp
       }
       if (current_count < max_size) ++current_count;
       cur_img = (cur_img + 1) % max_size;
-      //console->info("Prev Data Size {0}; time elapse {1}s..", buffer.size(), diff.count());
       timer_.expires_at(prev + 2 * sampling_period);
       prev = current;
       timer_.async_wait(std::bind(&periodic_frame_grabber::handle_timeout, this, _1));
+    }
+    else
+    {
+      camera_.release();
     }
   }
 
@@ -141,6 +143,7 @@ namespace camerasp
   {
     if (quit_flag) {
       quit_flag = 0;
+      camera_.open();
       set_timer();
     }
   }
