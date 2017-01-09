@@ -1,8 +1,12 @@
 
 INCLUDES = -I ../include
+<<<<<<< HEAD
 CXX_FLAGS = -std=c++14 -pthread -DASIO_STANDALONE -Wtrigraphs
+=======
+CXX_FLAGS = -std=c++14 -pthread -DRASPICAM_MOCK -DASIO_STANDALONE -Wtrigraphs
+>>>>>>> df6011af877988d9158fee8aabd0e7ba4cb9c1ab
 BUILD_DIR=./build
-CXX=g++-6
+CXX=g++
 
 all : camerasp
 .PHONY : all
