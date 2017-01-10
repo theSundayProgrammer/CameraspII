@@ -76,6 +76,32 @@ int main() {
                    << "\r\n"
                    << data;
     };
+    //restart capture
+    server.resource["^/start$"]["GET"]=[&timer](
+                    shared_ptr<HttpServer::Response> response,
+                    shared_ptr<HttpServer::Request> request)
+    {
+        //find length of content_stream (length received using content_stream.tellp())
+        string success("Succeeded");
+        *response <<  "HTTP/1.1 200 OK\r\n" 
+                  <<  "Content-Length: " << success.size()<< "\r\n"
+                  <<  "Content-type: " << "image/jpeg" <<"\r\n"
+                   << "\r\n"
+                   << success;
+    };
+    //stop capture
+    server.resource["^/stop$"]["GET"]=[&timer](
+                    shared_ptr<HttpServer::Response> response,
+                    shared_ptr<HttpServer::Request> request)
+    {
+        //find length of content_stream (length received using content_stream.tellp())
+        string success("Succeeded");
+        *response <<  "HTTP/1.1 200 OK\r\n" 
+                  <<  "Content-Length: " << success.size()<< "\r\n"
+                  <<  "Content-type: " << "image/jpeg" <<"\r\n"
+                   << "\r\n"
+                   << success;
+    };
     //Responds with request-information
     server.resource["^/image$"]["GET"]=[&timer](
                     shared_ptr<HttpServer::Response> response,
