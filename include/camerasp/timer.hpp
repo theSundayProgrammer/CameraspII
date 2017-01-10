@@ -20,7 +20,7 @@ namespace camerasp
     periodic_frame_grabber(asio::io_context& io_service, Json::Value const&);
    ~periodic_frame_grabber(){}
     buffer_t  get_image(unsigned int k);
-    void set_timer();
+    void start_capture();
     void stop_capture();
     errno_t set_vertical_flip(bool on);
     errno_t set_horizontal_flip(bool on);
@@ -32,7 +32,7 @@ namespace camerasp
 
     buffer_t grab_picture();
     void handle_timeout(const asio::error_code&);
-    void start_capture();
+    void set_timer();
 
   private:
     cam_still camera_;

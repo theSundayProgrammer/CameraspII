@@ -6,4 +6,4 @@ asio/
 *.jpg
 include/mmal
 include/vcos
-
+lib/

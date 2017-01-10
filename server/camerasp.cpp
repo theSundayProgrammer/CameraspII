@@ -159,7 +159,7 @@ int main() {
         }
     };
     
-    timer.set_timer();
+    timer.start_capture();
     server.start();
     return 0;
 }
