@@ -23,7 +23,10 @@ namespace camerasp
   void  cam_still::commitParameters() { console->debug("commitParameters"); }
 
 
-  void  cam_still::stopCapture() {
+  void  cam_still::release() {
+    console->debug("release");
+  }
+  void  cam_still::stop_capture() {
     console->debug("stopCapture");
   }
 

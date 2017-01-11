@@ -20,7 +20,8 @@ namespace camerasp
     void  setShutterSpeed(unsigned int);
     void  setAWB(enum RASPICAM_AWB);
     void  setAWB_RB(float, float);
-    void stopCapture();
+    void release();
+    void stop_capture();
     void commitParameters();
     bool  open(bool val = true);
     int take_picture(unsigned char * preallocated_data, size_t* length);
