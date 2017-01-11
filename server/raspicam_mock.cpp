@@ -31,22 +31,21 @@ namespace camerasp
   }
 
   bool cam_still::open(bool) { console->debug("open"); return true; }
+string get_image()
+{
+  stringstream content_stream;
+  ifstream ifs("/home/chakra/data/test.jpg");
+         
+  content_stream << ifs.rdbuf();
+  return content_stream.str();
+}
 
   int cam_still::take_picture(unsigned char* data, size_t *length)
   {
     console->debug("retrieve");
-    std::string buffer;
-    FILE *fp = nullptr;
-    fopen_s(&fp, img_path, "rb");
-    int k = 0;
-    if (fp) {
-      for (int c = getc(fp); c != EOF; c = getc(fp)) {
-          *data++=c;
-          ++k; 
-      }
-      *length = k;
-      fclose(fp);
-    }
+    std::string buffer=get_image();
+    for (auto c: buffer){ *data++=c; }
+    *length = buffer.size();
     return 0;
   }
 }

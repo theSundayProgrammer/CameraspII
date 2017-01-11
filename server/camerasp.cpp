@@ -29,14 +29,6 @@ const std::string config_path = "./";
 #else
 const std::string config_path = "/srv/camerasp/";
 #endif
-string get_image()
-{
-  stringstream content_stream;
-  ifstream ifs("/home/chakra/data/test.jpg");
-         
-  content_stream << ifs.rdbuf();
-  return content_stream.str();
-}
 int main() {
     //HTTP-server at port 8080 using 1 thread
     //Unless you do more heavy non-threaded processing in the resources,
@@ -124,7 +116,7 @@ int main() {
     //Can for instance be used to retrieve an HTML 5 client that uses REST-resources on this server
     server.default_resource["GET"]=[&server](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
         try {
-            auto web_root_path=boost::filesystem::canonical("/home/chakra/data/web");
+            auto web_root_path=boost::filesystem::canonical("/home/pi/data/web");
             auto path=boost::filesystem::canonical(web_root_path/request->path);
             //Check if path is within web_root_path
             if(distance(web_root_path.begin(), web_root_path.end())>distance(path.begin(), path.end()) ||
