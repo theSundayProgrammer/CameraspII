@@ -15,7 +15,7 @@ objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
 camerasp: $(objs)
-	$(CXX)   -o $@ $^ -pthread -L/opt/vc/lib\
+	$(CXX)   -o $@ $^ -pthread -Wunused -L/opt/vc/lib\
                    -lboost_filesystem -lboost_system\
                    -L../lib -ljpeg -ljson 
 
