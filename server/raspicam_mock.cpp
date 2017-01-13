@@ -1,8 +1,11 @@
 #ifdef RASPICAM_MOCK
 #include <camerasp/utils.hpp>
 #include <camerasp/cam_still.hpp>
+#include <string>
 #include <vector>
 //#include <jpeg/jpgconvert.h>
+#include <sstream>
+#include <fstream>
 char const* img_path = "/home/chakra/data/test.jpg";
 //char const* img_path = "C:\\Users\\Public\\Pictures\\fig3.jpg";
 namespace camerasp
@@ -31,10 +34,10 @@ namespace camerasp
   }
 
   bool cam_still::open(bool) { console->debug("open"); return true; }
-string get_image()
+std::string get_image()
 {
-  stringstream content_stream;
-  ifstream ifs("/home/chakra/data/test.jpg");
+  std::stringstream content_stream;
+  std::ifstream ifs("/home/chakra/data/test.jpg");
          
   content_stream << ifs.rdbuf();
   return content_stream.str();
