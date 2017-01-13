@@ -8,6 +8,8 @@
 
 #include <camerasp/timer.hpp>
 #include <jpeg/jpgconvert.hpp>
+#include <fstream>
+#include <sstream>
 namespace camerasp
 {
   
@@ -31,13 +33,8 @@ namespace camerasp
   }
   void periodic_frame_grabber::save_image(buffer_t const& buffer, std::string const& fName)
   {
-    FILE *fp = nullptr;
-    fopen_s(&fp, fName.c_str(), "wb");
-    if (fp)
-    {
-      for (auto c : buffer) putc(c, fp);
-      fclose(fp);
-    }
+    std::ofstream ofs(fName,std::ios::binary);
+    ofs<<buffer;
   }
   //need a better way of handling file save
   void periodic_frame_grabber::save_file(buffer_t& buffer, unsigned int file_number) {
