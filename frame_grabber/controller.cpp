@@ -26,8 +26,8 @@ void configure_console(Json::Value& root)
   auto logpath = log_config["path"].asString()+"_fg";
   auto size_mega_bytes = log_config["size"].asInt();
   auto count_files = log_config["count"].asInt();
-  //console = spd::rotating_logger_mt("camerasp", logpath, 1024 * 1024 * size_mega_bytes, count_files);
-  console = spd::stdout_color_mt("console");
+  console = spd::rotating_logger_mt("camerasp", logpath, 1024 * 1024 * size_mega_bytes, count_files);
+  //console = spd::stdout_color_mt("console");
   console->set_level(spd::level::debug);
 }
 
@@ -35,7 +35,6 @@ int main(int argc, char *argv[])
 {
   using namespace boost::interprocess;
   try {
-  using namespace boost::interprocess;
     // Construct the :shared_request_data.
     shared_memory_object::remove(RESPONSE_MEMORY_NAME );
     shared_memory_object shm_response(create_only, RESPONSE_MEMORY_NAME , read_write);
@@ -114,10 +113,6 @@ int main(int argc, char *argv[])
     frame_grabber_service.run();
     thread1.join();
     console->info("frame_grabber_service.run complete, shutdown successful");
-  }
-  catch (Json::LogicError& err) {
-    std::cerr << "Parse Error: {0}" << err.what() << std::endl;
-    return -1;
   }
   catch (std::exception& e)
   {
