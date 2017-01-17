@@ -8,6 +8,7 @@
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <boost/interprocess/sync/sharable_lock.hpp>
 #include <boost/interprocess/sync/upgradable_lock.hpp>
+#include <camerasp/types.hpp>
 #define REQUEST_MEMORY_NAME "SO12439099-Request"
 #define RESPONSE_MEMORY_NAME "SO12439099-Response"
 namespace ipc = boost::interprocess;
@@ -38,10 +39,10 @@ struct shared_request_data {
 	throw std::runtime_error("request length too long");
       else
       {
-	console->debug("Response received");
 	std::copy(std::begin(str),std::end(str),std::begin(request));
 	request[str.length()]='\0';
 	task.post();
+	console->debug("Request Sent:{0}", str);
       }
     }
   public:
@@ -65,7 +66,7 @@ struct shared_response_data{
 
     camerasp::buffer_t get() const {
       task.wait();
-	console->debug("Request received");
+	console->debug("Response received");
       ipc::sharable_lock<upgradable_mutex_type> lock(mutex);
       return std::string(response,data_length);
     }
@@ -76,10 +77,10 @@ struct shared_response_data{
 	throw std::runtime_error("request length too long");
       else
       {
-	console->debug("Response received");
 	std::copy(std::begin(str),std::end(str),std::begin(response));
 	data_length=str.length();
 	task.post();
+	console->debug("Response sent");
       }
     }
   public:
