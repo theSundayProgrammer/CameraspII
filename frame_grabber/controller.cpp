@@ -19,15 +19,14 @@ const std::string config_path = "./";
 const std::string config_path = "/srv/camerasp/";
 #endif
 #define ASIO_ERROR_CODE asio::error_code
-void configure_console(Json::Value& root)
+void configure_console()
 {
   namespace spd = spdlog;
-  auto log_config = root["Logging"];
-  auto logpath = log_config["path"].asString()+"_fg";
-  auto size_mega_bytes = log_config["size"].asInt();
-  auto count_files = log_config["count"].asInt();
-  console = spd::rotating_logger_mt("camerasp", logpath, 1024 * 1024 * size_mega_bytes, count_files);
-  //console = spd::stdout_color_mt("console");
+  std::string logpath = "/home/chakra/data/fg";
+int size_mega_bytes = 4;
+  int count_files = 2;
+  //console = spd::rotating_logger_mt("camerasp", logpath, 1024 * 1024 * size_mega_bytes, count_files);
+ console = spd::stdout_color_mt("console");
   console->set_level(spd::level::debug);
 }
 
@@ -35,42 +34,26 @@ int main(int argc, char *argv[])
 {
   using namespace boost::interprocess;
   try {
+    configure_console();
     // Construct the :shared_request_data.
-    shared_memory_object::remove(RESPONSE_MEMORY_NAME );
-    shared_memory_object shm_response(create_only, RESPONSE_MEMORY_NAME , read_write);
+    shared_memory_object shm(open_only, REQUEST_MEMORY_NAME, read_write);
 
+    mapped_region region(shm, read_write);
 
-    shm_response.truncate(sizeof (shared_response_data));
+    shared_request_data& request = *static_cast<shared_request_data *>(region.get_address());
+
+	console->debug("Line {0}",__LINE__);
+    
+    // Construct the :shared_response data.
+    shared_memory_object shm_response(open_only, RESPONSE_MEMORY_NAME, read_write);
 
     mapped_region region_response(shm_response, read_write);
 
-    new (region_response.get_address()) shared_response_data;
-    shared_response_data& response =*static_cast<shared_response_data*>(region_response.get_address());
+    shared_response_data& response = *static_cast<shared_response_data *>(region_response.get_address());
+    
+	console->debug("Line {0}",__LINE__);
 
-    // Construct the :shared_request_data.
-    shared_memory_object::remove(REQUEST_MEMORY_NAME);
-    shared_memory_object shm_request(create_only, REQUEST_MEMORY_NAME, read_write);
-
-
-    shm_request.truncate(sizeof (shared_request_data));
-
-    mapped_region region_request(shm_request, read_write);
-
-    new (region_request.get_address()) shared_request_data;
-    shared_request_data& request =  *static_cast<shared_request_data *>(region_request.get_address());
-
-    BOOST_SCOPE_EXIT(argc) {
-      shared_memory_object::remove(REQUEST_MEMORY_NAME);
-      shared_memory_object::remove(RESPONSE_MEMORY_NAME);
-    } BOOST_SCOPE_EXIT_END;
-
-    Json::Value root=camerasp::get_DOM(config_path + "options.json");
-    configure_console(root);
     asio::io_service frame_grabber_service;
-    camerasp::periodic_frame_grabber timer(frame_grabber_service, root["Data"]);
-    timer.start_capture();
-
-
     // The signal set is used to register termination notifications
     asio::signal_set signals_(frame_grabber_service);
     signals_.add(SIGINT);
@@ -83,6 +66,11 @@ int main(int argc, char *argv[])
 	console->debug("SIGTERM received");
 	});
 
+    //configure frame grabber
+    Json::Value root=camerasp::get_DOM(config_path + "options.json");
+    camerasp::periodic_frame_grabber timer(frame_grabber_service, root["Data"]);
+    timer.start_capture();
+	console->debug("Line {0}",__LINE__);
     // Start worker threads 
     std::thread thread1{ [&]() { 
       for(;;)
@@ -104,15 +92,22 @@ int main(int argc, char *argv[])
 	{
 	  timer.stop_capture();
 	  frame_grabber_service.stop();
+          response.set(std::string("stopping"));
 	  console->debug("SIGTERM handled");
 	  return;
 	}        
       }
 
     } };
+	console->debug("Line {0}",__LINE__);
     frame_grabber_service.run();
     thread1.join();
+	//std::string uri=request.get();
     console->info("frame_grabber_service.run complete, shutdown successful");
+  }
+  catch (Json::LogicError& err) {
+    std::cerr << "Parse Error: {0}" << err.what() << std::endl;
+    return -1;
   }
   catch (std::exception& e)
   {
