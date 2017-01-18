@@ -1,9 +1,13 @@
-/****************************************
-*Copyright Joseph Mariadassou
-* theSundayProgrammer@gmail.com
-* adapted from https://github.com/eidheim/Simple-Web-Server
-*  http_examples.cpp
-****************************************/
+//////////////////////////////////////////////////////////////////////////////
+// Copyright (c) Joseph Mariadassou
+// theSundayProgrammer@gmail.com
+// adapted from https://github.com/eidheim/Simple-Web-Server
+//  http_examples.cpp
+//
+// Distributed under the Boost Software License, Version 1.0.
+// 
+// http://www.boost.org/LICENSE_1_0.txt
+//////////////////////////////////////////////////////////////////////////////
 #include <camerasp/server_http.hpp>
 
 #include <json/reader.h>
