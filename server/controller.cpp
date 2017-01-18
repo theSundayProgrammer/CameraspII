@@ -27,7 +27,8 @@ const std::string config_path = "/srv/camerasp/";
 #endif
 //ToDo: set executable file name in json config
 char const *cmd= "/home/chakra/projects/camerasp2/frame_grabber/camerasp";
-
+char const *home_page="/home/pi/data/web";
+char const *log_folder="/tmp/foo-log";
 #define ASIO_ERROR_CODE asio::error_code
 typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
 void default_resource_send(const HttpServer &server,
@@ -39,14 +40,7 @@ int main(int argc, char *argv[], char* env[])
   using namespace camerasp;
   try
   {
-    HttpServer server;
-    unsigned port_number=8088;
     auto root = camerasp::get_DOM(config_path + "options.json");
-    auto server_config = root["Server"];
-    if (!server_config.empty())
-      port_number = server_config["port"].asInt();
-    server.config.port=port_number;
-    server.config.thread_pool_size=2;
 
     //configure console
 
@@ -96,14 +90,16 @@ int main(int argc, char *argv[], char* env[])
       ipc::shared_memory_object::remove(RESPONSE_MEMORY_NAME);
     } BOOST_SCOPE_EXIT_END;
 
-    //Important: the working directory of the child process is the same as the child process.
+    //Child process
+    //Important: the working directory of the child process
+    // is the same as taht of the parent process.
     int ret;
     pid_t child_pid;
     posix_spawn_file_actions_t child_fd_actions;
     if (ret = posix_spawn_file_actions_init (&child_fd_actions))
       console->error("posix_spawn_file_actions_init"), exit(ret);
     if (ret = posix_spawn_file_actions_addopen (
-	  &child_fd_actions, 1, "/tmp/foo-log", 
+	  &child_fd_actions, 1,log_folder , 
 	  O_WRONLY | O_CREAT | O_TRUNC, 0644))
       console->error("posix_spawn_file_actions_addopen"), exit(ret);
     if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
@@ -117,8 +113,17 @@ int main(int argc, char *argv[], char* env[])
     bool started =true;
     console->info("Child pid: {0}\n", child_pid);
 
+    // HTTP Server
+    HttpServer server;
+    unsigned port_number=8088;
+    auto server_config = root["Server"];
+    if (!server_config.empty())
+      port_number = server_config["port"].asInt();
+    server.config.port=port_number;
+    server.config.thread_pool_size=2;
     auto io_service=std::make_shared<asio::io_service>();
     server.io_service = io_service;
+    // get previous image
     server.resource["^/image\\?prev=([0-9]+)$"]["GET"]=[&](
 	std::shared_ptr<HttpServer::Response> http_response,
 	std::shared_ptr<HttpServer::Request> http_request)
@@ -189,12 +194,13 @@ int main(int argc, char *argv[], char* env[])
 	  << success;
       }
     };
+    //default page server
     server.default_resource["GET"]=[&](
 	std::shared_ptr<HttpServer::Response> http_response,
 	std::shared_ptr<HttpServer::Request> http_request) {
       try {
 	auto web_root_path = 
-	  boost::filesystem::canonical("/home/pi/data/web");
+	  boost::filesystem::canonical(home_page);
 	auto path=boost::filesystem::canonical(web_root_path/http_request->path);
 	//Check if path is within web_root_path
 	if(std::distance(web_root_path.begin(),web_root_path.end()) >
