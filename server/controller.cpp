@@ -26,7 +26,7 @@ const std::string config_path = "./";
 const std::string config_path = "/srv/camerasp/";
 #endif
 //ToDo: set executable file name in json config
-char const *cmd= "/home/chakra/projects/camerasp2/frame_grabber/camerasp";
+char const *cmd= "./camerasp";
 
 #define ASIO_ERROR_CODE asio::error_code
 typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
