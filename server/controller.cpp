@@ -19,6 +19,7 @@
 #include <camerasp/utils.hpp>
 #include <camerasp/ipc.hpp>
 #include <boost/filesystem.hpp>
+#include <sys/wait.h>
 std::shared_ptr<spdlog::logger> console;
 #ifdef RASPICAM_MOCK
 const std::string config_path = "./";
@@ -34,6 +35,21 @@ typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
 void default_resource_send(const HttpServer &server,
                            const std::shared_ptr<HttpServer::Response> &response,
                            const std::shared_ptr<std::ifstream> &ifs) ;
+enum process_state{  started, stop_pending, stopped};
+
+/*****************************************
+State Transition Table
+----------------------------------------
+State| Command| Result State
+started| stop | stop_pending 
+started| start| started
+stopped| stop | stopped
+stopped| start| started
+stop_pending | stop | stop_pending
+stop_pending | start| stop_pending
+******************************************/
+
+
 int main(int argc, char *argv[], char* env[])
 {
   namespace ipc=boost::interprocess;
@@ -92,7 +108,7 @@ int main(int argc, char *argv[], char* env[])
 
     //Child process
     //Important: the working directory of the child process
-    // is the same as taht of the parent process.
+    // is the same as that of the parent process.
     int ret;
     pid_t child_pid;
     posix_spawn_file_actions_t child_fd_actions;
@@ -104,15 +120,12 @@ int main(int argc, char *argv[], char* env[])
       console->error("posix_spawn_file_actions_addopen"), exit(ret);
     if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
       console->error("posix_spawn_file_actions_adddup2"), exit(ret);
-
-    std::string str;
-
     if (ret = posix_spawnp (&child_pid, cmd, &child_fd_actions, 
 	  NULL, argv, env))
       console->error("posix_spawn"), exit(ret);
-    bool started =true;
     console->info("Child pid: {0}\n", child_pid);
 
+     process_state fg_state = started;
     // HTTP Server
     HttpServer server;
     unsigned port_number=8088;
@@ -128,6 +141,9 @@ int main(int argc, char *argv[], char* env[])
 	std::shared_ptr<HttpServer::Response> http_response,
 	std::shared_ptr<HttpServer::Request> http_request)
     {
+
+    std::string str;
+
       str =http_request->path_match[0];
       request.set(str);
       camerasp::buffer_t data = response.get();
@@ -144,6 +160,9 @@ int main(int argc, char *argv[], char* env[])
 	std::shared_ptr<HttpServer::Response> http_response,
 	std::shared_ptr<HttpServer::Request> http_request)
     {
+
+    std::string str;
+
       str =http_request->path_match[0];
       request.set(str);
       camerasp::buffer_t data = response.get();
@@ -159,15 +178,21 @@ int main(int argc, char *argv[], char* env[])
 	std::shared_ptr<HttpServer::Response> http_response,
 	std::shared_ptr<HttpServer::Request> http_request)
     {
-      if(!started )
+      std::string success("Succeeded");
+      if(fg_state == started )
+	success="Already Running";
+      else if (fg_state == stop_pending)
       {
-	started=true;
+	success= "Stop Pending. try again later";
+      }
+      else
+      {
 	if (ret = posix_spawnp (&child_pid, cmd, 
 	      &child_fd_actions, NULL, argv, env))
 	  console->error("posix_spawn"), exit(ret);
+	fg_state = started;
 	console->info("Child pid: {0}\n", child_pid);
       }
-      std::string success("Succeeded");
       *http_response <<  "HTTP/1.1 200 OK\r\n" 
 	<<  "Content-Length: " << success.size()<< "\r\n"
 	<<  "Content-type: " << "application/text" <<"\r\n"
@@ -180,19 +205,28 @@ int main(int argc, char *argv[], char* env[])
 	std::shared_ptr<HttpServer::Response> http_response,
 	std::shared_ptr<HttpServer::Request> http_request)
     {
+      std::string success("Succeeded");
       //
-      if(started){
-	started=false;
+      if(fg_state == started )
+      {
 	request.set("exit");
 	camerasp::buffer_t data = response.get();
-	console->info("{0} executed",str);
-	std::string success("Succeeded");
-	*http_response <<  "HTTP/1.1 200 OK\r\n" 
-	  <<  "Content-Length: " << success.size()<< "\r\n"
-	  <<  "Content-type: " << "application/text" <<"\r\n"
-	  << "\r\n"
-	  << success;
+	console->info("stop executed");
+	fg_state = stop_pending;
       }
+      else if (fg_state == stop_pending)
+      {
+	success= "Stop Pending. try again later";
+      }
+      else
+      {
+	success="Not running when command received";
+      }
+      *http_response <<  "HTTP/1.1 200 OK\r\n" 
+	<<  "Content-Length: " << success.size()<< "\r\n"
+	<<  "Content-type: " << "application/text" <<"\r\n"
+	<< "\r\n"
+	<< success;
     };
     //default page server
     server.default_resource["GET"]=[&](
@@ -242,20 +276,30 @@ int main(int argc, char *argv[], char* env[])
     };
 
     //ignore SIGCHLD notification - otherwise zombie processes linger
-    signal(SIGCHLD,SIG_IGN);
+    //signal(SIGCHLD,SIG_IGN);
 
     // The signal set is used to register termination notifications
     asio::signal_set signals_(*io_service);
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
+    signals_.add(SIGCHLD);
 
-    // register the handle_stop callback
-    signals_.async_wait([&]
-	(ASIO_ERROR_CODE const& error, int signal_number) { 
+    std::function<void(ASIO_ERROR_CODE,int)> signal_handler = [&] (ASIO_ERROR_CODE const& error, int signal_number)
+    { 
+      if(signal_number == SIGCHLD)
+      {
+	fg_state = stopped;
+	console->debug("Process stopped");
+        waitpid(child_pid,NULL,0);
+	signals_.async_wait(signal_handler);
+      } else {
 	console->debug("SIGTERM received");
 	server.stop();
-	});
+      }
+    };
+    // register the handle_stop callback
 
+    signals_.async_wait(signal_handler);
     server.start();
     if(started){
       request.set("exit");
