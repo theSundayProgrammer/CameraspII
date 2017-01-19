@@ -41,6 +41,7 @@ enum process_state{  started, stop_pending, stopped};
 State Transition Table
 ----------------------------------------
 State| Command| Result State
+----------------------------------------
 started| stop | stop_pending 
 started| start| started
 stopped| stop | stopped
@@ -301,7 +302,8 @@ int main(int argc, char *argv[], char* env[])
 
     signals_.async_wait(signal_handler);
     server.start();
-    if(started){
+    if(fg_state == started )
+    {
       request.set("exit");
       camerasp::buffer_t data = response.get();
     }
