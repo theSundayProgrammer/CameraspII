@@ -27,12 +27,12 @@ deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
-                   -L../lib -ljpeg -ljson 
+                   -L../lib -ljson -ljpeg 
 
 webserver: $(webobjs)
 	$(CXX)   -o $@ $^ -pthread -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
-                   -L../lib -ljpeg -ljson 
+                   -L../lib -ljson -ljpeg 
 
 $(BUILD_DIR)/%.o: %.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -MP -c $< -o $@
@@ -41,7 +41,7 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # $(RM) is rm -f by default
 clean:
-	$(RM) $(objs) $(deps) $(webdeps) camerasp webserver
+	$(RM) $(objs) $(webobjs) $(deps) $(webdeps) camerasp webserver
 
 -include $(deps)
 -include $(webdeps)
