@@ -35,7 +35,7 @@ typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
 void default_resource_send(const HttpServer &server,
                            const std::shared_ptr<HttpServer::Response> &response,
                            const std::shared_ptr<std::ifstream> &ifs) ;
-enum process_state{  started, stop_pending, stopped};
+enum class process_state{  started, stop_pending, stopped};
 
 /*****************************************
 State Transition Table
@@ -126,7 +126,7 @@ int main(int argc, char *argv[], char* env[])
       console->error("posix_spawn"), exit(ret);
     console->info("Child pid: {0}\n", child_pid);
 
-     process_state fg_state = started;
+     process_state fg_state = process_state::started;
     // HTTP Server
     HttpServer server;
     unsigned port_number=8088;
@@ -180,9 +180,9 @@ int main(int argc, char *argv[], char* env[])
 	std::shared_ptr<HttpServer::Request> http_request)
     {
       std::string success("Succeeded");
-      if(fg_state == started )
+      if(fg_state == process_state::started )
 	success="Already Running";
-      else if (fg_state == stop_pending)
+      else if (fg_state == process_state::stop_pending)
       {
 	success= "Stop Pending. try again later";
       }
@@ -191,7 +191,7 @@ int main(int argc, char *argv[], char* env[])
 	if (ret = posix_spawnp (&child_pid, cmd, 
 	      &child_fd_actions, NULL, argv, env))
 	  console->error("posix_spawn"), exit(ret);
-	fg_state = started;
+	fg_state = process_state::started;
 	console->info("Child pid: {0}\n", child_pid);
       }
       *http_response <<  "HTTP/1.1 200 OK\r\n" 
@@ -208,14 +208,14 @@ int main(int argc, char *argv[], char* env[])
     {
       std::string success("Succeeded");
       //
-      if(fg_state == started )
+      if(fg_state == process_state::started )
       {
 	request.set("exit");
 	camerasp::buffer_t data = response.get();
 	console->info("stop executed");
-	fg_state = stop_pending;
+	fg_state = process_state::stop_pending;
       }
-      else if (fg_state == stop_pending)
+      else if (fg_state == process_state::stop_pending)
       {
 	success= "Stop Pending. try again later";
       }
@@ -289,7 +289,7 @@ int main(int argc, char *argv[], char* env[])
     { 
       if(signal_number == SIGCHLD)
       {
-	fg_state = stopped;
+	fg_state = process_state::stopped;
 	console->debug("Process stopped");
         waitpid(child_pid,NULL,0);
 	signals_.async_wait(signal_handler);
@@ -302,7 +302,7 @@ int main(int argc, char *argv[], char* env[])
 
     signals_.async_wait(signal_handler);
     server.start();
-    if(fg_state == started )
+    if(fg_state == process_state::started )
     {
       request.set("exit");
       camerasp::buffer_t data = response.get();
