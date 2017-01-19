@@ -16,7 +16,10 @@
 	"count": 1000
   },
   "Server": {
-    "port" : 8088
+    "port" : 8088,
+    "command": "./camerasp",
+    "home_page" : "/home/chakra/data/web",
+    "log_folder" : "/home/chakra/data/camerasp_log"
   }
 }
 
