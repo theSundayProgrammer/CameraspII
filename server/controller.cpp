@@ -13,7 +13,6 @@
 #include <vector>
 #include <algorithm>
 #include <cstdarg>
-#include <iostream>
 #include <fstream>
 #include <camerasp/utils.hpp>
 #include <camerasp/ipc.hpp>
@@ -94,7 +93,7 @@ class shared_mem_ptr
 
     shm_mem.truncate(sizeof (T));
 
-    region_ptr = std::make_shared<ipc::mapped_region> (shm_mem, ipc::read_write);
+    region_ptr = std::make_unique<ipc::mapped_region> (shm_mem, ipc::read_write);
 
     ptr =static_cast<T*> (region_ptr->get_address());
     new (ptr) T;
@@ -111,7 +110,7 @@ class shared_mem_ptr
   private:
     shm_remove remover;
     ipc::shared_memory_object shm_mem;
-    std::shared_ptr<ipc::mapped_region> region_ptr;
+    std::unique_ptr<ipc::mapped_region> region_ptr;
     T* ptr;
 };
 
@@ -177,11 +176,33 @@ class web_server
       server.config.thread_pool_size=2;
       auto io_service=std::make_shared<asio::io_service>();
       server.io_service = io_service;
+      // send message 
+      auto send_failure = [&] (
+	  std::shared_ptr<HttpServer::Response> http_response,
+          std::string const& message)
+	{
+	  *http_response << "HTTP/1.1 400 Bad Request\r\n"
+	    <<  "Content-Length: " << message.size()<< "\r\n"
+	    <<  "Content-type: " << "application/text" <<"\r\n"
+	    << "\r\n"
+	    << message;
+	};
+      auto send_success = [&] (
+	  std::shared_ptr<HttpServer::Response> http_response,
+          std::string const& message)
+	{
+	  *http_response <<  "HTTP/1.1 200 OK\r\n" 
+	    <<  "Content-Length: " << message.size()<< "\r\n"
+	    <<  "Content-type: " << "application/text" <<"\r\n"
+	    << "\r\n"
+	    << message;
+	};
+      // get image 
       auto get_image =[&](
 	  std::shared_ptr<HttpServer::Response> http_response,
 	  std::shared_ptr<HttpServer::Request> http_request)
-      {
 
+      {
 	if(fg_state == process_state::started )
 	{
 	  std::string str =http_request->path_match[0];
@@ -196,11 +217,7 @@ class web_server
 	else
 	{
 	  std::string success("Frame Grabber not running. Issue start command");
-	  *http_response <<  "HTTP/1.1 200 OK\r\n" 
-	    <<  "Content-Length: " << success.size()<< "\r\n"
-	    <<  "Content-type: " << "application/text" <<"\r\n"
-	    << "\r\n"
-	    << success;
+	  send_failure(http_response,success);
 	}
       };
 
@@ -227,10 +244,14 @@ class web_server
       {
 	std::string success("Succeeded");
 	if(fg_state == process_state::started )
+	{
 	  success="Already Running";
+	  send_failure(http_response,success);
+	}
 	else if (fg_state == process_state::stop_pending)
 	{
 	  success= "Stop Pending. try again later";
+	  send_failure(http_response,success);
 	}
 	else
 	{
@@ -239,12 +260,8 @@ class web_server
 	    console->error("posix_spawn"), exit(ret);
 	  fg_state = process_state::started;
 	  console->info("Child pid: {0}\n", child_pid);
+	send_success(http_response,success);
 	}
-	*http_response <<  "HTTP/1.1 200 OK\r\n" 
-	  <<  "Content-Length: " << success.size()<< "\r\n"
-	  <<  "Content-type: " << "application/text" <<"\r\n"
-	  << "\r\n"
-	  << success;
       };
 
       //stop capture
@@ -260,20 +277,18 @@ class web_server
 	  camerasp::buffer_t data = response->get();
 	  console->info("stop executed");
 	  fg_state = process_state::stop_pending;
+	send_success(http_response,success);
 	}
 	else if (fg_state == process_state::stop_pending)
 	{
 	  success= "Stop Pending. try again later";
+	  send_failure(http_response,success);
 	}
 	else
 	{
 	  success="Not running when command received";
+	  send_failure(http_response,success);
 	}
-	*http_response <<  "HTTP/1.1 200 OK\r\n" 
-	  <<  "Content-Length: " << success.size()<< "\r\n"
-	  <<  "Content-type: " << "application/text" <<"\r\n"
-	  << "\r\n"
-	  << success;
       };
       //default page server
       server.default_resource["GET"]=[&](
@@ -315,9 +330,9 @@ class web_server
 	}
 	catch(const std::exception &e) {
 	  std::string content="Could not open path "+http_request->path+": "+e.what();
-	  *http_response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " 
-	    << content.length() 
-	    << "\r\n\r\n" 
+	  *http_response << "HTTP/1.1 400 Bad Request\r\n"
+            << "Content-Length: " << content.length() << "\r\n"
+            << "\r\n" 
 	    << content;
 	}
       };
@@ -345,6 +360,9 @@ class web_server
       // register the handle_stop callback
 
       signals_.async_wait(signal_handler);
+
+
+      //start() returns on SIGTERM
       server.start();
       if(fg_state == process_state::started )
       {
