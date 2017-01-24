@@ -54,85 +54,66 @@ namespace ipc=boost::interprocess;
 class web_server
 {
   public:
-    web_server(std::string const& config_file_name)
+    web_server(Json::Value& root)
+      :response( RESPONSE_MEMORY_NAME)
+       ,request( REQUEST_MEMORY_NAME)
+       ,root_(root)
   {
-    root = camerasp::get_DOM(config_file_name);
 
-    //configure console
+    //Child process
+    //Important: the working directory of the child process
+    // is the same as that of the parent process.
+    int ret;
+    if (ret = posix_spawn_file_actions_init (&child_fd_actions))
+      console->error("posix_spawn_file_actions_init"), exit(ret);
+    if (ret = posix_spawn_file_actions_addopen (
+	  &child_fd_actions, 1,log_folder , 
+	  O_WRONLY | O_CREAT | O_TRUNC, 0644))
+      console->error("posix_spawn_file_actions_addopen"), exit(ret);
+    if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
+      console->error("posix_spawn_file_actions_adddup2"), exit(ret);
 
-    auto log_config = root["Logging"];
-    auto json_path = log_config["path"];
-    auto logpath = json_path.asString();
-    auto size_mega_bytes = log_config["size"].asInt();
-    auto count_files = log_config["count"].asInt();
-    //console = spd::rotating_logger_mt("console", logpath, 1024 * 1024 * size_mega_bytes, count_files);
-    console = spdlog::stdout_color_mt("console");
-    console->set_level(spdlog::level::debug);
-    console->debug("Starting");
+    // server config
+    unsigned port_number=8088;
+    auto server_config = root["Server"];
+    if (!server_config.empty())
+      port_number = server_config["port"].asInt();
+    server.config.port=port_number;
+    server.config.thread_pool_size=2;
   }
     void run(int argc, char *argv[], char* env[])
     {
       using namespace camerasp;
 
-
-      // Construct the :shared_request_data.
-      shared_mem_ptr<shared_response_data> response( RESPONSE_MEMORY_NAME);
-      shared_mem_ptr<shared_request_data> request( REQUEST_MEMORY_NAME);
-
-
-      console->debug("CReated request");
-
-      //Child process
-      //Important: the working directory of the child process
-      // is the same as that of the parent process.
-      int ret;
-      pid_t child_pid;
-      posix_spawn_file_actions_t child_fd_actions;
-      if (ret = posix_spawn_file_actions_init (&child_fd_actions))
-	console->error("posix_spawn_file_actions_init"), exit(ret);
-      if (ret = posix_spawn_file_actions_addopen (
-	    &child_fd_actions, 1,log_folder , 
-	    O_WRONLY | O_CREAT | O_TRUNC, 0644))
-	console->error("posix_spawn_file_actions_addopen"), exit(ret);
-      if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
-	console->error("posix_spawn_file_actions_adddup2"), exit(ret);
-      if (ret = posix_spawnp (&child_pid, cmd, &child_fd_actions, 
+      if (int ret = posix_spawnp (&child_pid, cmd, &child_fd_actions, 
 	    NULL, argv, env))
 	console->error("posix_spawn"), exit(ret);
       console->info("Child pid: {0}\n", child_pid);
-
       process_state fg_state = process_state::started;
-      // HTTP Server
-      HttpServer server;
-      unsigned port_number=8088;
-      auto server_config = root["Server"];
-      if (!server_config.empty())
-	port_number = server_config["port"].asInt();
-      server.config.port=port_number;
-      server.config.thread_pool_size=2;
+      // 
       auto io_service=std::make_shared<asio::io_service>();
       server.io_service = io_service;
       // send message 
       auto send_failure = [&] (
 	  std::shared_ptr<HttpServer::Response> http_response,
-          std::string const& message)
-	{
-	  *http_response << "HTTP/1.1 400 Bad Request\r\n"
-	    <<  "Content-Length: " << message.size()<< "\r\n"
-	    <<  "Content-type: " << "application/text" <<"\r\n"
-	    << "\r\n"
-	    << message;
-	};
+	  std::string const& message)
+      {
+	*http_response << "HTTP/1.1 400 Bad Request\r\n"
+	  <<  "Content-Length: " << message.size()<< "\r\n"
+	  <<  "Content-type: " << "application/text" <<"\r\n"
+	  << "\r\n"
+	  << message;
+      };
       auto send_success = [&] (
 	  std::shared_ptr<HttpServer::Response> http_response,
-          std::string const& message)
-	{
-	  *http_response <<  "HTTP/1.1 200 OK\r\n" 
-	    <<  "Content-Length: " << message.size()<< "\r\n"
-	    <<  "Content-type: " << "application/text" <<"\r\n"
-	    << "\r\n"
-	    << message;
-	};
+	  std::string const& message)
+      {
+	*http_response <<  "HTTP/1.1 200 OK\r\n" 
+	  <<  "Content-Length: " << message.size()<< "\r\n"
+	  <<  "Content-type: " << "application/text" <<"\r\n"
+	  << "\r\n"
+	  << message;
+      };
       // get image 
       auto get_image =[&](
 	  std::shared_ptr<HttpServer::Response> http_response,
@@ -191,12 +172,12 @@ class web_server
 	}
 	else
 	{
-	  if (ret = posix_spawnp (&child_pid, cmd, 
+	  if (int ret = posix_spawnp (&child_pid, cmd, 
 		&child_fd_actions, NULL, argv, env))
 	    console->error("posix_spawn"), exit(ret);
 	  fg_state = process_state::started;
 	  console->info("Child pid: {0}\n", child_pid);
-	send_success(http_response,success);
+	  send_success(http_response,success);
 	}
       };
 
@@ -213,7 +194,7 @@ class web_server
 	  camerasp::buffer_t data = response->get();
 	  console->info("stop executed");
 	  fg_state = process_state::stop_pending;
-	send_success(http_response,success);
+	  send_success(http_response,success);
 	}
 	else if (fg_state == process_state::stop_pending)
 	{
@@ -267,8 +248,8 @@ class web_server
 	catch(const std::exception &e) {
 	  std::string content="Could not open path "+http_request->path+": "+e.what();
 	  *http_response << "HTTP/1.1 400 Bad Request\r\n"
-            << "Content-Length: " << content.length() << "\r\n"
-            << "\r\n" 
+	    << "Content-Length: " << content.length() << "\r\n"
+	    << "\r\n" 
 	    << content;
 	}
       };
@@ -308,14 +289,34 @@ class web_server
     }
   private:
 
-    Json::Value root;
+    shared_mem_ptr<shared_response_data> response;
+    shared_mem_ptr<shared_request_data> request;
+    pid_t child_pid;
+    posix_spawn_file_actions_t child_fd_actions;
+    Json::Value& root_;
+    HttpServer server;
 };
 
 int main(int argc, char *argv[], char* env[])
 {
   try
   {
-    web_server server(config_path + "options.json");
+
+    Json::Value root = camerasp::get_DOM(config_path + "options.json");
+    //configure console
+
+    auto log_config = root["Logging"];
+    auto json_path = log_config["path"];
+    auto logpath = json_path.asString();
+    auto size_mega_bytes = log_config["size"].asInt();
+    auto count_files = log_config["count"].asInt();
+    //console = spd::rotating_logger_mt("console", logpath, 1024 * 1024 * size_mega_bytes, count_files);
+    console = spdlog::stdout_color_mt("console");
+    console->set_level(spdlog::level::debug);
+    console->debug("Starting");
+
+    //run web server
+    web_server server(root);
     server.run(argc,argv,env);
 
   }
@@ -332,8 +333,8 @@ void default_resource_send(const HttpServer &server,
                            const std::shared_ptr<std::ifstream> &ifs) {
     //read and send 128 KB at a time
     static std::vector<char> buffer(131072); // Safe when server is running on one thread
-    std::streamsize read_length;
-    if((read_length=ifs->read(&buffer[0], buffer.size()).gcount())>0) {
+    std::streamsize read_length=ifs->read(&buffer[0], buffer.size()).gcount();
+    if(read_length>0) {
         response->write(&buffer[0], read_length);
         if(read_length==static_cast<std::streamsize>(buffer.size())) {
             server.send(
