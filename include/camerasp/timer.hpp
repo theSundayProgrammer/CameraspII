@@ -5,9 +5,22 @@
 #include <camerasp/cam_still.hpp>
 #include <json/json.h>
 #include <camerasp/types.hpp>
+#include <memory>
 namespace camerasp
 {
 
+  class file_saver
+  {
+    public:
+      file_saver(Json::Value const&);
+      camerasp::buffer_t get_image(unsigned int k);
+      void save_image(camerasp::buffer_t const& image);
+    private:
+      unsigned int cur;
+      unsigned int max_files;
+    std::atomic<unsigned>  current_count;
+      std::string image_path;
+  };
   class periodic_frame_grabber
   {
     struct image_buffer
@@ -16,36 +29,30 @@ namespace camerasp
       buffer_t buffer;
     };
 
-  public:
+    public:
     periodic_frame_grabber(asio::io_context& io_service, Json::Value const&);
-   ~periodic_frame_grabber(){}
+    ~periodic_frame_grabber(){}
     buffer_t  get_image(unsigned int k);
     void start_capture();
     void stop_capture();
     errno_t set_vertical_flip(bool on);
     errno_t set_horizontal_flip(bool on);
-  private:
-    static void save_image(buffer_t const& buffer, std::string const& fName);
 
-    //need a better way of handling file save
-    void save_file(buffer_t&,unsigned int);
+    private:
 
     buffer_t grab_picture();
     void handle_timeout(const asio::error_code&);
     void set_timer();
 
-  private:
+    private:
     cam_still camera_;
     high_resolution_timer timer_;
     std::chrono::seconds sampling_period;
-    int max_file_count;
-    std::string  pathname_prefix;
     enum { max_size = 100 };
     image_buffer image_buffers[max_size];
-    std::atomic<unsigned> pending_count, current_count;
+    std::atomic<unsigned>  current_count;
     std::atomic<bool> quit_flag;
-    high_resolution_timer::clock_type::time_point prev;
     unsigned cur_img;
-
+    file_saver file_saver_;
   };
 }

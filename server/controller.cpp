@@ -21,12 +21,13 @@
 std::shared_ptr<spdlog::logger> console;
 #ifdef RASPICAM_MOCK
 const std::string config_path = "./";
+char const *home_page="/home/chakra/data/web";
 #else
 const std::string config_path = "/srv/camerasp/";
+char const *home_page="/home/pi/data/web";
 #endif
 //ToDo: set executable file name in json config
-char const *cmd= "/home/chakra/projects/camerasp2/frame_grabber/camerasp";
-char const *home_page="/home/pi/data/web";
+char const *cmd= "./camerasp";
 char const *log_folder="/tmp/foo-log";
 #define ASIO_ERROR_CODE asio::error_code
 typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
@@ -49,70 +50,6 @@ stop_pending | start| stop_pending
 ******************************************/
 
 namespace ipc=boost::interprocess;
-class shm_remove
-{
-  public:
-    shm_remove(char const* name_)
-      :name(name_)
-    {
-      if(name)
-	ipc::shared_memory_object::remove(name);
-    }
-    ~shm_remove()
-    {
-      if(name)
-	ipc::shared_memory_object::remove(name);
-    }
-
-    shm_remove(shm_remove && other)
-    {
-      name = other.name;
-      other.name=nullptr;
-    }
-    shm_remove& operator=(shm_remove && other)
-    {
-      name = other.name;
-      other.name=nullptr;
-      return *this;
-    }
-    shm_remove(shm_remove const &)=delete;
-    shm_remove& operator=(shm_remove const &)=delete;
-  private:
-    char const* name;
-};
-template<class T>
-class shared_mem_ptr
-{
-  public:
-    shared_mem_ptr(const char* name):
-      remover(name)
-      ,shm_mem(ipc::open_or_create , name, ipc::read_write)
-  {
-    // Construct the shared_request_data.
-
-
-    shm_mem.truncate(sizeof (T));
-
-    region_ptr = std::make_unique<ipc::mapped_region> (shm_mem, ipc::read_write);
-
-    ptr =static_cast<T*> (region_ptr->get_address());
-    new (ptr) T;
-    console->debug("Created response {0}", name);
-  }
-    T* operator->()
-    {
-      return ptr;
-    }
-    ~shared_mem_ptr()
-    {
-      ptr->~T();
-    }
-  private:
-    shm_remove remover;
-    ipc::shared_memory_object shm_mem;
-    std::unique_ptr<ipc::mapped_region> region_ptr;
-    T* ptr;
-};
 
 class web_server
 {
@@ -128,8 +65,7 @@ class web_server
     auto logpath = json_path.asString();
     auto size_mega_bytes = log_config["size"].asInt();
     auto count_files = log_config["count"].asInt();
-    //console = spd::rotating_logger_mt("console", logpath, \
-    1024 * 1024 * size_mega_bytes, count_files);
+    //console = spd::rotating_logger_mt("console", logpath, 1024 * 1024 * size_mega_bytes, count_files);
     console = spdlog::stdout_color_mt("console");
     console->set_level(spdlog::level::debug);
     console->debug("Starting");

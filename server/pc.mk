@@ -1,10 +1,10 @@
 
 INCLUDES = -I ../include
-CXX_FLAGS = -std=c++14 -pthread -DRASPICAM_MOCK -DASIO_STANDALONE -Wtrigraphs
+CXX_FLAGS = -std=c++14 -pthread -O3 -DRASPICAM_MOCK -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++
 
-all : camerasp webserver
+all : camerasp webserver 
 .PHONY : all
 
 websrcs = controller.cpp\
@@ -24,18 +24,18 @@ srcs = frame_grabber.cpp \
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
+
 camerasp: $(objs)
-	$(CXX)   -o $@ $^ -pthread -Wunused -L/opt/vc/lib\
+	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
                    -L../lib -ljson -ljpeg 
-
 webserver: $(webobjs)
-	$(CXX)   -o $@ $^ -pthread -Wunused -L/opt/vc/lib\
+	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
                    -L../lib -ljson -ljpeg 
 
 $(BUILD_DIR)/%.o: %.cpp
-	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -MP -c $< -o $@
+	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
 .PHONY: clean
 
