@@ -28,7 +28,7 @@ char const *home_page="/home/pi/data/web";
 #endif
 //ToDo: set executable file name in json config
 char const *cmd= "./camerasp";
-char const *log_folder="/tmp/foo-log";
+char const *log_folder="/tmp/frame_grabber.log";
 #define ASIO_ERROR_CODE asio::error_code
 typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
 void default_resource_send(const HttpServer &server,
