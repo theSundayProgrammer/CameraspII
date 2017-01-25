@@ -175,6 +175,12 @@ class web_server
       {
 	exec_cmd(http_response,http_request);
       };
+      server.resource["^/flip\\?vertical=(0|1)$"]["GET"]=[&](
+	  std::shared_ptr<HttpServer::Response> http_response,
+	  std::shared_ptr<HttpServer::Request> http_request)
+      {
+	exec_cmd(http_response,http_request);
+      };
       server.resource["^/resume$"]["GET"]=[&](
 	  std::shared_ptr<HttpServer::Response> http_response,
 	  std::shared_ptr<HttpServer::Request> http_request)
