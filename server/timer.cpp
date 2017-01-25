@@ -100,7 +100,6 @@ namespace camerasp
     using namespace std::placeholders;
 
     if (!quit_flag) {
-      //console->debug("timer active");
       auto current = high_resolution_timer::clock_type::now();
       auto next = cur_img;
       auto buffer = grab_picture();
@@ -173,11 +172,13 @@ namespace camerasp
 
   errno_t periodic_frame_grabber::set_vertical_flip(bool val)
   {
+      console->debug("vertical flip={0}",val);
     camera_.set_vertical_flip(val);
     return 0;
   }
   errno_t  periodic_frame_grabber::set_horizontal_flip(bool val)
   {
+      console->debug("horizontal flip={0}",val);
     camera_.set_horizontal_flip(val);
     return 0;
   }

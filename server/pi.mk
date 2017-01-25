@@ -28,11 +28,12 @@ camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
                    -L../lib -ljson -ljpeg 
+	cp $@ /home/pi/bin
 webserver: $(webobjs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
                    -L../lib -ljson -ljpeg 
-
+	cp $@ /home/pi/bin
 $(BUILD_DIR)/%.o: %.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
