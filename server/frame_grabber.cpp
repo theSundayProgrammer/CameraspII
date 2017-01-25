@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     //configure frame grabber
     Json::Value root=camerasp::get_DOM(config_path + "options.json");
     camerasp::periodic_frame_grabber timer(frame_grabber_service, root["Data"]);
-    timer.start_capture();
+    timer.resume();
 	console->debug("Line {0}",__LINE__);
     // Start worker threads 
     std::thread thread1{ [&]() { 
@@ -83,6 +83,20 @@ int main(int argc, char *argv[])
 	  auto image= timer.get_image(k);
 	  response.set(image); 
 	}
+	else if (std::regex_search(uri,m,std::regex("resume")))
+	{
+	  if( timer.resume())
+	    response.set("Success"); 
+	  else
+	    response.set("Running already");
+	}        
+	else if (std::regex_search(uri,m,std::regex("pause")))
+	{
+	  if( timer.pause())
+	    response.set("Success"); 
+	  else
+	    response.set("Stopped already");
+	}        
 	else if (std::regex_search(uri,m,std::regex("image")))
 	{
 	  auto image= timer.get_image(0);
@@ -90,7 +104,7 @@ int main(int argc, char *argv[])
 	}        
 	else if (std::regex_search(uri,m,std::regex("exit")))
 	{
-	  timer.stop_capture();
+	  timer.pause();
 	  frame_grabber_service.stop();
           response.set(std::string("stopping"));
 	  console->debug("SIGTERM handled");

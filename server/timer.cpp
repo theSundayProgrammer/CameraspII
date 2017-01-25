@@ -154,17 +154,21 @@ namespace camerasp
       return file_saver_.get_image(k);
     }
   } 
-  void periodic_frame_grabber::start_capture()
+  bool periodic_frame_grabber::resume()
   {
+    bool retval=quit_flag;
     if (quit_flag) {
       quit_flag = 0;
       camera_.open();
       set_timer();
     }
+    return retval;
   }
-  void periodic_frame_grabber::stop_capture()
+  bool periodic_frame_grabber::pause()
   {
+    bool retval= 0==quit_flag;
     if (0 == quit_flag)  quit_flag = 1;
+    return retval;
   }
 
   errno_t periodic_frame_grabber::set_vertical_flip(bool val)

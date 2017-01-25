@@ -33,8 +33,8 @@ namespace camerasp
     periodic_frame_grabber(asio::io_context& io_service, Json::Value const&);
     ~periodic_frame_grabber(){}
     buffer_t  get_image(unsigned int k);
-    void start_capture();
-    void stop_capture();
+    bool resume();
+    bool pause();
     errno_t set_vertical_flip(bool on);
     errno_t set_horizontal_flip(bool on);
 
