@@ -120,6 +120,8 @@ class web_server
 	  std::shared_ptr<HttpServer::Request> http_request)
 
       {
+	if(fg_state == process_state::started )
+	{
 	std::string str =http_request->path_match[0];
 	request->set(str);
 	camerasp::buffer_t data = response->get();
@@ -128,6 +130,12 @@ class web_server
 	  <<  "Content-type: " << "application/text" <<"\r\n"
 	  << "\r\n"
 	  << data;
+	}
+	else
+	{
+	  std::string success("Frame Grabber not running. Issue start command");
+	  send_failure(http_response,success);
+	}
       };
       auto get_image =[&](
 	  std::shared_ptr<HttpServer::Response> http_response,
@@ -160,6 +168,19 @@ class web_server
 	get_image(http_response,http_request);
       };
 
+      // flip horizontal vertical
+      server.resource["^/flip\\?horizontal=(0|1)$"]["GET"]=[&](
+	  std::shared_ptr<HttpServer::Response> http_response,
+	  std::shared_ptr<HttpServer::Request> http_request)
+      {
+	exec_cmd(http_response,http_request);
+      };
+      server.resource["^/resume$"]["GET"]=[&](
+	  std::shared_ptr<HttpServer::Response> http_response,
+	  std::shared_ptr<HttpServer::Request> http_request)
+      {
+	exec_cmd(http_response,http_request);
+      };
       // pause/resume
       server.resource["^/pause$"]["GET"]=[&](
 	  std::shared_ptr<HttpServer::Response> http_response,

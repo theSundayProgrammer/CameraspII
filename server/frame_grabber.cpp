@@ -83,6 +83,22 @@ int main(int argc, char *argv[])
 	  auto image= timer.get_image(k);
 	  response.set(image); 
 	}
+	else if (std::regex_search(uri,m,std::regex("flip\\?vertical=(0|1)$")))
+	{
+	  int k = atoi(m[1].str().c_str());
+	  if(0==timer.set_vertical_flip(k != 0))
+	    response.set("Success"); 
+	  else
+	    response.set("Error Flip failed");
+	}
+	else if (std::regex_search(uri,m,std::regex("flip\\?horizontal=(0|1)$")))
+	{
+	  int k = atoi(m[1].str().c_str());
+	  if(0==timer.set_horizontal_flip(k != 0))
+	    response.set("Success"); 
+	  else
+	    response.set("Error Flip failed");
+	}
 	else if (std::regex_search(uri,m,std::regex("resume")))
 	{
 	  if( timer.resume())
@@ -106,7 +122,7 @@ int main(int argc, char *argv[])
 	{
 	  timer.pause();
 	  frame_grabber_service.stop();
-          response.set(std::string("stopping"));
+	  response.set(std::string("stopping"));
 	  console->debug("SIGTERM handled");
 	  return;
 	}        
