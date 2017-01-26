@@ -24,11 +24,10 @@ srcs = frame_grabber.cpp \
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
-
 camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
-                   -L../lib -ljson -ljpeg 
+                   -L../lib -ljson -ljpeg -lmmal -lmmal_core -lmmal_util
 	cp $@ /home/pi/bin
 webserver: $(webobjs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\

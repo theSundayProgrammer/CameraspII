@@ -6,5 +6,8 @@ subdirs: $(SUBDIRS)
 $(SUBDIRS):
 	$(MAKE) -C $@
 
+clean:
+	$(MAKE) -C server clean
+
 server: json
 

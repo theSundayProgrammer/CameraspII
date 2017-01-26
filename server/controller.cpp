@@ -27,8 +27,8 @@ const std::string config_path = "/srv/camerasp/";
 char const *home_page="/home/pi/data/web";
 #endif
 //ToDo: set executable file name in json config
-char const *cmd= "./camerasp";
-char const *log_folder="/tmp/foo-log";
+char const *cmd= "/home/pi/bin/camerasp";
+char const *log_folder="/tmp/frame_grabber.log";
 #define ASIO_ERROR_CODE asio::error_code
 typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
 void default_resource_send(const HttpServer &server,
@@ -170,6 +170,12 @@ class web_server
 
       // flip horizontal vertical
       server.resource["^/flip\\?horizontal=(0|1)$"]["GET"]=[&](
+	  std::shared_ptr<HttpServer::Response> http_response,
+	  std::shared_ptr<HttpServer::Request> http_request)
+      {
+	exec_cmd(http_response,http_request);
+      };
+      server.resource["^/flip\\?vertical=(0|1)$"]["GET"]=[&](
 	  std::shared_ptr<HttpServer::Response> http_response,
 	  std::shared_ptr<HttpServer::Request> http_request)
       {
