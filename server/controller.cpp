@@ -230,6 +230,31 @@ class web_server
       };
 
       //stop capture
+      server.resource["^/abort$"]["GET"]=[&](
+	  std::shared_ptr<HttpServer::Response> http_response,
+	  std::shared_ptr<HttpServer::Request> http_request)
+      {
+	std::string success("Succeeded");
+	//
+	if(fg_state == process_state::started )
+
+	{
+	  kill(child_pid,SIGKILL);
+	  fg_state = process_state::stop_pending;
+	  send_success(http_response,success);
+	}
+	else if (fg_state == process_state::stop_pending)
+	{
+	  success= "Stop Pending. try again later";
+	  send_failure(http_response,success);
+	}
+	else
+	{
+	  success="Not running when command received";
+	  send_failure(http_response,success);
+	}
+      };
+      //stop capture
       server.resource["^/stop$"]["GET"]=[&](
 	  std::shared_ptr<HttpServer::Response> http_response,
 	  std::shared_ptr<HttpServer::Request> http_request)
