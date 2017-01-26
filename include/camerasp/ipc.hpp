@@ -31,12 +31,23 @@ struct shared_data{
     }
 
     camerasp::buffer_t get() const {
-      task.wait();
+      unsigned int k=0;
+      while(k <10 && !task.try_wait())
+      {
+	usleep(100*1000);
+	++k;
+      }
+      if(k<10)
+      {
 	console->debug("Response received");
-      ipc::sharable_lock<upgradable_mutex_type> lock(mutex);
-      return std::string(response,data_length);
+	ipc::sharable_lock<upgradable_mutex_type> lock(mutex);
+	return std::string(response,data_length);
+      }
+      else
+      {
+	throw std::runtime_error("ipc command timed out");
+      }
     }
-
     void set(camerasp::buffer_t const & str) {
       ipc::scoped_lock<upgradable_mutex_type> lock(mutex);
       if(str.length() >= MAX_REQUEST_LENGTH)

@@ -262,10 +262,18 @@ class web_server
 	std::string success("Succeeded");
 	//
 	if(fg_state == process_state::started )
+	  try{
+	    request->set("exit");
+	    camerasp::buffer_t data = response->get();
+	    console->info("stop executed");
+	    fg_state = process_state::stop_pending;
+	    send_success(http_response,success);
+	  }
+	catch (std::exception& e)
 	{
-	  request->set("exit");
-	  camerasp::buffer_t data = response->get();
-	  console->info("stop executed");
+	  success="stop failed - abortng";
+	  console->info(success);
+	  kill(child_pid,SIGKILL);
 	  fg_state = process_state::stop_pending;
 	  send_success(http_response,success);
 	}
