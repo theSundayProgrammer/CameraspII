@@ -22,11 +22,7 @@ const std::string config_path = "/srv/camerasp/";
 void configure_console()
 {
   namespace spd = spdlog;
-  std::string logpath = "/home/chakra/data/fg";
-int size_mega_bytes = 4;
-  int count_files = 2;
-  //console = spd::rotating_logger_mt("camerasp", logpath, 1024 * 1024 * size_mega_bytes, count_files);
- console = spd::stdout_color_mt("console");
+ console = spd::stdout_color_mt("fg");
   console->set_level(spd::level::debug);
 }
 
