@@ -30,7 +30,7 @@ struct shared_data{
     {
     }
 
-    camerasp::buffer_t get() const {
+camerasp::buffer_t try_get() const{
       unsigned int k=0;
       while(k <10 && !task.try_wait())
       {
@@ -47,6 +47,12 @@ struct shared_data{
       {
 	throw std::runtime_error("ipc command timed out");
       }
+    }
+    camerasp::buffer_t get() const {
+task.wait();
+	console->debug("Response received");
+	ipc::sharable_lock<upgradable_mutex_type> lock(mutex);
+	return std::string(response,data_length);
     }
     void set(camerasp::buffer_t const & str) {
       ipc::scoped_lock<upgradable_mutex_type> lock(mutex);
