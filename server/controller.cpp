@@ -121,24 +121,24 @@ class web_server
 
       {
 	if(fg_state == process_state::started )
-{ 
- try
-	{
-	std::string str =http_request->path_match[0];
-	request->set(str);
-	camerasp::buffer_t data = response->try_get();
-	*http_response <<  "HTTP/1.1 200 OK\r\n" 
-	  <<  "Content-Length: " << data.size()<< "\r\n"
-	  <<  "Content-type: " << "application/text" <<"\r\n"
-	  << "\r\n"
-	  << data;
-}
-catch(std::runtime_error& e)
-{
+	{ 
+	  try
+	  {
+	    std::string str =http_request->path_match[0];
+	    request->set(str);
+	    camerasp::buffer_t data = response->try_get();
+	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
+	      <<  "Content-Length: " << data.size()<< "\r\n"
+	      <<  "Content-type: " << "application/text" <<"\r\n"
+	      << "\r\n"
+	      << data;
+	  }
+	  catch(std::runtime_error& e)
+	  {
 
-	  std::string success("Frame Grabber not running. Issue start command");
-	  send_failure(http_response,success);
-}
+	    std::string success("Frame Grabber not running. Issue start command");
+	    send_failure(http_response,success);
+	  }
 	}
 	else
 	{
@@ -153,22 +153,22 @@ catch(std::runtime_error& e)
       {
 	if(fg_state == process_state::started )
 	{
-try{
-	  std::string str =http_request->path_match[0];
-	  request->set(str);
-	  camerasp::buffer_t data = response->try_get();
-	  *http_response <<  "HTTP/1.1 200 OK\r\n" 
-	    <<  "Content-Length: " << data.size()<< "\r\n"
-	    <<  "Content-type: " << "image/jpeg" <<"\r\n"
-	    << "\r\n"
-	    << data;
-}
-catch(std::runtime_error& e)
-{
+	  try{
+	    std::string str =http_request->path_match[0];
+	    request->set(str);
+	    camerasp::buffer_t data = response->try_get();
+	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
+	      <<  "Content-Length: " << data.size()<< "\r\n"
+	      <<  "Content-type: " << "image/jpeg" <<"\r\n"
+	      << "\r\n"
+	      << data;
+	  }
+	  catch(std::runtime_error& e)
+	  {
 
-	  std::string success("Frame Grabber not running. Issue start command");
-	  send_failure(http_response,success);
-}
+	    std::string success("Frame Grabber not running. Issue start command");
+	    send_failure(http_response,success);
+	  }
 	}
 	else
 	{
@@ -385,15 +385,15 @@ catch(std::runtime_error& e)
 
       //start() returns on SIGTERM
       server.start();
-	if(fg_state == process_state::started )
-{ 
- try
+      if(fg_state == process_state::started )
+      { 
+	try
 	{
-	request->set("exit");
-	camerasp::buffer_t data = response->try_get();
-}
-catch(std::runtime_error& e){}
+	  request->set("exit");
+	  camerasp::buffer_t data = response->try_get();
 	}
+	catch(std::runtime_error& e){}
+      }
     }
   private:
 

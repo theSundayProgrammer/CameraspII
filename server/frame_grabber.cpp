@@ -22,7 +22,7 @@ const std::string config_path = "/srv/camerasp/";
 void configure_console()
 {
   namespace spd = spdlog;
- console = spd::stdout_color_mt("fg");
+  console = spd::stdout_color_mt("fg");
   console->set_level(spd::level::debug);
 }
 
@@ -38,16 +38,16 @@ int main(int argc, char *argv[])
 
     shared_request_data& request = *static_cast<shared_request_data *>(region.get_address());
 
-	console->debug("Line {0}",__LINE__);
-    
+    console->debug("Line {0}",__LINE__);
+
     // Construct the :shared_response data.
     shared_memory_object shm_response(open_only, RESPONSE_MEMORY_NAME, read_write);
 
     mapped_region region_response(shm_response, read_write);
 
     shared_response_data& response = *static_cast<shared_response_data *>(region_response.get_address());
-    
-	console->debug("Line {0}",__LINE__);
+
+    console->debug("Line {0}",__LINE__);
 
     asio::io_service frame_grabber_service;
     // The signal set is used to register termination notifications
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     Json::Value root=camerasp::get_DOM(config_path + "options.json");
     camerasp::periodic_frame_grabber timer(frame_grabber_service, root["Data"]);
     timer.resume();
-	console->debug("Line {0}",__LINE__);
+    console->debug("Line {0}",__LINE__);
     // Start worker threads 
     std::thread thread1{ [&]() { 
       for(;;)
@@ -125,10 +125,10 @@ int main(int argc, char *argv[])
       }
 
     } };
-	console->debug("Line {0}",__LINE__);
+    console->debug("Line {0}",__LINE__);
     frame_grabber_service.run();
     thread1.join();
-	//std::string uri=request.get();
+    //std::string uri=request.get();
     console->info("frame_grabber_service.run complete, shutdown successful");
   }
   catch (Json::LogicError& err) {
