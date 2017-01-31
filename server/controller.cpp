@@ -85,14 +85,41 @@ class web_server
     {
       using namespace camerasp;
 
+
+      // 
+      auto io_service=std::make_shared<asio::io_service>();
+      server.io_service = io_service;
+      // The signal set is used to register termination notifications
+      asio::signal_set signals_(*io_service);
+      signals_.add(SIGINT);
+      signals_.add(SIGTERM);
+      signals_.add(SIGCHLD);
+
+      // signal handler for SIGCHLD must be set before the process is forked
+      // In a service 'spawn' forks a child process
+      process_state fg_state = process_state::stopped;
+      std::function<void(ASIO_ERROR_CODE,int)> signal_handler = 
+      [&] (ASIO_ERROR_CODE const& error, int signal_number)
+      { 
+	if(signal_number == SIGCHLD)
+	{
+	  fg_state = process_state::stopped;
+	  console->debug("Process stopped");
+	  waitpid(child_pid,NULL,0);
+	  signals_.async_wait(signal_handler);
+	} else {
+	  console->debug("SIGTERM received");
+	  server.stop();
+	}
+      };
+      // register the handle_stop callback
+
+      signals_.async_wait(signal_handler);
       if (int ret = posix_spawnp (&child_pid, cmd, &child_fd_actions, 
 	    NULL, argv, env))
 	console->error("posix_spawn"), exit(ret);
       console->info("Child pid: {0}\n", child_pid);
-      process_state fg_state = process_state::started;
-      // 
-      auto io_service=std::make_shared<asio::io_service>();
-      server.io_service = io_service;
+      fg_state = process_state::started;
       // send message 
       auto send_failure = [&] (
 	  std::shared_ptr<HttpServer::Response> http_response,
@@ -358,29 +385,6 @@ class web_server
 	}
       };
 
-
-      // The signal set is used to register termination notifications
-      asio::signal_set signals_(*io_service);
-      signals_.add(SIGINT);
-      signals_.add(SIGTERM);
-      signals_.add(SIGCHLD);
-
-      std::function<void(ASIO_ERROR_CODE,int)> signal_handler = [&] (ASIO_ERROR_CODE const& error, int signal_number)
-      { 
-	if(signal_number == SIGCHLD)
-	{
-	  fg_state = process_state::stopped;
-	  console->debug("Process stopped");
-	  waitpid(child_pid,NULL,0);
-	  signals_.async_wait(signal_handler);
-	} else {
-	  console->debug("SIGTERM received");
-	  server.stop();
-	}
-      };
-      // register the handle_stop callback
-
-      signals_.async_wait(signal_handler);
 
 
       //start() returns on SIGTERM
