@@ -28,6 +28,54 @@ const std::string config_path = "/srv/camerasp/";
 char const *home_page="/home/pi/data/web";
 char const *cmd= "/home/pi/bin/camerasp";
 #endif
+
+
+using asio::ip::udp;
+const std::string send_message{"12068c99-18de-48e1-87b4-3e09bbbd8b15-Camerasp"};
+const std::string recv_message{"ee7f7fc7-9d54-480b-868d-fde1f5a67ab6-Camerasp"};
+class address_broadcasting_server
+{
+public:
+  address_broadcasting_server(asio::io_context& io_context, unsigned short port)
+    : socket_(io_context, udp::endpoint(udp::v4(), port))
+  {
+  }
+
+  void receive()
+  {
+    socket_.async_receive_from(
+        asio::buffer(data_, max_length), sender_endpoint_,
+        [this](std::error_code ec, std::size_t bytes_recvd)
+        {
+          if (!ec && bytes_recvd > 0 &&
+                 send_message == std::string(data_,bytes_recvd))
+          {
+            send(bytes_recvd);
+          }
+          else
+          {
+            receive();
+          }
+        });
+  }
+
+  void send(std::size_t length)
+  {
+    socket_.async_send_to(
+        asio::buffer(recv_message), sender_endpoint_,
+        [this](std::error_code /*ec*/, std::size_t /*bytes_sent*/)
+        {
+          receive();
+        });
+  }
+
+private:
+  udp::socket socket_;
+  udp::endpoint sender_endpoint_;
+  enum { max_length = 1024 };
+  char data_[max_length];
+};
+
 //ToDo: set executable file name in json config
 char const *log_folder="/tmp/frame_grabber.log";
 #define ASIO_ERROR_CODE asio::error_code
@@ -426,8 +474,10 @@ int main(int argc, char *argv[], char* env[])
     console = spdlog::stdout_color_mt("console");
     console->set_level(spdlog::level::debug);
     console->debug("Starting");
+    auto io_service=std::make_shared<asio::io_context>();
 
-      auto io_service=std::make_shared<asio::io_context>();
+    address_broadcasting_server broadcaster(*io_service,52153);
+    broadcaster.receive();
     //run web server
     web_server server(root);
     server.run(io_service,argv,env);
