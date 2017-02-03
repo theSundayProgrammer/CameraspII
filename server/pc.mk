@@ -4,7 +4,7 @@ CXX_FLAGS = -std=c++14 -pthread -O3 -DRASPICAM_MOCK -DASIO_STANDALONE -Wtrigraph
 BUILD_DIR=./build
 CXX=g++
 
-all : camerasp webserver 
+all : camerasp webserver pinger
 .PHONY : all
 
 websrcs = controller.cpp\
@@ -24,7 +24,12 @@ srcs = frame_grabber.cpp \
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
+cli_srcs = pinger.cpp 
+cli_objs = $(cli_srcs:%.cpp=$(BUILD_DIR)/%.o)
+cli_deps = $(cli_srcs:.cpp=$(BUILD_DIR)/.d)
 
+pinger: $(cli_objs)
+	$(CXX)   -o $@ $^ -pthread -O3 -Wunused 
 camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
@@ -41,7 +46,8 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # $(RM) is rm -f by default
 clean:
-	$(RM) $(objs) $(webobjs) $(deps) $(webdeps) camerasp webserver
+	$(RM) $(objs) $(cli_objs) $(webobjs) $(deps) $(webdeps) $(cli_deps) camerasp webserver pinger
 
--include $(deps)
 -include $(webdeps)
+-include $(deps)
+-include $(cli_deps)
