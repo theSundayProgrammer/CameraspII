@@ -15,6 +15,8 @@
 
 using asio::ip::udp;
 
+const std::string send_message{"12068c99-18de-48e1-87b4-3e09bbbd8b15-Camerasp"};
+const std::string recv_message{"ee7f7fc7-9d54-480b-868d-fde1f5a67ab6-Camerasp"};
 class server
 {
 public:
@@ -30,7 +32,8 @@ public:
         asio::buffer(data_, max_length), sender_endpoint_,
         [this](std::error_code ec, std::size_t bytes_recvd)
         {
-          if (!ec && bytes_recvd > 0)
+          if (!ec && bytes_recvd > 0 &&
+                 send_message == std::string(data_,bytes_recvd))
           {
             do_send(bytes_recvd);
           }
@@ -44,7 +47,7 @@ public:
   void do_send(std::size_t length)
   {
     socket_.async_send_to(
-        asio::buffer(data_, length), sender_endpoint_,
+        asio::buffer(recv_message), sender_endpoint_,
         [this](std::error_code /*ec*/, std::size_t /*bytes_sent*/)
         {
           do_receive();

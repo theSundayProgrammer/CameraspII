@@ -9,6 +9,8 @@ using asio::ip::udp;
 enum { max_length = 1024 };
 using high_resolution_timer = asio::basic_waitable_timer<std::chrono::steady_clock>   ;
 
+const std::string send_message{"12068c99-18de-48e1-87b4-3e09bbbd8b15-Camerasp"};
+const std::string recv_message{"ee7f7fc7-9d54-480b-868d-fde1f5a67ab6-Camerasp"};
 int main(int argc, char* argv[])
 {
   try
@@ -27,23 +29,23 @@ int main(int argc, char* argv[])
 
     s.set_option(asio::socket_base::broadcast(true));
 
-    std::cout << "Enter message: ";
-    char request[max_length];
-    std::cin.getline(request, max_length);
-    size_t request_length = std::strlen(request);
-    s.send_to(asio::buffer(request, request_length), receiver_endpoint );
+    s.send_to(asio::buffer(send_message), receiver_endpoint );
     bool have_reply=false;
     udp::endpoint sender_endpoint;
     char reply[max_length];
     std::function<void(std::error_code, std::size_t )> do_receive = 
       [&](std::error_code ec, std::size_t reply_length)
       {
-	std::cout << "Reply is: ";
-	std::cout.write(reply, reply_length);
-	std::cout << "\nfrom " <<sender_endpoint.address();
-	std::cout << "\n";
-	have_reply=true;
-	s.async_receive_from(asio::buffer(reply,max_length), sender_endpoint,do_receive);
+
+	if (recv_message==std::string(reply, reply_length))
+	{
+	  std::cout << "Reply is: ";
+	  std::cout.write(reply, reply_length);
+	  std::cout << "\nfrom " <<sender_endpoint.address();
+	  std::cout << "\n";
+	}
+	  have_reply=true;
+	  s.async_receive_from(asio::buffer(reply,max_length), sender_endpoint,do_receive);
       };
     s.async_receive_from(asio::buffer(reply,max_length), sender_endpoint,do_receive);
 
