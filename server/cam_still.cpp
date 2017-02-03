@@ -53,14 +53,17 @@ using namespace std;
 #define API_NAME  "raspicam_still"
 namespace camerasp
 {
-  typedef struct
+/** \brief type used in call back of frame grabber
+*
+*/
+  struct RASPICAM_USERDATA
   {
     MMAL_POOL_T *encoderPool;
     sem_t *mutex;
     unsigned char *data;
     unsigned int offset;
     unsigned int length;
-  } RASPICAM_USERDATA;
+  } ;
 
   static void control_callback(MMAL_PORT_T * port,
     MMAL_BUFFER_HEADER_T * buffer)

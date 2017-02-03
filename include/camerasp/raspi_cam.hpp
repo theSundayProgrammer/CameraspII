@@ -1,7 +1,11 @@
 /**********************************************************
- Software developed by AVA ( Ava Group of the University of Cordoba, ava  at uco dot es)
- Main author Rafael Munoz Salinas (rmsalinas at uco dot es)
- This software is released under BSD license as expressed below
+ Copyright (c) 2017 Joseph Mariadassou 
+ theSundayProgrammer@gmail.com.
+ 
+This header was inspired by raspicam 
+http://github.com/cedric/raspicam
+
+original copyright follows:
 -------------------------------------------------------------------
 Copyright (c) 2013, AVA ( Ava Group University of Cordoba, ava  at uco dot es)
 All rights reserved.
@@ -55,10 +59,10 @@ namespace camerasp {
 
   private:
 
-    MMAL_COMPONENT_T * camera;	 /// Pointer to the camera component
-    MMAL_COMPONENT_T * encoder;	/// Pointer to the encoder component
-    MMAL_CONNECTION_T * encoder_connection; // Connection from the camera to the encoder
-    MMAL_POOL_T * encoder_pool;				  /// Pointer to the pool of buffers used by encoder output port
+    MMAL_COMPONENT_T * camera;	
+    MMAL_COMPONENT_T * encoder;
+    MMAL_CONNECTION_T * encoder_connection; 
+    MMAL_POOL_T * encoder_pool;		
     MMAL_PORT_T * camera_still_port;
     MMAL_PORT_T * encoder_input_port;
     MMAL_PORT_T * encoder_output_port;
