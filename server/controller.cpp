@@ -22,12 +22,13 @@ std::shared_ptr<spdlog::logger> console;
 #ifdef RASPICAM_MOCK
 const std::string config_path = "./";
 char const *home_page="/home/chakra/data/web";
+char const *cmd= "./camerasp";
 #else
 const std::string config_path = "/srv/camerasp/";
 char const *home_page="/home/pi/data/web";
+char const *cmd= "/home/pi/bin/camerasp";
 #endif
 //ToDo: set executable file name in json config
-char const *cmd= "/home/pi/bin/camerasp";
 char const *log_folder="/tmp/frame_grabber.log";
 #define ASIO_ERROR_CODE asio::error_code
 typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
@@ -81,13 +82,12 @@ class web_server
     server.config.port=port_number;
     server.config.thread_pool_size=2;
   }
-    void run(int argc, char *argv[], char* env[])
+    void run(std::shared_ptr<asio::io_context> io_service, char *argv[], char* env[])
     {
       using namespace camerasp;
 
 
       // 
-      auto io_service=std::make_shared<asio::io_service>();
       server.io_service = io_service;
       // The signal set is used to register termination notifications
       asio::signal_set signals_(*io_service);
@@ -427,9 +427,10 @@ int main(int argc, char *argv[], char* env[])
     console->set_level(spdlog::level::debug);
     console->debug("Starting");
 
+      auto io_service=std::make_shared<asio::io_context>();
     //run web server
     web_server server(root);
-    server.run(argc,argv,env);
+    server.run(io_service,argv,env);
 
   }
   catch (std::exception& e)
