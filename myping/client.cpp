@@ -1,54 +1,80 @@
-//
-// blocking_udp_echo_client.cpp
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2016 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <asio/ts/buffer.hpp>
-#include <asio/ts/internet.hpp>
 
+#include <chrono>
+#include <asio.hpp>
 using asio::ip::udp;
 
 enum { max_length = 1024 };
+using high_resolution_timer = asio::basic_waitable_timer<std::chrono::steady_clock>   ;
 
 int main(int argc, char* argv[])
 {
   try
   {
-    if (argc != 3)
-    {
-      std::cerr << "Usage: blocking_udp_echo_client <host> <port>\n";
-      return 1;
-    }
 
     asio::io_context io_context;
 
-    udp::socket s(io_context, udp::endpoint(udp::v4(), 0));
-
     udp::resolver resolver(io_context);
-    udp::endpoint endpoint =
-      *resolver.resolve(udp::v4(), argv[1], argv[2]).begin();
+
+
+
+    udp::resolver::query query(udp::v4(), "255.255.255.255", "52153");
+    udp::endpoint receiver_endpoint = *resolver.resolve(query);
+    udp::socket s(io_context);
+    s.open(udp::v4());
+
+    s.set_option(asio::socket_base::broadcast(true));
 
     std::cout << "Enter message: ";
     char request[max_length];
     std::cin.getline(request, max_length);
     size_t request_length = std::strlen(request);
-    s.send_to(asio::buffer(request, request_length), endpoint);
-
-    char reply[max_length];
+    s.send_to(asio::buffer(request, request_length), receiver_endpoint );
+    bool have_reply=false;
     udp::endpoint sender_endpoint;
-    size_t reply_length = s.receive_from(
-        asio::buffer(reply, max_length), sender_endpoint);
-    std::cout << "Reply is: ";
-    std::cout.write(reply, reply_length);
-    std::cout << "\n";
+    char reply[max_length];
+    std::function<void(std::error_code, std::size_t )> do_receive = 
+      [&](std::error_code ec, std::size_t reply_length)
+      {
+	std::cout << "Reply is: ";
+	std::cout.write(reply, reply_length);
+	std::cout << "\nfrom " <<sender_endpoint.address();
+	std::cout << "\n";
+	have_reply=true;
+	s.async_receive_from(asio::buffer(reply,max_length), sender_endpoint,do_receive);
+      };
+    s.async_receive_from(asio::buffer(reply,max_length), sender_endpoint,do_receive);
+
+
+    high_resolution_timer timer_(io_context);
+    int count=0;
+    auto prev = high_resolution_timer::clock_type::now();
+    std::chrono::seconds sampling_period(2);
+    std::function<void(asio::error_code)> time_out=
+      [&](asio::error_code ec) 
+      {
+	if(have_reply)
+	{
+	  ++count;
+	  have_reply = false;
+	  prev = high_resolution_timer::clock_type::now();
+	  timer_.expires_at(prev + sampling_period);
+	  timer_.async_wait(time_out);
+	}
+	else
+	{
+	  io_context.stop();
+	}
+      }
+    ;
+
+	  timer_.expires_at(prev + sampling_period);
+    timer_.async_wait(time_out);
+    io_context.run();
+    if(count==0)
+      std::cout << "No device on network" << std::endl;
   }
   catch (std::exception& e)
   {
