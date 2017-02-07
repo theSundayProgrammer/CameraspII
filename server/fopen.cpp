@@ -1,7 +1,6 @@
 //////////////////////////////////////////////////////////////////////////////
-// Copyright (c) Joseph Mariadassou
+// Copyright 2016 -2017 (c) Joseph Mariadassou
 // theSundayProgrammer@gmail.com
-// adapted from Kenneth Baker's via-http
 // Distributed under the Boost Software License, Version 1.0.
 // 
 // http://www.boost.org/LICENSE_1_0.txt)

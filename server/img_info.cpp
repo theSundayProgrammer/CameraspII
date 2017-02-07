@@ -1,3 +1,10 @@
+//////////////////////////////////////////////////////////////////////////////
+// Copyright 2016-2017 Joseph Mariadassou
+// theSundayProgrammer@gmail.com
+// Distributed under the Boost Software License, Version 1.0.
+// 
+// http://www.boost.org/LICENSE_1_0.txt)
+//////////////////////////////////////////////////////////////////////////////
 #include <jpeg/jpgconvert.hpp>
 #define BMP_HEADER_SIZE 54
 void camerasp::img_info::put_scan_line(JSAMPLE *data, int row_stride) 
