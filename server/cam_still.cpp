@@ -1,5 +1,6 @@
 /**********************************************************
-Copyright Joseph Mariadassou (theSundayProgrammer@gmail.com). This file is inspired by Raspicam
+Copyright i2016-2017 Joseph Mariadassou (theSundayProgrammer@gmail.com). 
+This file is inspired by Raspicam
 http://github.com/cedricve/raspicam. The original copyright folows:
 
  Software developed by AVA ( Ava Group of the University of Cordoba, ava  at uco dot es)
@@ -49,6 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mmal/util/mmal_util_params.h>
 #include <semaphore.h>
 #include <camerasp/utils.hpp>
+#include <gsl/gsl>
 using namespace std;
 #define API_NAME  "raspicam_still"
 namespace camerasp
@@ -82,39 +84,38 @@ namespace camerasp
   static void buffer_callback(MMAL_PORT_T * port,
     MMAL_BUFFER_HEADER_T * buffer)
   {
-    RASPICAM_USERDATA *userdata = (RASPICAM_USERDATA *)port->userdata;
-    mmal_buffer_header_mem_lock(buffer);
-    if (userdata == NULL) {
-      mmal_buffer_header_mem_unlock(buffer);
-      mmal_buffer_header_release(buffer);
-      return;
-    } else if (buffer->length  + userdata->offset > userdata->length) {
-      console->error(API_NAME
-        ": Buffer provided {0} was too small offset={1}! Failed to copy data into buffer.", userdata->offset , userdata->length);
-    mmal_buffer_header_mem_unlock(buffer);
-    mmal_buffer_header_release(buffer);
-    return;
-    } else {
-      unsigned int i = 0;
-      for (; i < buffer->length; ++i ) {
-          userdata->data[userdata->offset] = buffer->data[i];
-          ++userdata->offset;
-        }
-    }
-    mmal_buffer_header_mem_unlock(buffer);
     const unsigned int END_FLAG =
       MMAL_BUFFER_HEADER_FLAG_FRAME_END |
       MMAL_BUFFER_HEADER_FLAG_TRANSMISSION_FAILED;
-    unsigned int flags = buffer->flags;
 
-    mmal_buffer_header_release(buffer);
+      RASPICAM_USERDATA *userdata = (RASPICAM_USERDATA *)port->userdata;
+    unsigned int flags = buffer->flags;
+    {
+      auto _ = gsl::finally([buffer] () {
+	  mmal_buffer_header_mem_unlock(buffer);
+	  mmal_buffer_header_release(buffer);
+	  });
+      mmal_buffer_header_mem_lock(buffer);
+      if (userdata == NULL) {
+	return;
+      } else if (buffer->length  + userdata->offset > userdata->length) {
+	console->error(API_NAME
+	    ": Buffer provided {0} was too small offset={1}! Failed to copy data into buffer.", userdata->offset , userdata->length);
+	return;
+      } else {
+	for (unsigned int i = 0; i < buffer->length; ++i ) 
+	  userdata->data[userdata->offset+i] = buffer->data[i];
+
+	userdata->offset+=buffer->length;
+      }
+    }
     if (END_FLAG & flags) {
-        sem_post(userdata->mutex);
+      sem_post(userdata->mutex);
     } else if (port->is_enabled) {
       MMAL_BUFFER_HEADER_T *new_buffer =
-        mmal_queue_get(userdata->encoderPool->queue);
+	mmal_queue_get(userdata->encoderPool->queue);
       if (new_buffer)
-        mmal_port_send_buffer(port, new_buffer);
+	mmal_port_send_buffer(port, new_buffer);
     }
   }
 
