@@ -27,7 +27,7 @@ const std::string config_path = "./";
 const std::string config_path = "/srv/camerasp/";
 #endif
 //ToDo: set executable file name in json config
-char const *cmd= "/home/chakra/projects/camerasp2/frame_grabber/camerasp";
+char const *cmd= "camerasp";
 char const *home_page="/home/pi/data/web";
 char const *log_folder="/tmp/foo-log";
 #define ASIO_ERROR_CODE asio::error_code
