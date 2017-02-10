@@ -1,3 +1,11 @@
+
+//////////////////////////////////////////////////////////////////////////////
+// Copyright 2016-2017 (c) Joseph Mariadassou
+// theSundayProgrammer@gmail.com
+// Distributed under the Boost Software License, Version 1.0.
+// 
+// http://www.boost.org/LICENSE_1_0.txt)
+//////////////////////////////////////////////////////////////////////////////
 #include <json/reader.h>
 #include <asio.hpp>
 
@@ -22,11 +30,7 @@ const std::string config_path = "/srv/camerasp/";
 void configure_console()
 {
   namespace spd = spdlog;
-  std::string logpath = "/home/chakra/data/fg";
-int size_mega_bytes = 4;
-  int count_files = 2;
-  //console = spd::rotating_logger_mt("camerasp", logpath, 1024 * 1024 * size_mega_bytes, count_files);
- console = spd::stdout_color_mt("console");
+  console = spd::stdout_color_mt("fg");
   console->set_level(spd::level::debug);
 }
 
@@ -42,16 +46,16 @@ int main(int argc, char *argv[])
 
     shared_request_data& request = *static_cast<shared_request_data *>(region.get_address());
 
-	console->debug("Line {0}",__LINE__);
-    
+    console->debug("Line {0}",__LINE__);
+
     // Construct the :shared_response data.
     shared_memory_object shm_response(open_only, RESPONSE_MEMORY_NAME, read_write);
 
     mapped_region region_response(shm_response, read_write);
 
     shared_response_data& response = *static_cast<shared_response_data *>(region_response.get_address());
-    
-	console->debug("Line {0}",__LINE__);
+
+    console->debug("Line {0}",__LINE__);
 
     asio::io_service frame_grabber_service;
     // The signal set is used to register termination notifications
@@ -69,8 +73,8 @@ int main(int argc, char *argv[])
     //configure frame grabber
     Json::Value root=camerasp::get_DOM(config_path + "options.json");
     camerasp::periodic_frame_grabber timer(frame_grabber_service, root["Data"]);
-    timer.start_capture();
-	console->debug("Line {0}",__LINE__);
+    timer.resume();
+    console->debug("Line {0}",__LINE__);
     // Start worker threads 
     std::thread thread1{ [&]() { 
       for(;;)
@@ -83,6 +87,36 @@ int main(int argc, char *argv[])
 	  auto image= timer.get_image(k);
 	  response.set(image); 
 	}
+	else if (std::regex_search(uri,m,std::regex("flip\\?vertical=(0|1)$")))
+	{
+	  int k = atoi(m[1].str().c_str());
+	  if(0==timer.set_vertical_flip(k != 0))
+	    response.set("Success"); 
+	  else
+	    response.set("Error Flip failed");
+	}
+	else if (std::regex_search(uri,m,std::regex("flip\\?horizontal=(0|1)$")))
+	{
+	  int k = atoi(m[1].str().c_str());
+	  if(0==timer.set_horizontal_flip(k != 0))
+	    response.set("Success"); 
+	  else
+	    response.set("Error Flip failed");
+	}
+	else if (std::regex_search(uri,m,std::regex("resume")))
+	{
+	  if( timer.resume())
+	    response.set("Success"); 
+	  else
+	    response.set("Running already");
+	}        
+	else if (std::regex_search(uri,m,std::regex("pause")))
+	{
+	  if( timer.pause())
+	    response.set("Success"); 
+	  else
+	    response.set("Stopped already");
+	}        
 	else if (std::regex_search(uri,m,std::regex("image")))
 	{
 	  auto image= timer.get_image(0);
@@ -90,19 +124,19 @@ int main(int argc, char *argv[])
 	}        
 	else if (std::regex_search(uri,m,std::regex("exit")))
 	{
-	  timer.stop_capture();
+	  timer.pause();
 	  frame_grabber_service.stop();
-          response.set(std::string("stopping"));
+	  response.set(std::string("stopping"));
 	  console->debug("SIGTERM handled");
 	  return;
 	}        
       }
 
     } };
-	console->debug("Line {0}",__LINE__);
+    console->debug("Line {0}",__LINE__);
     frame_grabber_service.run();
     thread1.join();
-	//std::string uri=request.get();
+    //std::string uri=request.get();
     console->info("frame_grabber_service.run complete, shutdown successful");
   }
   catch (Json::LogicError& err) {

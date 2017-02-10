@@ -12,38 +12,55 @@
 #include <sstream>
 namespace camerasp
 {
-  
-  periodic_frame_grabber::periodic_frame_grabber(
-    asio::io_context& io_service,
-    Json::Value const& backup)
-    : timer_(io_service),
-      cur_img(0),
-      current_count(0)
+
+  file_saver::file_saver( Json::Value const& backup):
+    current_count(0)
+    ,cur(0)
   {
-      max_file_count = backup["count"].asInt();
-      int secs = backup["sample_period"].asInt();
-      sampling_period = std::chrono::seconds(secs);
-      pathname_prefix = backup["path_prefix"].asString();
-      quit_flag =1;
-      pending_count=0;
-     camera_.set_width(640);
-     camera_.set_height(480);
-     camera_.setISO(400);
+    max_files= backup["count"].asInt();
+    image_path= backup["path_prefix"].asString();
+  }
+
+
+  camerasp::buffer_t file_saver::get_image(unsigned int k)
+  {
+    std::ostringstream ostr;
+    unsigned next = current_count < max_files && k >= current_count?
+      0:
+      (cur+max_files-k)%max_files;
+    ostr<<image_path<<next<<std::ends;
+
+    std::ifstream img_file(ostr.str(),std::ios::binary);
+    std::ostringstream img_str;
+    img_str<<img_file.rdbuf();
+    return img_str.str();
+  }
+  void file_saver::save_image(camerasp::buffer_t const& image)
+  {
+    std::ostringstream ostr;
+    unsigned int k=cur;
+    ostr<<image_path<<k<<std::ends;
+    std::ofstream(ostr.str(),std::ios::binary) << image;
+    ++cur;
+    if(current_count < max_files) ++current_count;
+  }
+  periodic_frame_grabber::periodic_frame_grabber(
+      asio::io_context& io_service,
+      Json::Value const& backup)
+    : timer_(io_service)
+    ,cur_img(0)
+    ,current_count(0)
+    ,file_saver_(backup)
+  {
+    int secs = backup["sample_period"].asInt();
+    sampling_period = std::chrono::seconds(secs);
+    quit_flag =1;
+    camera_.set_width(640);
+    camera_.set_height(480);
+    camera_.setISO(400);
 
   }
-  void periodic_frame_grabber::save_image(buffer_t const& buffer, std::string const& fName)
-  {
-    std::ofstream ofs(fName,std::ios::binary);
-    ofs<<buffer;
-  }
-  //need a better way of handling file save
-  void periodic_frame_grabber::save_file(buffer_t& buffer, unsigned int file_number) {
-    
-    char intstr[8];
-    sprintf(intstr, "%04d", file_number);
-    save_image(buffer, pathname_prefix + intstr + ".jpg");
-    --pending_count;
-  }
+
 
   buffer_t periodic_frame_grabber::grab_picture() {
 
@@ -83,29 +100,18 @@ namespace camerasp
     using namespace std::placeholders;
 
     if (!quit_flag) {
-    //console->debug("timer active");
       auto current = high_resolution_timer::clock_type::now();
-      auto diff = current - prev;
       auto next = cur_img;
       auto buffer = grab_picture();
-      
-      int files_in_queue = ++pending_count;
-      if (files_in_queue < max_file_count / 10 || files_in_queue < 10)
+
+      file_saver_.save_image(buffer);
       {
-        save_file(buffer, next);
-      }
-      else
-      {
-        --pending_count;
-      }
-      {
-        std::lock_guard<std::mutex> lock(image_buffers[next].m);
-        image_buffers[next].buffer.swap(buffer);
+	std::lock_guard<std::mutex> lock(image_buffers[next].m);
+	image_buffers[next].buffer.swap(buffer);
       }
       if (current_count < max_size) ++current_count;
       cur_img = (cur_img + 1) % max_size;
-      timer_.expires_at(prev + 2 * sampling_period);
-      prev = current;
+      timer_.expires_at(current+ sampling_period);
       timer_.async_wait(std::bind(&periodic_frame_grabber::handle_timeout, this, _1));
     }
     else
@@ -118,7 +124,7 @@ namespace camerasp
   void periodic_frame_grabber::set_timer() {
     using namespace std::placeholders;
     try {
-      prev = high_resolution_timer::clock_type::now();
+      auto prev = high_resolution_timer::clock_type::now();
       timer_.expires_at(prev + sampling_period);
       timer_.async_wait(std::bind(&periodic_frame_grabber::handle_timeout, this, _1));
     }
@@ -126,37 +132,54 @@ namespace camerasp
       console->error("Error: {}..", e.what());
     }
   }
-  buffer_t  periodic_frame_grabber::get_image(unsigned int k) {
-
-    auto next =  (k > current_count && current_count < max_size)?
-        0:
-       (cur_img + max_size - 1 - k) % max_size;
-    console->info("Image number = {0}", next);
-    std::lock_guard<std::mutex> lock(image_buffers[next].m);
-    auto imagebuffer = image_buffers[next].buffer;
-    return buffer_t(imagebuffer.begin(), imagebuffer.end());
-  }
-  void periodic_frame_grabber::start_capture()
+  buffer_t  periodic_frame_grabber::get_image(unsigned int k) 
   {
+    //precondition there is at least one image in the buffer
+    //Tha is, current_count>0
+    if(current_count ==0)
+      throw std::runtime_error("No image captured");
+    if(k<max_size)
+    {
+      auto next =  (k > current_count && current_count < max_size)?
+	0:
+	(cur_img + max_size - 1 - k) % max_size;
+      console->info("Image number = {0}", next);
+      std::lock_guard<std::mutex> lock(image_buffers[next].m);
+      auto imagebuffer = image_buffers[next].buffer;
+      return buffer_t(imagebuffer.begin(), imagebuffer.end());
+    }
+    else
+    {
+      return file_saver_.get_image(k);
+    }
+  } 
+  bool periodic_frame_grabber::resume()
+  {
+    bool retval=quit_flag;
     if (quit_flag) {
       quit_flag = 0;
       camera_.open();
       set_timer();
     }
+    return retval;
   }
-  void periodic_frame_grabber::stop_capture()
+  bool periodic_frame_grabber::pause()
   {
+    bool retval= 0==quit_flag;
     if (0 == quit_flag)  quit_flag = 1;
+    return retval;
   }
 
   errno_t periodic_frame_grabber::set_vertical_flip(bool val)
   {
+      console->debug("vertical flip={0}",val);
     camera_.set_vertical_flip(val);
     return 0;
   }
   errno_t  periodic_frame_grabber::set_horizontal_flip(bool val)
   {
-     camera_.set_horizontal_flip(val);
+      console->debug("horizontal flip={0}",val);
+    camera_.set_horizontal_flip(val);
     return 0;
   }
 }

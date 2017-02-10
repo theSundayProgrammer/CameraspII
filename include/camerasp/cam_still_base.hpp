@@ -4,27 +4,28 @@
 #include <cstddef>
 #include "raspicamtypes.h"
 namespace camerasp {
-
+///
+/// \brief base class for still camera 
+///
   class cam_still_base {
 
 
 protected:
-    unsigned int width;
-    unsigned int height;
-    unsigned int rotation; // 0 to 359
-    unsigned int brightness; // 0 to 100
-    unsigned int quality; // 0 to 100
-    int iso;
-    int sharpness; // -100 to 100
-    int contrast; // -100 to 100
-    int saturation; // -100 to 100
-    bool horizontalFlip;
-    bool verticalFlip;
+    unsigned int width; ///< can be 320 640 1280 or 1920
+    unsigned int height; ///< can be 240 480 960 or 1440
+    unsigned int rotation; ///< angle in degrees from 0 to 359 
+    unsigned int brightness; ///< from 0 to 100
+    unsigned int quality; ///< from 0 to 100
+    int iso; ///< range to be specified
+    int sharpness; ///< from -100 to 100
+    int contrast; ///< from -100 to 100
+    int saturation; ///< from -100 to 100
+    bool horizontalFlip;///< left columns swap with right columns
+    bool verticalFlip;///< top rows swap with bottom rows
 
-    bool changed_settings;
+    bool changed_settings; ///< flag that indicates need to commit changes
 
   public:
-    ~cam_still_base();
     cam_still_base();
     int initialize();
 
