@@ -20,6 +20,7 @@
 #include <boost/filesystem.hpp>
 #include <sys/wait.h>
 #include <sstream>
+#include <gsl/gsl_util>
 std::shared_ptr<spdlog::logger> console;
 #ifdef RASPICAM_MOCK
 const std::string config_path = "./";
@@ -329,7 +330,18 @@ class web_server
 	  send_success(http_response,success);
 	}
       };
-
+      auto _1 = gsl::finally([=]()
+      {
+            int status =0;
+             unsigned n=0;
+	  kill(child_pid,SIGTERM);
+            while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
+            {
+               usleep(100*1000);
+               ++n;
+            } 
+	  if(n==20)kill(child_pid,SIGKILL);
+      });
       //stop capture
       server.resource["^/abort$"]["GET"]=[&](
 	  std::shared_ptr<HttpServer::Response> http_response,
@@ -340,8 +352,8 @@ class web_server
 	if(fg_state == process_state::started )
 
 	{
-	  kill(child_pid,SIGKILL);
 	  fg_state = process_state::stopped;
+	  kill(child_pid,SIGKILL);
             int status =0;
              unsigned n=0;
             while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
@@ -385,6 +397,7 @@ class web_server
                usleep(100*1000);
                ++n;
             } 
+	  if(n==20)kill(child_pid,SIGKILL);
 	  fg_state = process_state::stopped;
 	    send_success(http_response,success);
 	  }
