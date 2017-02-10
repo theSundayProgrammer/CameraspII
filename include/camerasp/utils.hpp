@@ -13,6 +13,8 @@
 #include <spdlog/spdlog.h>
 #include <camerasp/raspicamtypes.h>
 extern std::shared_ptr<spdlog::logger> console;
+#include <mmal/mmal_types.h>
+#include <mmal/mmal_parameters_camera.h>
 #ifdef __GNUC__
 typedef int errno_t;
 errno_t fopen_s(FILE** fp, const char* name, const char* mode);
@@ -27,9 +29,7 @@ namespace camerasp{
   //std::string  get_image(unsigned int k);
 
   bool is_integer(const std::string & s, int* k);
+  MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) ;
+  MMAL_PARAM_AWBMODE_T get_awb_from_string ( const std::string& str ) ;
 
-  RASPICAM_EXPOSURE get_exposure_from_string (const  std::string& str ); 
-
-  RASPICAM_AWB get_awb_from_string ( const std::string& str ); 
-  RASPICAM_FORMAT get_format_from_string ( const std::string& str ); 
 }

@@ -13,8 +13,10 @@
 #include <regex>
 #include <fstream>
 #include <sstream>
-#include <camerasp/utils.hpp>
 #include <camerasp/raspicamtypes.h>
+#include <camerasp/utils.hpp>
+#include <mmal/mmal_types.h>
+#include <mmal/mmal_parameters_camera.h>
 namespace camerasp{
 
 
@@ -62,42 +64,62 @@ namespace camerasp{
 
     return true;//(*p == 0);
   }
-  RASPICAM_EXPOSURE get_exposure_from_string (const  std::string& str ) {
-    if ( str=="OFF" ) return RASPICAM_EXPOSURE_OFF;
-    if ( str=="AUTO" ) return RASPICAM_EXPOSURE_AUTO;
-    if ( str=="NIGHT" ) return RASPICAM_EXPOSURE_NIGHT;
-    if ( str=="NIGHTPREVIEW" ) return RASPICAM_EXPOSURE_NIGHTPREVIEW;
-    if ( str=="BACKLIGHT" ) return RASPICAM_EXPOSURE_BACKLIGHT;
-    if ( str=="SPOTLIGHT" ) return RASPICAM_EXPOSURE_SPOTLIGHT;
-    if ( str=="SPORTS" ) return RASPICAM_EXPOSURE_SPORTS;
-    if ( str=="SNOW" ) return RASPICAM_EXPOSURE_SNOW;
-    if ( str=="BEACH" ) return RASPICAM_EXPOSURE_BEACH;
-    if ( str=="VERYLONG" ) return RASPICAM_EXPOSURE_VERYLONG;
-    if ( str=="FIXEDFPS" ) return RASPICAM_EXPOSURE_FIXEDFPS;
-    if ( str=="ANTISHAKE" ) return RASPICAM_EXPOSURE_ANTISHAKE;
-    if ( str=="FIREWORKS" ) return RASPICAM_EXPOSURE_FIREWORKS;
-    return RASPICAM_EXPOSURE_AUTO;
+
+MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) {
+    if ( str=="OFF" ) return MMAL_PARAM_EXPOSUREMODE_OFF;
+    if ( str=="AUTO" ) return MMAL_PARAM_EXPOSUREMODE_AUTO;
+    if ( str=="NIGHT" ) return MMAL_PARAM_EXPOSUREMODE_NIGHT;
+    if ( str=="NIGHTPREVIEW" ) return MMAL_PARAM_EXPOSUREMODE_NIGHTPREVIEW;
+    if ( str=="BACKLIGHT" ) return MMAL_PARAM_EXPOSUREMODE_BACKLIGHT;
+    if ( str=="SPOTLIGHT" ) return MMAL_PARAM_EXPOSUREMODE_SPOTLIGHT;
+    if ( str=="SPORTS" ) return MMAL_PARAM_EXPOSUREMODE_SPORTS;
+    if ( str=="SNOW" ) return MMAL_PARAM_EXPOSUREMODE_SNOW;
+    if ( str=="BEACH" ) return MMAL_PARAM_EXPOSUREMODE_BEACH;
+    if ( str=="VERYLONG" ) return MMAL_PARAM_EXPOSUREMODE_VERYLONG;
+    if ( str=="FIXEDFPS" ) return MMAL_PARAM_EXPOSUREMODE_FIXEDFPS;
+    if ( str=="ANTISHAKE" ) return MMAL_PARAM_EXPOSUREMODE_ANTISHAKE;
+    if ( str=="FIREWORKS" ) return MMAL_PARAM_EXPOSUREMODE_FIREWORKS;
+    return MMAL_PARAM_EXPOSUREMODE_AUTO;
   }
 
-  RASPICAM_AWB get_awb_from_string ( const std::string& str ) {
-    if ( str=="OFF" ) return RASPICAM_AWB_OFF;
-    if ( str=="AUTO" ) return RASPICAM_AWB_AUTO;
-    if ( str=="SUNLIGHT" ) return RASPICAM_AWB_SUNLIGHT;
-    if ( str=="CLOUDY" ) return RASPICAM_AWB_CLOUDY;
-    if ( str=="SHADE" ) return RASPICAM_AWB_SHADE;
-    if ( str=="TUNGSTEN" ) return RASPICAM_AWB_TUNGSTEN;
-    if ( str=="FLUORESCENT" ) return RASPICAM_AWB_FLUORESCENT;
-    if ( str=="INCANDESCENT" ) return RASPICAM_AWB_INCANDESCENT;
-    if ( str=="FLASH" ) return RASPICAM_AWB_FLASH;
-    if ( str=="HORIZON" ) return RASPICAM_AWB_HORIZON;
-    return RASPICAM_AWB_AUTO;
+  MMAL_PARAM_AWBMODE_T get_awb_from_string ( const std::string& str ) {
+    if ( str=="OFF" ) return MMAL_PARAM_AWBMODE_OFF;
+    if ( str=="AUTO" ) return MMAL_PARAM_AWBMODE_AUTO;
+    if ( str=="SUNLIGHT" ) return MMAL_PARAM_AWBMODE_SUNLIGHT;
+    if ( str=="CLOUDY" ) return MMAL_PARAM_AWBMODE_CLOUDY;
+    if ( str=="SHADE" ) return MMAL_PARAM_AWBMODE_SHADE;
+    if ( str=="TUNGSTEN" ) return MMAL_PARAM_AWBMODE_TUNGSTEN;
+    if ( str=="FLUORESCENT" ) return MMAL_PARAM_AWBMODE_FLUORESCENT;
+    if ( str=="INCANDESCENT" ) return MMAL_PARAM_AWBMODE_INCANDESCENT;
+    if ( str=="FLASH" ) return MMAL_PARAM_AWBMODE_FLASH;
+    if ( str=="HORIZON" ) return MMAL_PARAM_AWBMODE_HORIZON;
+    return MMAL_PARAM_AWBMODE_AUTO;
+  }
+  /*
+MMAL_FOURCC_T
+    convertEncoding(RASPICAM_ENCODING encoding)  {
+    switch (encoding)    {
+    case RASPICAM_ENCODING_JPEG:
+      return MMAL_ENCODING_JPEG;
+    case RASPICAM_ENCODING_BMP:
+      return MMAL_ENCODING_BMP;
+    case RASPICAM_ENCODING_GIF:
+      return MMAL_ENCODING_GIF;
+    case RASPICAM_ENCODING_PNG:
+      return MMAL_ENCODING_PNG;
+    case RASPICAM_ENCODING_RGB:
+      return MMAL_ENCODING_BMP;
+    default:
+      return -1;
+    }
   }
   RASPICAM_FORMAT get_format_from_string ( const std::string& str ) {
     if(str=="GREY") return RASPICAM_FORMAT_GRAY;
-    if(str=="RGB") return RASPICAM_FORMAT_RGB;
     if(str=="YUV") return RASPICAM_FORMAT_YUV420;
     return RASPICAM_FORMAT_RGB;
+
   }
+*/
 
 }
 

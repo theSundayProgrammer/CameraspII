@@ -19,6 +19,7 @@
 #include <camerasp/ipc.hpp>
 #include <boost/filesystem.hpp>
 #include <sys/wait.h>
+#include <sstream>
 std::shared_ptr<spdlog::logger> console;
 #ifdef RASPICAM_MOCK
 const std::string config_path = "./";
@@ -110,18 +111,6 @@ class web_server
        ,root_(root)
   {
 
-    //Child process
-    //Important: the working directory of the child process
-    // is the same as that of the parent process.
-    int ret;
-    if (ret = posix_spawn_file_actions_init (&child_fd_actions))
-      console->error("posix_spawn_file_actions_init"), exit(ret);
-    if (ret = posix_spawn_file_actions_addopen (
-	  &child_fd_actions, 1,log_folder , 
-	  O_WRONLY | O_CREAT | O_TRUNC, 0644))
-      console->error("posix_spawn_file_actions_addopen"), exit(ret);
-    if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
-      console->error("posix_spawn_file_actions_adddup2"), exit(ret);
 
     // server config
     unsigned port_number=8088;
@@ -136,6 +125,18 @@ class web_server
       using namespace camerasp;
 
 
+    //Child process
+    //Important: the working directory of the child process
+    // is the same as that of the parent process.
+    int ret;
+    if (ret = posix_spawn_file_actions_init (&child_fd_actions))
+      console->error("posix_spawn_file_actions_init"), exit(ret);
+    if (ret = posix_spawn_file_actions_addopen (
+	  &child_fd_actions, 1,log_folder , 
+	  O_WRONLY | O_CREAT | O_TRUNC, 0644))
+      console->error("posix_spawn_file_actions_addopen"), exit(ret);
+    if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
+      console->error("posix_spawn_file_actions_adddup2"), exit(ret);
       // 
       server.io_service = io_service;
       // The signal set is used to register termination notifications
@@ -163,7 +164,6 @@ class web_server
       };
       // register the handle_stop callback
 
-      signals_.async_wait(signal_handler);
       if (int ret = posix_spawnp (&child_pid, cmd, &child_fd_actions, 
 	    NULL, argv, env))
 	console->error("posix_spawn"), exit(ret);
@@ -307,6 +307,8 @@ class web_server
 	  std::shared_ptr<HttpServer::Request> http_request)
       {
 	std::string success("Succeeded");
+
+	  console->info("Resart Child command received");
 	if(fg_state == process_state::started )
 	{
 	  success="Already Running";
@@ -339,7 +341,14 @@ class web_server
 
 	{
 	  kill(child_pid,SIGKILL);
-	  fg_state = process_state::stop_pending;
+	  fg_state = process_state::stopped;
+            int status =0;
+             unsigned n=0;
+            while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
+            {
+               usleep(100*1000);
+               ++n;
+            }
 	  send_success(http_response,success);
 	}
 	else if (fg_state == process_state::stop_pending)
@@ -360,12 +369,23 @@ class web_server
       {
 	std::string success("Succeeded");
 	//
+        struct sigaction act;
+        memset(&act,'\0',sizeof(act));
+        sigaction(SIGCHLD,nullptr, &act);
+        console->debug("Mask= {0},{1},{2},{3}", act.sa_mask.__val[0],act.sa_mask.__val[1],act.sa_mask.__val[2],act.sa_mask.__val[3]); 
 	if(fg_state == process_state::started )
 	  try{
 	    request->set("exit");
 	    camerasp::buffer_t data = response->try_get();
 	    console->info("stop executed");
-	    fg_state = process_state::stop_pending;
+            int status =0;
+             unsigned n=0;
+            while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
+            {
+               usleep(100*1000);
+               ++n;
+            } 
+	  fg_state = process_state::stopped;
 	    send_success(http_response,success);
 	  }
 	catch (std::exception& e)
@@ -436,6 +456,7 @@ class web_server
 
 
 
+      signals_.async_wait(signal_handler);
       //start() returns on SIGTERM
       server.start();
       if(fg_state == process_state::started )
