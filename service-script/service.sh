@@ -8,7 +8,7 @@
 # Description:       webserver\\\ interface\\\ for\\\ frame\\\ grabber
 ### END INIT INFO
 
-SCRIPT=/home/pi/bin/camerasp
+SCRIPT=/home/pi/bin/webserver
 RUNAS=pi
 NAME=camerasp
 
