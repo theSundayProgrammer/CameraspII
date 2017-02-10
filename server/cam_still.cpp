@@ -50,7 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mmal/util/mmal_util_params.h>
 #include <semaphore.h>
 #include <camerasp/utils.hpp>
-#include <gsl/gsl>
+#include <gsl/gsl_util>
 using namespace std;
 #define API_NAME  "raspicam_still"
 namespace camerasp
