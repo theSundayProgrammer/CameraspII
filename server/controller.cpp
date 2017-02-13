@@ -206,6 +206,7 @@ class web_server
 	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
 	      <<  "Content-Length: " << data.size()<< "\r\n"
 	      <<  "Content-type: " << "application/text" <<"\r\n"
+              << "Cache-Control: no-cache, must-revalidate" << "\r\n"
 	      << "\r\n"
 	      << data;
 	  }
@@ -254,7 +255,7 @@ class web_server
       };
 
       // get previous image
-      server.resource["^/image\\?prev=([0-9]+)$"]["GET"]=[&](
+      server.resource[R"(^/image\?prev=([0-9]+)$)"]["GET"]=[&](
 	  std::shared_ptr<HttpServer::Response> http_response,
 	  std::shared_ptr<HttpServer::Request> http_request)
       {
@@ -294,7 +295,7 @@ class web_server
 	exec_cmd(http_response,http_request);
       };
       // get current image
-      server.resource["^/image$"]["GET"]=[&](
+      server.resource["^/image"]["GET"]=[&](
 	  std::shared_ptr<HttpServer::Response> http_response,
 	  std::shared_ptr<HttpServer::Request> http_request)
       {
