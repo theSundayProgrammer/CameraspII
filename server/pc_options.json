@@ -17,7 +17,7 @@
     },
     "Server": {
       "port" : 8088,
-      "command": "/home/pi/bin/camerasp",
+      "command": "/home/chakra/bin/camerasp",
       "home_page" : "/home/chakra/data/web",
       "log_folder" : "/home/chakra/data/camerasp_log"
     }
