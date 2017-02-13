@@ -1,23 +1,27 @@
 <!DOCTYPE html>
  <html>
  <head>
- <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js">
- </script>
- <!--
+ <sript src="./jquery.min.js"/>
  <script>
- $(document).ready(function(){
- setInterval(function(){cache_clear()},3000);
- });
- function cache_clear()
+var newImage = new Image();
+newImage.src = "./image";
+var num = 0;
+function updateImage()
 {
- window.location.reload(true);
+if(newImage.complete) {
+    document.getElementById("Rpi").src = newImage.src;
+    newImage = new Image();
+    num++;
+    newImage.src = "./image#t=" + num;
+}
+
+    setTimeout(updateImage, 1000);
 }
 </script>
--->
 </head>
 
- <body>
-  <img src="/img.jpg?prev=10" alt="Security Camera View" height="480" width="640"> 
+ <body onload=updateImage()>
+  <img id="Rpi" src="./image" alt="Security Camera View" height="480" width="640"> 
   <form action="SetParam" >
     <div>
         <label for="HeightImage">Height:</label>
