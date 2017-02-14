@@ -2,8 +2,11 @@
 // Configuration options
 {
    "Camera" : {
-      "height" : 420,
-      "width" : 560
+      "height" : 480,
+      "horizontal" : 0,
+      "iso" : 360,
+      "vertical" : 1,
+      "width" : 640
    },
    "Data" : {
       "count" : 1000,
