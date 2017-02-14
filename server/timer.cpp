@@ -46,18 +46,20 @@ namespace camerasp
   }
   periodic_frame_grabber::periodic_frame_grabber(
       asio::io_context& io_service,
-      Json::Value const& backup)
+      Json::Value const& root)
     : timer_(io_service)
     ,cur_img(0)
     ,current_count(0)
-    ,file_saver_(backup)
+    ,file_saver_(root["Data"])
   {
-    int secs = backup["sample_period"].asInt();
+    auto backup=root["Data"];
+    auto secs = backup["sample_period"].asInt();
     sampling_period = std::chrono::seconds(secs);
     quit_flag =1;
-    camera_.set_width(640);
-    camera_.set_height(480);
-    camera_.setISO(400);
+    auto camera=root["Camera"];
+    camera_.set_width(camera["width"].asInt());
+    camera_.set_height(camera["height"].asInt());
+    camera_.setISO(camera["iso"].asInt());
 
   }
 

@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
     //configure frame grabber
     Json::Value root=camerasp::get_DOM(config_path + "options.json");
-    camerasp::periodic_frame_grabber timer(frame_grabber_service, root["Data"]);
+    camerasp::periodic_frame_grabber timer(frame_grabber_service, root);
     timer.resume();
     console->debug("Line {0}",__LINE__);
     // Start worker threads 
