@@ -165,7 +165,6 @@ class web_server
 	    server.stop();
 	  }
 	};
-      // register the handle_stop callback
 
       if (int ret = posix_spawnp (&child_pid, cmd, &child_fd_actions, 
 	    NULL, argv, env))
@@ -270,8 +269,6 @@ class web_server
 	  std::shared_ptr<http_server::Response> http_response,
 	  std::shared_ptr<http_server::Request> http_request)
       {
-	if(fg_state == process_state::started )
-	{ 
 	  try
 	  {
 
@@ -286,12 +283,11 @@ class web_server
 	    {
 	      camera[(*p)[1].str()]= atoi((*p)[2].str().c_str());
 	    }
+
 	    Json::StyledWriter writer; 
 	    root_["Camera"] = camera;
 	    auto update = writer.write(root_);
-	    //std::cout << update;
 	    write_file_content(config_path + "options.json",update);
-
 	    std::string data{"Config file updated. Restart camera"};
 	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
 	      <<  "Content-Length: " << data.size()<< "\r\n"
@@ -302,34 +298,44 @@ class web_server
 	  }
 	  catch(std::runtime_error& e)
 	  {
-
 	    std::string success("Frame Grabber not running. Issue start command");
 	    send_failure(http_response,success);
 	  }
-	}
-	else
-	{
-	  std::string success("Frame Grabber not running. Issue start command");
-	  send_failure(http_response,success);
-	}
       };
       // flip horizontal vertical
       server.resource["^/flip"]["PUT"]=[&](  //\\?horizontal=(0|1)$
 	  std::shared_ptr<http_server::Response> http_response,
 	  std::shared_ptr<http_server::Request> http_request)
       {
-	if(fg_state == process_state::started )
-	{ 
 	  try
 	  {
 
 	    camerasp::buffer_t data;
-	    server_base::Content& istr=http_request->content;
-	    for(std::string str; std::getline(istr,str);)
+	    std::ostringstream ostr;
+	    ostr<<http_request->content.rdbuf();
+	    std::string istr=ostr.str();
+	    auto camera = root_["Camera"];
+	    std::regex pat("(\\w+)=(0|1)");
+	    for(std::sregex_iterator p(std::begin(istr),std::end(istr),pat);
+		p!=std::sregex_iterator{};
+		++p)  
 	    {
-	      request->set(std::string("/flip?")+str);
-	      data += response->try_get();
+	      camera[(*p)[1].str()]= atoi((*p)[2].str().c_str());
+	      if(fg_state == process_state::started )
+	      { 
+		request->set(std::string("/flip?")+(*p)[0].str().c_str());
+		data = data+response->try_get() + "\r\n";
+	      }
+	      else
+	      {
+		data = "Frame grabber not running, but configuration file updated";
+	      }
 	    }
+
+	    Json::StyledWriter writer; 
+	    root_["Camera"] = camera;
+	    auto update = writer.write(root_);
+	    write_file_content(config_path + "options.json",update);
 	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
 	      <<  "Content-Length: " << data.size()<< "\r\n"
 	      <<  "Content-type: " << "application/text" <<"\r\n"
@@ -343,12 +349,6 @@ class web_server
 	    std::string success("Frame Grabber not running. Issue start command");
 	    send_failure(http_response,success);
 	  }
-	}
-	else
-	{
-	  std::string success("Frame Grabber not running. Issue start command");
-	  send_failure(http_response,success);
-	}
       };
       server.resource["^/resume$"]["GET"]=[&](
 	  std::shared_ptr<http_server::Response> http_response,
