@@ -32,4 +32,5 @@ namespace camerasp{
   MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) ;
   MMAL_PARAM_AWBMODE_T get_awb_from_string ( const std::string& str ) ;
 
+  void write_file_content(std::string const& path, std::string const& dat)    ;
 }

@@ -18,6 +18,10 @@
 #include <mmal/mmal_types.h>
 #include <mmal/mmal_parameters_camera.h>
 namespace camerasp{
+  void write_file_content(std::string const& path, std::string const& dat)    {
+    std::ofstream ofs(path);
+    ofs<<dat;
+  }
 
 
   std::string upper_case(std::string const& str)    {
