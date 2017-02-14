@@ -128,18 +128,18 @@ class web_server
       using namespace camerasp;
 
 
-    //Child process
-    //Important: the working directory of the child process
-    // is the same as that of the parent process.
-    int ret;
-    if (ret = posix_spawn_file_actions_init (&child_fd_actions))
-      console->error("posix_spawn_file_actions_init"), exit(ret);
-    if (ret = posix_spawn_file_actions_addopen (
-	  &child_fd_actions, 1,log_folder , 
-	  O_WRONLY | O_CREAT | O_TRUNC, 0644))
-      console->error("posix_spawn_file_actions_addopen"), exit(ret);
-    if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
-      console->error("posix_spawn_file_actions_adddup2"), exit(ret);
+      //Child process
+      //Important: the working directory of the child process
+      // is the same as that of the parent process.
+      int ret;
+      if (ret = posix_spawn_file_actions_init (&child_fd_actions))
+	console->error("posix_spawn_file_actions_init"), exit(ret);
+      if (ret = posix_spawn_file_actions_addopen (
+	    &child_fd_actions, 1,log_folder , 
+	    O_WRONLY | O_CREAT | O_TRUNC, 0644))
+	console->error("posix_spawn_file_actions_addopen"), exit(ret);
+      if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
+	console->error("posix_spawn_file_actions_adddup2"), exit(ret);
       // 
       server.io_service = io_service;
       // The signal set is used to register termination notifications
@@ -152,19 +152,19 @@ class web_server
       // In a service 'spawn' forks a child process
       process_state fg_state = process_state::stopped;
       std::function<void(ASIO_ERROR_CODE,int)> signal_handler = 
-      [&] (ASIO_ERROR_CODE const& error, int signal_number)
-      { 
-	if(signal_number == SIGCHLD)
-	{
-	  fg_state = process_state::stopped;
-	  console->debug("Process stopped");
-	  waitpid(child_pid,NULL,0);
-	  signals_.async_wait(signal_handler);
-	} else {
-	  console->debug("SIGTERM received");
-	  server.stop();
-	}
-      };
+	[&] (ASIO_ERROR_CODE const& error, int signal_number)
+	{ 
+	  if(signal_number == SIGCHLD)
+	  {
+	    fg_state = process_state::stopped;
+	    console->debug("Process stopped");
+	    waitpid(child_pid,NULL,0);
+	    signals_.async_wait(signal_handler);
+	  } else {
+	    console->debug("SIGTERM received");
+	    server.stop();
+	  }
+	};
       // register the handle_stop callback
 
       if (int ret = posix_spawnp (&child_pid, cmd, &child_fd_actions, 
@@ -209,7 +209,7 @@ class web_server
 	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
 	      <<  "Content-Length: " << data.size()<< "\r\n"
 	      <<  "Content-type: " << "application/text" <<"\r\n"
-              << "Cache-Control: no-cache, must-revalidate" << "\r\n"
+	      << "Cache-Control: no-cache, must-revalidate" << "\r\n"
 	      << "\r\n"
 	      << data;
 	  }
@@ -276,8 +276,8 @@ class web_server
 	  {
 
 	    std::ostringstream ostr;
-            ostr<<http_request->content.rdbuf();
-            std::string istr=ostr.str();
+	    ostr<<http_request->content.rdbuf();
+	    std::string istr=ostr.str();
 	    auto camera = root_["Camera"];
 	    std::regex pat("(\\w+)=(\\d+)");
 	    for(std::sregex_iterator p(std::begin(istr),std::end(istr),pat);
@@ -384,7 +384,7 @@ class web_server
       {
 	std::string success("Succeeded");
 
-	  console->info("Resart Child command received");
+	console->info("Resart Child command received");
 	if(fg_state == process_state::started )
 	{
 	  success="Already Running";
@@ -405,18 +405,24 @@ class web_server
 	  send_success(http_response,success);
 	}
       };
-      auto _1 = gsl::finally([=]()
+      auto kill_child = [=]()
       {
-            int status =0;
-             unsigned n=0;
+        if(fg_state==process_state::started)
+        { 
+	  int status =0;
+	  unsigned n=0;
 	  kill(child_pid,SIGTERM);
-            while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
-            {
-               usleep(100*1000);
-               ++n;
-            } 
-	  if(n==20)kill(child_pid,SIGKILL);
-      });
+	  while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
+	  {
+	    usleep(100*1000);
+	    ++n;
+	  } 
+	  if(n==20)
+            kill(child_pid,SIGKILL);
+          fg_state==process_state::stopped;
+        }   
+      };
+      auto _1 = gsl::finally([=](){kill_child();});
       //stop capture
       server.resource["^/abort$"]["GET"]=[&](
 	  std::shared_ptr<http_server::Response> http_response,
@@ -427,16 +433,8 @@ class web_server
 	if(fg_state == process_state::started )
 
 	{
-	  fg_state = process_state::stopped;
-	  kill(child_pid,SIGKILL);
-            int status =0;
-             unsigned n=0;
-            while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
-            {
-               usleep(100*1000);
-               ++n;
-            }
-	  send_success(http_response,success);
+	  kill_child();
+          send_success(http_response,success);
 	}
 	else if (fg_state == process_state::stop_pending)
 	{
@@ -456,24 +454,24 @@ class web_server
       {
 	std::string success("Succeeded");
 	//
-        struct sigaction act;
-        memset(&act,'\0',sizeof(act));
-        sigaction(SIGCHLD,nullptr, &act);
-        console->debug("Mask= {0},{1},{2},{3}", act.sa_mask.__val[0],act.sa_mask.__val[1],act.sa_mask.__val[2],act.sa_mask.__val[3]); 
+	struct sigaction act;
+	memset(&act,'\0',sizeof(act));
+	sigaction(SIGCHLD,nullptr, &act);
+	console->debug("Mask= {0},{1},{2},{3}", act.sa_mask.__val[0],act.sa_mask.__val[1],act.sa_mask.__val[2],act.sa_mask.__val[3]); 
 	if(fg_state == process_state::started )
 	  try{
 	    request->set("exit");
 	    camerasp::buffer_t data = response->try_get();
 	    console->info("stop executed");
-            int status =0;
-             unsigned n=0;
-            while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
-            {
-               usleep(100*1000);
-               ++n;
-            } 
-	  if(n==20)kill(child_pid,SIGKILL);
-	  fg_state = process_state::stopped;
+	    int status =0;
+	    unsigned n=0;
+	    while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
+	    {
+	      usleep(100*1000);
+	      ++n;
+	    } 
+	    if(n==20)kill(child_pid,SIGKILL);
+	    fg_state = process_state::stopped;
 	    send_success(http_response,success);
 	  }
 	catch (std::exception& e)
