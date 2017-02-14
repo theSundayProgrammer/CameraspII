@@ -60,7 +60,8 @@ namespace camerasp
     camera_.set_width(camera["width"].asInt());
     camera_.set_height(camera["height"].asInt());
     camera_.setISO(camera["iso"].asInt());
-
+    camera_.set_vertical_flip(camera["vertical"].asInt());
+    camera_.set_horizontal_flip(camera["horizontal"].asInt());
   }
 
 
