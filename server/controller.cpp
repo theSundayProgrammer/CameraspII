@@ -110,8 +110,8 @@ class web_server
   public:
     web_server(Json::Value& root)
       :response( RESPONSE_MEMORY_NAME)
-       ,request( REQUEST_MEMORY_NAME)
-       ,root_(root)
+      ,request( REQUEST_MEMORY_NAME)
+      ,root_(root)
   {
 
 
@@ -199,7 +199,6 @@ class web_server
 
       {
 	if(fg_state == process_state::started )
-	{ 
 	  try
 	  {
 	    std::string str =http_request->path_match[0];
@@ -215,10 +214,9 @@ class web_server
 	  catch(std::runtime_error& e)
 	  {
 
-	    std::string success("Frame Grabber not running. Issue start command");
+	    std::string success("Frame Grabber hung. Issue start command");
 	    send_failure(http_response,success);
 	  }
-	}
 	else
 	{
 	  std::string success("Frame Grabber not running. Issue start command");
@@ -231,23 +229,29 @@ class web_server
 
       {
 	if(fg_state == process_state::started )
-	{
 	  try{
 	    std::string str =http_request->path_match[0];
 	    request->set(str);
 	    camerasp::buffer_t data = response->try_get();
-	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
-	      <<  "Content-Length: " << data.size()<< "\r\n"
-	      <<  "Content-type: " << "image/jpeg" <<"\r\n"
-	      << "\r\n"
-	      << data;
+	    std::string err(data, 0,4);
+	    if (err== std::string(4,'\0'))
+	    {
+	      *http_response <<  "HTTP/1.1 200 OK\r\n" 
+		<<  "Content-Length: " << data.size()-4<< "\r\n"
+		<<  "Content-type: " << "image/jpeg" <<"\r\n"
+		<< "\r\n"
+		<< std::string(data,4);
+	    }
+	    else
+	    {
+	      send_failure(http_response,err + "No image Available");
+	    }
 	  }
-	  catch(std::runtime_error& e)
-	  {
+	catch(std::runtime_error& e)
+	{
 
-	    std::string success("Frame Grabber not running. Issue start command");
-	    send_failure(http_response,success);
-	  }
+	  std::string success("Frame Grabber hung. Issue start command");
+	  send_failure(http_response,success);
 	}
 	else
 	{
@@ -265,7 +269,7 @@ class web_server
       };
 
       // replace camera properties
-      server.resource["^/camera"]["PUT"]=[&](  //\\?horizontal=(0|1)$
+      server.resource["^/camera"]["PUT"]=[&](  
 	  std::shared_ptr<http_server::Response> http_response,
 	  std::shared_ptr<http_server::Request> http_request)
       {
