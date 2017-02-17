@@ -22,14 +22,14 @@ if(newImage.complete) {
 
  <body onload=updateImage()>
   <img id="Rpi" src="./image" alt="Security Camera View" height="480" width="640"> 
-  <form action="SetParam" >
+  <form action="camera" method="POST" >
     <div>
         <label for="HeightImage">Height:</label>
         <input type="text" id="HeightImage" name="height" />
     </div>
     <div>
         <label for="WidthImage">Width:</label>
-        <input type="text" id="WidthImage" name="Width" />
+        <input type="text" id="WidthImage" name="width" />
     </div>
    
     <div class="button">
