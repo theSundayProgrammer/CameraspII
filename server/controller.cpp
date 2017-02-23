@@ -189,6 +189,7 @@ class web_server
 	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
 	      <<  "Content-Length: " << data.size()-4<< "\r\n"
 	      <<  "Content-type: " << "image/jpeg" <<"\r\n"
+	    << "Cache-Control: no-cache, must-revalidate" << "\r\n"
 	      << "\r\n"
 	      << std::string(data,4);
 	  }
