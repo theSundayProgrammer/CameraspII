@@ -474,6 +474,17 @@ class web_server
       };
 
       //restart capture
+      server.resource["^/config$"]["GET"]=[&](
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
+      {
+	Json::Value root = camerasp::get_DOM(config_path + "options.json");
+
+	Json::FastWriter writer; 
+	auto camera_config = root["Camera"];
+	auto response = writer.write(camera_config);
+	send_success(http_response,response );
+      };
       server.resource["^/start$"]["GET"]=[&](
 	  std::shared_ptr<http_server::Response> http_response,
 	  std::shared_ptr<http_server::Request> http_request)
