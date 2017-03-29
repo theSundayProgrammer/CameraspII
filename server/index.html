@@ -41,6 +41,7 @@ button:enabled {
     display: block;
 }
 
+aside {float:left;} 
 /* Change color of dropdown links on hover */
 .dropdown-content a:hover {background-color: #f1f1f1}
 
@@ -101,7 +102,7 @@ function updateImage()
   if(proceed)
     setTimeout(updateImage, 1000);
 }
-function stop_fg()
+function stopFg()
 {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -117,7 +118,9 @@ function stop_fg()
   document.getElementById("frame_grabber_stop").disabled=true;
   document.getElementById("frame_grabber_start").disabled=false;
 }
-function start_fg()
+function toggleMirror(){};
+function toggleFlip(){};
+function startFg()
 {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -136,6 +139,27 @@ function start_fg()
 </script>
 </head>
 
+<aside id="cameraConfig">
+<table>
+<tr>
+<th> Attribute </th>
+<th> value </th>
+</tr>
+
+<tr>
+<td>Length</td>
+<td id="camlength">100</td>
+</tr>
+<tr>
+<td>Width</td>
+<td id="camwidth">100</td>
+</tr>
+<tr>
+<td>ISO</td>
+<td id="camISO">100</td>
+</tr>
+ </table>
+</aside>
  <body onload=updateImage()>
   <img id="Rpi" src="./image" alt="Security Camera View" height="480" width="640"> 
 <br/>
@@ -155,8 +179,10 @@ function start_fg()
     <a href="#" onclick="setheight(960)">960</a>
   </div>
 </div>
-<button class="dropbtn" id="frame_grabber_start"  onclick = "start_fg()" > Start </button>
-<button class="dropbtn" id="frame_grabber_stop" onclick = "stop_fg()" > Stop </button>
+<button class="dropbtn" id="frameGrabberMirror" onclick = "toggleMirror()" > Mirror </button>
+<button class="dropbtn" id="frameGrabberFlip"  onclick = "toggleFlip()" > Flip </button>
+<button class="dropbtn" id="frameGrabberStart"  onclick = "startFg()" > Start </button>
+<button class="dropbtn" id="frameGrabberStop" onclick = "stopFg()" > Stop </button>
 <br/>
 <p id="Rstatus">Hello World</p>
 </body>
