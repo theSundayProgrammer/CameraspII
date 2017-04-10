@@ -444,13 +444,15 @@ namespace camerasp
     userdata->offset = 0;
     userdata->length = *length;
     encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *) userdata;
-    if (start_capture()) {
+    if (start_capture()) 
+    {
+      encoder_output_port->userdata = NULL;
+      delete userdata;
       sem_destroy(&mutex);
       sem_init(&mutex, 0, 0);
       return -1;
     }
     sem_wait(&mutex);
-    sem_destroy(&mutex);
     stop_capture();
     *length =  userdata->offset ;
     return 0;
