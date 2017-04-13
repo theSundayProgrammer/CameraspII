@@ -235,7 +235,28 @@ static void default_status(RASPISTILL_STATE *state)
    raspicamcontrol_set_defaults(&state->camera_parameters);
 }
 
+/*
 
+
+const char *string_from_exposure_mode(MMAL_PARAM_EXPOSUREMODE_T em);
+MMAL_PARAM_EXPOSUREMODE_T exposure_mode_from_string(const char *str);
+
+const char *string_from_awb_mode(MMAL_PARAM_AWBMODE_T em);
+MMAL_PARAM_AWBMODE_T awb_mode_from_string(const char *str);
+
+const char *string_mode_from_imagefx(MMAL_PARAM_IMAGEFX_T);
+MMAL_PARAM_IMAGEFX_T imagefx_mode_from_string(const char *str);
+
+const char *string_from_metering_mode(MMAL_PARAM_EXPOSUREMETERINGMODE_T em);
+MMAL_PARAM_EXPOSUREMETERINGMODE_T metering_mode_from_string(const char *str);
+
+MMAL_PARAMETER_DRC_STRENGTH_T drc_mode_from_string(const char *str);
+const char *string_from_drc_mode(MMAL_PARAMETER_DRC_STRENGTH_T em);
+
+MMAL_STEREOSCOPIC_MODE_T stereo_mode_from_string(const char *str);
+const char *string_from_stereo_mode(MMAL_STEREOSCOPIC_MODE_T em);
+
+*/
 
 /**
  * Give the supplied parameter block a set of default values
@@ -252,10 +273,10 @@ void save_camera_control(RASPICAM_CAMERA_PARAMETERS *params, Json::Value& camera
    camera_control["ISO"]=params->ISO ;                    // 0 = auto
    camera_control["videoStabilisation"]=params->videoStabilisation ;
    camera_control["exposureCompensation"]=params->exposureCompensation ;
-   camera_control["exposureMode"]=params->exposureMode ;
-   camera_control["exposureMeterMode"]=params->exposureMeterMode ;
-   camera_control["awbMode"]=params->awbMode ;
-   camera_control["imageEffect"]=params->imageEffect ;
+   camera_control["exposureMode"]=string_from_exposure_mode(params->exposureMode) ;
+   camera_control["exposureMeterMode"]=string_from_metering_mode(params->exposureMeterMode);
+   camera_control["awbMode"]=string_from_awb_mode(params->awbMode);
+   camera_control["imageEffect"]=string_mode_from_imagefx(params->imageEffect);
    camera_control["colourEffect"]= make_json(params->colourEffects);
    camera_control["rotation"]=params->rotation ;
    camera_control["hflip"]=params->hflip ;
@@ -263,14 +284,14 @@ void save_camera_control(RASPICAM_CAMERA_PARAMETERS *params, Json::Value& camera
    camera_control["shutter_speed"]=params->shutter_speed ;          // 0 = auto
    camera_control["awb_gains_r"]=params->awb_gains_r ;      // Only have any function if AWB OFF is used.
    camera_control["awb_gains_b"]=params->awb_gains_b ;
-   camera_control["drc_level"]=params->drc_level ;
+   camera_control["drc_level"]=string_from_drc_mode(params->drc_level);
    camera_control["stats_pass"]=params->stats_pass ;
    camera_control["enable_annotate"]=params->enable_annotate ;
    //camera_control["annotate_string"]=params->annotate_string; //todo
    camera_control["annotate_text_size"]=params->annotate_text_size ;	//Use firmware default
    camera_control["annotate_text_colour"]=params->annotate_text_colour ;   //Use firmware default
    camera_control["annotate_bg_colour"]=params->annotate_bg_colour ;     //Use firmware default
-   camera_control["stereo_mode_mode"] = params->stereo_mode.mode ;
+   camera_control["stereo_mode_mode"] = string_from_stereo_mode(params->stereo_mode.mode);
    camera_control["stereo_mode_decimate"] = params->stereo_mode.decimate ;
    camera_control["stereo_mode_swap_eyes"] = params->stereo_mode.swap_eyes ;
 }
@@ -285,10 +306,10 @@ void read_camera_control(RASPICAM_CAMERA_PARAMETERS *params, Json::Value& camera
    params->ISO =camera_control["ISO"].asInt();                    // 0 = auto
    params->videoStabilisation =camera_control["videoStabilisation"].asInt();
    params->exposureCompensation =camera_control["exposureCompensation"].asInt();
-   params->exposureMode =camera_control["exposureMode"].asInt();
-   params->exposureMeterMode =camera_control["exposureMeterMode"].asInt();
-   params->awbMode =camera_control["awbMode"].asInt();
-   params->imageEffect =camera_control["imageEffect"].asInt();
+   params->exposureMode =exposure_mode_from_string(camera_control["exposureMode"].asString().c_str());
+   params->exposureMeterMode =metering_mode_from_string(camera_control["exposureMeterMode"].asString().c_str());
+   params->awbMode =awb_mode_from_string(camera_control["awbMode"].asString().c_str());
+   params->imageEffect =imagefx_mode_from_string(camera_control["imageEffect"].asString().c_str());
    read_json(params->colourEffects,camera_control["colourEffect"]);
    params->rotation =camera_control["rotation"].asInt();
    params->hflip =camera_control["hflip"].asInt();
@@ -296,18 +317,18 @@ void read_camera_control(RASPICAM_CAMERA_PARAMETERS *params, Json::Value& camera
    params->shutter_speed =camera_control["shutter_speed"].asInt();          // 0 = auto
    params->awb_gains_r =camera_control["awb_gains_r"].asInt();      // Only have any function if AWB OFF is used.
    params->awb_gains_b =camera_control["awb_gains_b"].asInt();
-   params->drc_level =camera_control["drc_level"].asInt();
+   params->drc_level=drc_mode_from_string(camera_control["drc_level"].asString().c_str());
    params->stats_pass =camera_control["stats_pass"].asInt();
    params->enable_annotate =camera_control["enable_annotate"].asInt();
    //camera_control["annotate_string"]=params->annotate_string; //todo
    params->annotate_text_size =camera_control["annotate_text_size"].asInt();	//Use firmware default
    params->annotate_text_colour =camera_control["annotate_text_colour"].asInt();   //Use firmware default
    params->annotate_bg_colour =camera_control["annotate_bg_colour"].asInt();     //Use firmware default
-    params->stereo_mode.mode =camera_control["stereo_mode_mode"].asInt() ;
+    params->stereo_mode.mode =stereo_mode_from_string(camera_control["stereo_mode_mode"].asString().c_str());
     params->stereo_mode.decimate =camera_control["stereo_mode_decimate"].asInt() ;
     params->stereo_mode.swap_eyes =camera_control["stereo_mode_swap_eyes"].asInt() ;
 }
-void save_config( Json::Value& camera_config, RASPISTILL_STATE& state)
+void save_config(  RASPISTILL_STATE& state,Json::Value& camera_config)
 {
   camera_config["timeout"]=state.timeout;                        /// Time taken before frame is grabbed and app then shuts down. Units are milliseconds
   camera_config["width"]=state.width;                          /// Requested width of image
@@ -332,7 +353,7 @@ void save_config( Json::Value& camera_config, RASPISTILL_STATE& state)
   camera_config["timestamp"]=state.timestamp;                      /// Use timestamp instead of frame#
   camera_config["restart_interval"]=state.restart_interval;               /// JPEG restart interval. 0 for none.
 }
-void read_config(Json::Value& camera_config, RASPISTILL_STATE& state)
+void read_config(RASPISTILL_STATE& state,  Json::Value& camera_config )
 {
   state.timeout=  camera_config["timeout"].asInt();                        /// Time taken before frame is grabbed and app then shuts down. Units are milliseconds
   state.width=  camera_config["width"].asInt();                          /// Requested width of image
@@ -368,7 +389,6 @@ int main(int argc, const char **argv)
   MMAL_STATUS_T status = MMAL_SUCCESS;
 
   default_status(&state);
-
   Json::Value root = camerasp::get_DOM("options.json");
   auto camera_config = root["Camera"];
   auto camera_control = root["CamControl"];
@@ -380,9 +400,13 @@ int main(int argc, const char **argv)
 
     dump_status(&state);
   }
+   save_camera_control(&state.camera_parameters,camera_control);
 	Json::StyledWriter writer; 
 	root["CamControl"] = camera_control;
 	auto update = writer.write(root);
-	camerasp::write_file_content("options2.json",update);
+	camerasp::write_file_content("options.json",update);
   return exit_code;
 }
+
+
+// raspicam.bin -v -tl 1000 -o img_%04d.jpg -h 480 -w 640 -t 36000000 -x none > err.txt
