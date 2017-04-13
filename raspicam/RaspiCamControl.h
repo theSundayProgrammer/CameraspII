@@ -211,5 +211,22 @@ MMAL_PARAM_AWBMODE_T raspicamcontrol_get_awb_mode(MMAL_COMPONENT_T *camera);
 MMAL_PARAM_IMAGEFX_T raspicamcontrol_get_imageFX(MMAL_COMPONENT_T *camera);
 MMAL_PARAM_COLOURFX_T raspicamcontrol_get_colourFX(MMAL_COMPONENT_T *camera);
 
+const char *string_from_exposure_mode(MMAL_PARAM_EXPOSUREMODE_T em);
+MMAL_PARAM_EXPOSUREMODE_T exposure_mode_from_string(const char *str);
+
+const char *string_from_awb_mode(MMAL_PARAM_AWBMODE_T em);
+MMAL_PARAM_AWBMODE_T awb_mode_from_string(const char *str);
+
+const char *string_mode_from_imagefx(MMAL_PARAM_IMAGEFX_T);
+MMAL_PARAM_IMAGEFX_T imagefx_mode_from_string(const char *str);
+
+const char *string_from_metering_mode(MMAL_PARAM_EXPOSUREMETERINGMODE_T em);
+MMAL_PARAM_EXPOSUREMETERINGMODE_T metering_mode_from_string(const char *str);
+
+MMAL_PARAMETER_DRC_STRENGTH_T drc_mode_from_string(const char *str);
+const char *string_from_drc_mode(MMAL_PARAMETER_DRC_STRENGTH_T em);
+
+MMAL_STEREOSCOPIC_MODE_T stereo_mode_from_string(const char *str);
+const char *string_from_stereo_mode(MMAL_STEREOSCOPIC_MODE_T em);
 
 #endif /* RASPICAMCONTROL_H_ */
