@@ -65,19 +65,19 @@
    },
    "Data" : {
       "count" : 1000,
-      "path_prefix" : "/home/chakra/data/backup",
+      "path_prefix" : "/home/pi/data/backup",
       "sample_period" : 1
    },
    "Logging" : {
       "count" : 5,
-      "path" : "/home/chakra/data/log",
+      "path" : "/home/pi/data/log",
       "size" : 2,
       "type" : "debug"
    },
    "Server" : {
-      "command" : "/home/chakra/bin/camerasp",
-      "home_page" : "/home/chakra/data/web",
-      "log_folder" : "/home/chakra/data/camerasp_log",
+      "command" : "/home/pi/bin/camerasp",
+      "home_page" : "/home/pi/data/web",
+      "log_folder" : "/home/pi/data/camerasp_log",
       "port" : 8088
    }
 }
