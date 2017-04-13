@@ -41,37 +41,43 @@ extern "C" {
 }
 #include "RaspiCamControl.h"
 #include "RaspiCLI.h"
-
+#include <stdexcept>
 /// Cross reference structure, mode string against mode id
 typedef struct 
 {
    const char *mode;
    MMAL_PARAM_AWBMODE_T mmal_mode;
+   typedef MMAL_PARAM_AWBMODE_T value_type;
 } AWB_REF_T;
 typedef struct 
 {
    const char *mode;
    MMAL_PARAM_EXPOSUREMETERINGMODE_T mmal_mode;
+   typedef MMAL_PARAM_EXPOSUREMETERINGMODE_T value_type;
 } XM_REF_T;
 typedef struct 
 {
    const char *mode;
    MMAL_PARAMETER_DRC_STRENGTH_T mmal_mode;
+   typedef MMAL_PARAMETER_DRC_STRENGTH_T value_type;
 } DRC_REF_T;
 typedef struct 
 {
    const char *mode;
    MMAL_PARAM_IMAGEFX_T mmal_mode;
+   typedef MMAL_PARAM_IMAGEFX_T value_type;
 } IMGFX_REF_T;
 typedef struct 
 {
    const char *mode;
    MMAL_STEREOSCOPIC_MODE_T mmal_mode;
+   typedef MMAL_STEREOSCOPIC_MODE_T value_type;
 } STR_REF_T;
 typedef struct xref_t
 {
    const char *mode;
    MMAL_PARAM_EXPOSUREMODE_T mmal_mode;
+   typedef MMAL_PARAM_EXPOSUREMODE_T value_type;
 } XREF_T;
 
 
@@ -235,18 +241,16 @@ static int cmdline_commands_size = sizeof(cmdline_commands) / sizeof(cmdline_com
  * @return The integer match for the string, or -1 if no match
  */
 template <class T>
-int raspicli_map_xref(const char *str, const T *map, int num_refs)
+typename T::value_type raspicli_map_xref(const char *str, const T *map, int num_refs)
 {
-   int i;
-
-   for (i=0;i<num_refs;i++)
+   for (int i=0;i<num_refs;i++)
    {
       if (!strcasecmp(str, map[i].mode))
       {
          return map[i].mmal_mode;
       }
    }
-   return -1;
+   throw std::runtime_error(std::string("invalid argument") + str);
 }
 
 /**
@@ -257,7 +261,7 @@ int raspicli_map_xref(const char *str, const T *map, int num_refs)
  * @return const pointer to string, or NULL if no match
  */
 template <class T>
-const char *raspicli_unmap_xref(const int en, T *map, int num_refs)
+const char *raspicli_unmap_xref(typename T::value_type en, T map[], int num_refs)
 {
    int i;
 
@@ -298,213 +302,38 @@ static int update_cycle_parameter(int *option, int min, int max, int increment)
    else
       return 1;
 }
-
-
-/**
- * Test/Demo code to cycle through a bunch of camera settings
- * This code is pretty hacky so please don't complain!!
- * It only does stuff that should have a visual impact (hence demo!)
- * This will override any user supplied parameters
- *
- * Each call of this function will move on to the next setting
- *
- * @param camera Pointer to the camera to change settings on.
- * @return 0 if reached end of complete sequence, !0 otherwise
+/*
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
  */
-
-int raspicamcontrol_cycle_test(MMAL_COMPONENT_T *camera)
+const char *string_from_awb_mode(MMAL_PARAM_AWBMODE_T em)
 {
-   static int parameter = 0;
-   static int parameter_option = parameter_reset; // which value the parameter currently has
+ const char *str= raspicli_unmap_xref(em, awb_map, awb_map_size);
 
-   vcos_assert(camera);
-
-   // We are going to cycle through all the relevant entries in the parameter block
-   // and send options to the camera.
-   if (parameter == 0)
-   {
-      // sharpness
-      if (update_cycle_parameter(&parameter_option, -100, 100, 10))
-         raspicamcontrol_set_sharpness(camera, parameter_option);
-      else
-      {
-         raspicamcontrol_set_sharpness(camera, 0);
-         parameter++;
-      }
-   }
-   else
-   if (parameter == 1)
-   {
-      // contrast
-      if (update_cycle_parameter(&parameter_option, -100, 100, 10))
-         raspicamcontrol_set_contrast(camera, parameter_option);
-      else
-      {
-         raspicamcontrol_set_contrast(camera, 0);
-         parameter++;
-      }
-   }
-   else
-   if (parameter == 2)
-   {
-      // brightness
-      if (update_cycle_parameter(&parameter_option, 0, 100, 10))
-         raspicamcontrol_set_brightness(camera, parameter_option);
-      else
-      {
-         raspicamcontrol_set_brightness(camera, 50);
-         parameter++;
-      }
-   }
-   else
-   if (parameter == 3)
-   {
-      // contrast
-      if (update_cycle_parameter(&parameter_option, -100, 100, 10))
-         raspicamcontrol_set_saturation(camera, parameter_option);
-      else
-      {
-         parameter++;
-         raspicamcontrol_set_saturation(camera, 0);
-      }
-   }
-   else
-   if (parameter == 4)
-   {
-      // EV
-      if (update_cycle_parameter(&parameter_option, -10, 10, 4))
-         raspicamcontrol_set_exposure_compensation(camera, parameter_option);
-      else
-      {
-         raspicamcontrol_set_exposure_compensation(camera, 0);
-         parameter++;
-      }
-   }
-   else
-   if (parameter == 5)
-   {
-      // MMAL_PARAM_EXPOSUREMODE_T
-      if (update_cycle_parameter(&parameter_option, 0, exposure_map_size, 1))
-         raspicamcontrol_set_exposure_mode(camera, exposure_map[parameter_option].mmal_mode);
-      else
-      {
-         raspicamcontrol_set_exposure_mode(camera, MMAL_PARAM_EXPOSUREMODE_AUTO);
-         parameter++;
-      }
-   }
-   else
-   if (parameter == 6)
-   {
-      // MMAL_PARAM_AWB_T
-      if (update_cycle_parameter(&parameter_option, 0, awb_map_size, 1))
-         raspicamcontrol_set_awb_mode(camera, awb_map[parameter_option].mmal_mode);
-      else
-      {
-         raspicamcontrol_set_awb_mode(camera, MMAL_PARAM_AWBMODE_AUTO);
-         parameter++;
-      }
-   }
-   if (parameter == 7)
-   {
-      // MMAL_PARAM_IMAGEFX_T
-      if (update_cycle_parameter(&parameter_option, 0, imagefx_map_size, 1))
-         raspicamcontrol_set_imageFX(camera, imagefx_map[parameter_option].mmal_mode);
-      else
-      {
-         raspicamcontrol_set_imageFX(camera, MMAL_PARAM_IMAGEFX_NONE);
-         parameter++;
-      }
-   }
-   if (parameter == 8)
-   {
-      MMAL_PARAM_COLOURFX_T colfx = {0,0,0};
-      switch (parameter_option)
-      {
-         case parameter_reset :
-            parameter_option = 1;
-            colfx.u = 128;
-            colfx.v = 128;
-            break;
-         case 1 :
-            parameter_option = 2;
-            colfx.u = 100;
-            colfx.v = 200;
-            break;
-         case 2 :
-            parameter_option = parameter_reset;
-            colfx.enable = 0;
-            parameter++;
-            break;
-      }
-      raspicamcontrol_set_colourFX(camera, &colfx);
-   }
-
-   // Orientation
-   if (parameter == 9)
-   {
-      switch (parameter_option)
-      {
-      case parameter_reset:
-         raspicamcontrol_set_rotation(camera, 90);
-         parameter_option = 1;
-         break;
-
-      case 1 :
-         raspicamcontrol_set_rotation(camera, 180);
-         parameter_option = 2;
-         break;
-
-      case 2 :
-         raspicamcontrol_set_rotation(camera, 270);
-         parameter_option = 3;
-         break;
-
-      case 3 :
-      {
-         raspicamcontrol_set_rotation(camera, 0);
-         raspicamcontrol_set_flips(camera, 1,0);
-         parameter_option = 4;
-         break;
-      }
-      case 4 :
-      {
-         raspicamcontrol_set_flips(camera, 0,1);
-         parameter_option = 5;
-         break;
-      }
-      case 5 :
-      {
-         raspicamcontrol_set_flips(camera, 1, 1);
-         parameter_option = 6;
-         break;
-      }
-      case 6 :
-      {
-         raspicamcontrol_set_flips(camera, 0, 0);
-         parameter_option = parameter_reset;
-         parameter++;
-         break;
-      }
-      }
-   }
-
-   if (parameter == 10)
-   {
-      parameter = 1;
-      return 0;
-   }
-
-   return 1;
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
 }
-
-
-
 /**
  * Convert string to the MMAL parameter for exposure mode
  * @param str Incoming string to match
  * @return MMAL parameter matching the string, or the AUTO option if no match found
  */
-static MMAL_PARAM_EXPOSUREMODE_T exposure_mode_from_string(const char *str)
+const char *string_from_exposure_mode(MMAL_PARAM_EXPOSUREMODE_T em)
+{
+ const char *str= raspicli_unmap_xref(em, exposure_map, exposure_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
+}
+/**
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+MMAL_PARAM_EXPOSUREMODE_T exposure_mode_from_string(const char *str)
 {
    int i = raspicli_map_xref(str, exposure_map, exposure_map_size);
 
@@ -520,7 +349,7 @@ static MMAL_PARAM_EXPOSUREMODE_T exposure_mode_from_string(const char *str)
  * @param str Incoming string to match
  * @return MMAL parameter matching the string, or the AUTO option if no match found
  */
-static MMAL_PARAM_AWBMODE_T awb_mode_from_string(const char *str)
+MMAL_PARAM_AWBMODE_T awb_mode_from_string(const char *str)
 {
    int i = raspicli_map_xref(str, awb_map, awb_map_size);
 
@@ -546,13 +375,21 @@ MMAL_PARAM_IMAGEFX_T imagefx_mode_from_string(const char *str)
    vcos_log_error("Unknown image fx: %s", str);
    return MMAL_PARAM_IMAGEFX_NONE;
 }
+const char *string_mode_from_imagefx(MMAL_PARAM_IMAGEFX_T em)
+{
+ const char *str= raspicli_unmap_xref(em,  imagefx_map, imagefx_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
+}
 
 /**
  * Convert string to the MMAL parameter for exposure metering mode
  * @param str Incoming string to match
  * @return MMAL parameter matching the string, or the AUTO option if no match found
  */
-static MMAL_PARAM_EXPOSUREMETERINGMODE_T metering_mode_from_string(const char *str)
+MMAL_PARAM_EXPOSUREMETERINGMODE_T metering_mode_from_string(const char *str)
 {
    int i = raspicli_map_xref(str, metering_mode_map, metering_mode_map_size);
 
@@ -563,12 +400,20 @@ static MMAL_PARAM_EXPOSUREMETERINGMODE_T metering_mode_from_string(const char *s
    return MMAL_PARAM_EXPOSUREMETERINGMODE_AVERAGE;
 }
 
+const char *string_from_metering_mode(MMAL_PARAM_EXPOSUREMETERINGMODE_T em)
+{
+ const char *str= raspicli_unmap_xref(em, metering_mode_map, metering_mode_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
+}
 /**
  * Convert string to the MMAL parameter for DRC level
  * @param str Incoming string to match
  * @return MMAL parameter matching the string, or the AUTO option if no match found
  */
-static MMAL_PARAMETER_DRC_STRENGTH_T drc_mode_from_string(const char *str)
+MMAL_PARAMETER_DRC_STRENGTH_T drc_mode_from_string(const char *str)
 {
    int i = raspicli_map_xref(str, drc_mode_map, drc_mode_map_size);
 
@@ -580,13 +425,26 @@ static MMAL_PARAMETER_DRC_STRENGTH_T drc_mode_from_string(const char *str)
 }
 
 /**
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+const char *string_from_drc_mode(MMAL_PARAMETER_DRC_STRENGTH_T em)
+{
+ const char *str= raspicli_unmap_xref(em, drc_mode_map, drc_mode_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
+}
+/**
  * Convert string to the MMAL parameter for exposure metering mode
  * @param str Incoming string to match
  * @return MMAL parameter matching the string, or the AUTO option if no match found
  */
-static MMAL_STEREOSCOPIC_MODE_T stereo_mode_from_string(const char *str)
+MMAL_STEREOSCOPIC_MODE_T stereo_mode_from_string(const char *str)
 {
-   int i = raspicli_map_xref(str, stereo_mode_map, stereo_mode_map_size);
+   int i = raspicli_map_xref(str,stereo_mode_map, stereo_mode_map_size); 
 
    if( i != -1)
       return (MMAL_STEREOSCOPIC_MODE_T)i;
@@ -595,6 +453,14 @@ static MMAL_STEREOSCOPIC_MODE_T stereo_mode_from_string(const char *str)
    return MMAL_STEREOSCOPIC_MODE_NONE;
 }
 
+const char *string_from_stereo_mode(MMAL_STEREOSCOPIC_MODE_T em)
+{
+ const char *str= raspicli_unmap_xref(em, stereo_mode_map, stereo_mode_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
+}
 /**
  * Parse a possible command pair - command and parameter
  * @param arg1 Command
