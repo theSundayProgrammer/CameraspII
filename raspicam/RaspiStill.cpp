@@ -1745,18 +1745,6 @@ int main(int argc, const char **argv)
             goto error;
          }
 
-         if (state.demoMode)
-         {
-            // Run for the user specific time..
-            int num_iterations = state.timeout / state.demoInterval;
-            int i;
-            for (i=0;i<num_iterations;i++)
-            {
-               raspicamcontrol_cycle_test(state.camera_component);
-               vcos_sleep(state.demoInterval);
-            }
-         }
-         else
          {
             int frame, keep_looping = 1;
             FILE *output_file = NULL;
