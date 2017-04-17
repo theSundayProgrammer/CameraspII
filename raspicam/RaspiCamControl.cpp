@@ -274,34 +274,6 @@ const char *raspicli_unmap_xref(typename T::value_type en, T map[], int num_refs
    }
    return NULL;
 }
-#define parameter_reset -99999
-
-/**
- * Update the passed in parameter according to the rest of the parameters
- * passed in.
- *
- *
- * @return 0 if reached end of cycle for this parameter, !0 otherwise
- */
-static int update_cycle_parameter(int *option, int min, int max, int increment)
-{
-   vcos_assert(option);
-   if (!option)
-      return 0;
-
-   if (*option == parameter_reset)
-      *option = min - increment;
-
-   *option += increment;
-
-   if (*option > max)
-   {
-      *option = parameter_reset;
-      return 0;
-   }
-   else
-      return 1;
-}
 /*
  * Convert string to the MMAL parameter for exposure mode
  * @param str Incoming string to match
