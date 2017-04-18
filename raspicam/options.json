@@ -44,7 +44,7 @@
       "cameraNum" : 0,
       "datetime" : 0,
       "enableExifTags" : 0,
-      "encoding" : 1195724874,
+      "encoding" : "JPG",
       "filename" : "img_%04d.jpg",
       "frameNextMethod" : 1,
       "frameStart" : 0,
