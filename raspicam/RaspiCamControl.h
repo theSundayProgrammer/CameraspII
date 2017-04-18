@@ -104,6 +104,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ANNOTATE_BLACK_BACKGROUND   1024
 
 
+/// Frame advance method
+enum FRAME_NEXT {
+ FRAME_NEXT_SINGLE        ,
+ FRAME_NEXT_TIMELAPSE     ,
+ FRAME_NEXT_KEYPRESS      ,
+ FRAME_NEXT_FOREVER       ,
+ FRAME_NEXT_GPIO          ,
+ FRAME_NEXT_SIGNAL        ,
+ FRAME_NEXT_IMMEDIATELY         
+};
 // There isn't actually a MMAL structure for the following, so make one
 typedef struct mmal_param_colourfx_s
 {
@@ -229,4 +239,9 @@ const char *string_from_drc_mode(MMAL_PARAMETER_DRC_STRENGTH_T em);
 MMAL_STEREOSCOPIC_MODE_T stereo_mode_from_string(const char *str);
 const char *string_from_stereo_mode(MMAL_STEREOSCOPIC_MODE_T em);
 
+const char *string_from_img_format(MMAL_FOURCC_T em);
+MMAL_FOURCC_T img_format_from_string(const char *str);
+
+FRAME_NEXT frame_next_from_string(const char *str);
+const char *string_mode_from_frame_next(FRAME_NEXT em);
 #endif /* RASPICAMCONTROL_H_ */

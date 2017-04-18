@@ -81,6 +81,40 @@ typedef struct xref_t
 } XREF_T;
 
 
+struct FRAME_NEXT_T
+{
+   const char *mode;
+   FRAME_NEXT mmal_mode;
+   typedef FRAME_NEXT value_type;
+};
+FRAME_NEXT_T frame_next_description[] =
+{
+      {"Single capture",         FRAME_NEXT_SINGLE},
+      {"Capture on timelapse",   FRAME_NEXT_TIMELAPSE},
+      {"Capture on keypress",    FRAME_NEXT_KEYPRESS},
+      {"Run forever",            FRAME_NEXT_FOREVER},
+      {"Capture on GPIO",        FRAME_NEXT_GPIO},
+      {"Capture on signal",      FRAME_NEXT_SIGNAL},
+      {"Capture Immediately",    FRAME_NEXT_IMMEDIATELY}
+ };
+
+static int frame_next_description_size = sizeof(frame_next_description) / sizeof(frame_next_description[0]);
+struct img_fmt_t
+{
+   const char *mode;
+   MMAL_FOURCC_T mmal_mode;
+   typedef MMAL_FOURCC_T value_type;
+} ;
+img_fmt_t encoding_xref[] =
+{
+   {"jpg", MMAL_ENCODING_JPEG},
+   {"bmp", MMAL_ENCODING_BMP},
+   {"gif", MMAL_ENCODING_GIF},
+   {"png", MMAL_ENCODING_PNG}
+};
+
+static int encoding_xref_size = sizeof(encoding_xref) / sizeof(encoding_xref[0]);
+
 /// Structure to cross reference exposure strings against the MMAL parameter equivalent
 static XREF_T  exposure_map[] =
 {
@@ -287,6 +321,29 @@ const char *string_from_awb_mode(MMAL_PARAM_AWBMODE_T em)
      vcos_log_error("Unknown exposure mode: %s", str);
    return str;
 }
+
+/**
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+const char *string_from_img_format(MMAL_FOURCC_T em)
+{
+ const char *str= raspicli_unmap_xref(em,  encoding_xref, encoding_xref_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown format: %d", em);
+   return str;
+}
+/**
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+MMAL_FOURCC_T img_format_from_string(const char *str)
+{
+   return raspicli_map_xref(str, encoding_xref, encoding_xref_size);
+}
 /**
  * Convert string to the MMAL parameter for exposure mode
  * @param str Incoming string to match
@@ -297,7 +354,7 @@ const char *string_from_exposure_mode(MMAL_PARAM_EXPOSUREMODE_T em)
  const char *str= raspicli_unmap_xref(em, exposure_map, exposure_map_size);
 
    if(str==NULL)
-     vcos_log_error("Unknown exposure mode: %s", str);
+     vcos_log_error("Unknown format: %d", em);
    return str;
 }
 /**
@@ -307,15 +364,8 @@ const char *string_from_exposure_mode(MMAL_PARAM_EXPOSUREMODE_T em)
  */
 MMAL_PARAM_EXPOSUREMODE_T exposure_mode_from_string(const char *str)
 {
-   int i = raspicli_map_xref(str, exposure_map, exposure_map_size);
-
-   if( i != -1)
-      return (MMAL_PARAM_EXPOSUREMODE_T)i;
-
-   vcos_log_error("Unknown exposure mode: %s", str);
-   return MMAL_PARAM_EXPOSUREMODE_AUTO;
+  return raspicli_map_xref(str, exposure_map, exposure_map_size);
 }
-
 /**
  * Convert string to the MMAL parameter for AWB mode
  * @param str Incoming string to match
@@ -323,13 +373,7 @@ MMAL_PARAM_EXPOSUREMODE_T exposure_mode_from_string(const char *str)
  */
 MMAL_PARAM_AWBMODE_T awb_mode_from_string(const char *str)
 {
-   int i = raspicli_map_xref(str, awb_map, awb_map_size);
-
-   if( i != -1)
-      return (MMAL_PARAM_AWBMODE_T)i;
-
-   vcos_log_error("Unknown awb mode: %s", str);
-   return MMAL_PARAM_AWBMODE_AUTO;
+   return raspicli_map_xref(str, awb_map, awb_map_size);
 }
 
 /**
@@ -337,22 +381,33 @@ MMAL_PARAM_AWBMODE_T awb_mode_from_string(const char *str)
  * @param str Incoming string to match
  * @return MMAL parameter matching the strong, or the AUTO option if no match found
  */
+FRAME_NEXT frame_next_from_string(const char *str)
+{
+   return raspicli_map_xref(str, frame_next_description, frame_next_description_size);
+}
+const char *string_mode_from_frame_next(FRAME_NEXT em)
+{
+ const char *str= raspicli_unmap_xref(em,  frame_next_description, frame_next_description_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %d", em );
+   return str;
+}
+/**
+ * Convert string to the MMAL parameter for image effects mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the strong, or the AUTO option if no match found
+ */
 MMAL_PARAM_IMAGEFX_T imagefx_mode_from_string(const char *str)
 {
-   int i = raspicli_map_xref(str, imagefx_map, imagefx_map_size);
-
-   if( i != -1)
-     return (MMAL_PARAM_IMAGEFX_T)i;
-
-   vcos_log_error("Unknown image fx: %s", str);
-   return MMAL_PARAM_IMAGEFX_NONE;
+   return raspicli_map_xref(str, imagefx_map, imagefx_map_size);
 }
 const char *string_mode_from_imagefx(MMAL_PARAM_IMAGEFX_T em)
 {
  const char *str= raspicli_unmap_xref(em,  imagefx_map, imagefx_map_size);
 
    if(str==NULL)
-     vcos_log_error("Unknown exposure mode: %s", str);
+     vcos_log_error("Unknown exposure mode: %d", em );
    return str;
 }
 
@@ -363,13 +418,8 @@ const char *string_mode_from_imagefx(MMAL_PARAM_IMAGEFX_T em)
  */
 MMAL_PARAM_EXPOSUREMETERINGMODE_T metering_mode_from_string(const char *str)
 {
-   int i = raspicli_map_xref(str, metering_mode_map, metering_mode_map_size);
+return raspicli_map_xref(str, metering_mode_map, metering_mode_map_size);
 
-   if( i != -1)
-      return (MMAL_PARAM_EXPOSUREMETERINGMODE_T)i;
-
-   vcos_log_error("Unknown metering mode: %s", str);
-   return MMAL_PARAM_EXPOSUREMETERINGMODE_AVERAGE;
 }
 
 const char *string_from_metering_mode(MMAL_PARAM_EXPOSUREMETERINGMODE_T em)
@@ -387,13 +437,8 @@ const char *string_from_metering_mode(MMAL_PARAM_EXPOSUREMETERINGMODE_T em)
  */
 MMAL_PARAMETER_DRC_STRENGTH_T drc_mode_from_string(const char *str)
 {
-   int i = raspicli_map_xref(str, drc_mode_map, drc_mode_map_size);
+return raspicli_map_xref(str, drc_mode_map, drc_mode_map_size);
 
-   if( i != -1)
-      return (MMAL_PARAMETER_DRC_STRENGTH_T)i;
-
-   vcos_log_error("Unknown DRC level: %s", str);
-   return MMAL_PARAMETER_DRC_STRENGTH_OFF;
 }
 
 /**
@@ -416,13 +461,8 @@ const char *string_from_drc_mode(MMAL_PARAMETER_DRC_STRENGTH_T em)
  */
 MMAL_STEREOSCOPIC_MODE_T stereo_mode_from_string(const char *str)
 {
-   int i = raspicli_map_xref(str,stereo_mode_map, stereo_mode_map_size); 
+return raspicli_map_xref(str,stereo_mode_map, stereo_mode_map_size); 
 
-   if( i != -1)
-      return (MMAL_STEREOSCOPIC_MODE_T)i;
-
-   vcos_log_error("Unknown metering mode: %s", str);
-   return MMAL_STEREOSCOPIC_MODE_NONE;
 }
 
 const char *string_from_stereo_mode(MMAL_STEREOSCOPIC_MODE_T em)
