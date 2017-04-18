@@ -57,7 +57,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #include <errno.h>
 #include <sysexits.h>
-
+#include <gsl/gsl_util>
 #define VERSION_STRING "v1.3.8"
 
 #include "bcm_host.h"
@@ -78,7 +78,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "RaspiCLI.h"
 #include <semaphore.h>
-
 // Standard port setting for the camera component
 #define MMAL_CAMERA_PREVIEW_PORT 0
 #define MMAL_CAMERA_VIDEO_PORT 1
@@ -96,18 +95,38 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MAX_USER_EXIF_TAGS      32
 #define MAX_EXIF_PAYLOAD_LENGTH 128
 
-/// Frame advance method
-#define FRAME_NEXT_SINGLE        0
-#define FRAME_NEXT_TIMELAPSE     1
-#define FRAME_NEXT_KEYPRESS      2
-#define FRAME_NEXT_FOREVER       3
-#define FRAME_NEXT_GPIO          4
-#define FRAME_NEXT_SIGNAL        5
-#define FRAME_NEXT_IMMEDIATELY   6
-
-
 int mmal_status_to_int(MMAL_STATUS_T status);
 static void signal_handler(int signal_number);
+
+class Mmal_exception {
+public:
+  Mmal_exception(MMAL_STATUS_T status_):status(status_){}
+  MMAL_STATUS_T status;
+}; 
+class Error_handler
+{
+public:
+  Error_handler(const char* str_, bool throw_exception_):
+  throw_exception(throw_exception_),
+  str(str_){}
+  Error_handler& operator=(MMAL_STATUS_T status)
+{
+   if (status != MMAL_SUCCESS)
+   {
+      vcos_log_error(str);
+      if(throw_exception)
+        throw Mmal_exception(status);
+   }
+  return *this;
+}
+private:
+  bool throw_exception;
+  const char* str;
+};
+Error_handler Error(const char* str,bool throw_exception=true)
+{
+  return Error_handler(str,throw_exception);
+}
 
 
 /** Structure containing all state information for the current run
@@ -131,7 +150,7 @@ typedef struct
    int numExifTags;                    /// Number of supplied tags
    int enableExifTags;                 /// Enable/Disable EXIF tags in output
    int timelapse;                      /// Delay between each picture in timelapse mode. If 0, disable timelapse
-   int frameNextMethod;                /// Which method to use to advance to next frame
+   FRAME_NEXT frameNextMethod;                /// Which method to use to advance to next frame
    int settings;                       /// Request settings from the camera
    int cameraNum;                      /// Camera number
    int burstCaptureMode;               /// Enable burst mode
@@ -216,37 +235,6 @@ static COMMAND_LIST cmdline_commands[] =
 
 static int cmdline_commands_size = sizeof(cmdline_commands) / sizeof(cmdline_commands[0]);
 
-static struct
-{
-   const char *format;
-   MMAL_FOURCC_T encoding;
-} encoding_xref[] =
-{
-   {"jpg", MMAL_ENCODING_JPEG},
-   {"bmp", MMAL_ENCODING_BMP},
-   {"gif", MMAL_ENCODING_GIF},
-   {"png", MMAL_ENCODING_PNG}
-};
-
-static int encoding_xref_size = sizeof(encoding_xref) / sizeof(encoding_xref[0]);
-
-
-static struct
-{
-   const char *description;
-   int nextFrameMethod;
-} next_frame_description[] =
-{
-      {"Single capture",         FRAME_NEXT_SINGLE},
-      {"Capture on timelapse",   FRAME_NEXT_TIMELAPSE},
-      {"Capture on keypress",    FRAME_NEXT_KEYPRESS},
-      {"Run forever",            FRAME_NEXT_FOREVER},
-      {"Capture on GPIO",        FRAME_NEXT_GPIO},
-      {"Capture on signal",      FRAME_NEXT_SIGNAL},
-};
-
-static int next_frame_description_size = sizeof(next_frame_description) / sizeof(next_frame_description[0]);
-
 static void set_sensor_defaults(RASPISTILL_STATE *state)
 {
    MMAL_COMPONENT_T *camera_info;
@@ -258,9 +246,10 @@ static void set_sensor_defaults(RASPISTILL_STATE *state)
    strncpy(state->camera_name, "OV5647", MMAL_PARAMETER_CAMERA_INFO_MAX_STR_LEN);
 
    // Try to get the camera name and maximum supported resolution
-   status = mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA_INFO, &camera_info);
-   if (status == MMAL_SUCCESS)
-   {
+     Error("Failed to create camera_info component")= mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA_INFO, &camera_info);
+     auto del_acm_info= gsl::finally ( [=] () {
+                       mmal_component_destroy(camera_info);
+                        });
       MMAL_PARAMETER_CAMERA_INFO_T param;
       param.hdr.id = MMAL_PARAMETER_CAMERA_INFO;
       param.hdr.size = sizeof(param)-4;  // Deliberately undersize to check firmware veresion
@@ -288,12 +277,6 @@ static void set_sensor_defaults(RASPISTILL_STATE *state)
          // Nothing to do here, keep the defaults for OV5647
       }
 
-      mmal_component_destroy(camera_info);
-   }
-   else
-   {
-      vcos_log_error("Failed to create camera_info component");
-   }
 }
 
 /**
@@ -376,11 +359,7 @@ static void dump_status(RASPISTILL_STATE *state)
    }
 
    fprintf(stderr, "Capture method : ");
-   for (i=0;i<next_frame_description_size;i++)
-   {
-      if (state->frameNextMethod == next_frame_description[i].nextFrameMethod)
-         fprintf(stderr, "%s", next_frame_description[i].description);
-   }
+   fprintf(stderr, "%s", string_mode_from_frame_next(state->frameNextMethod));
    fprintf(stderr, "\n\n");
 
    if (state->enableExifTags)
@@ -594,19 +573,7 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
          valid = 0;
 
          if (len)
-         {
-            int j;
-            for (j=0;j<encoding_xref_size;j++)
-            {
-               if (strcmp(encoding_xref[j].format, argv[i+1]) == 0)
-               {
-                  state->encoding = encoding_xref[j].encoding;
-                  valid = 1;
-                  i++;
-                  break;
-               }
-            }
-         }
+           state->encoding = img_format_from_string(argv[i+1]);
          break;
       }
 
@@ -865,52 +832,25 @@ static MMAL_STATUS_T create_camera_component(RASPISTILL_STATE *state)
    MMAL_ES_FORMAT_T *format;
    MMAL_PORT_T *preview_port = NULL, *video_port = NULL, *still_port = NULL;
    int err_status=0;
-
+   MMAL_STATUS_T status = MMAL_SUCCESS;
    MMAL_PARAMETER_INT32_T camera_num =
       {{MMAL_PARAMETER_CAMERA_NUM, sizeof(camera_num)}, state->cameraNum};
    /* Create the component */
-   MMAL_STATUS_T status = mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA, &camera);
+ try{
+   Error("Failed to create camera component")= mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA, &camera);
 
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("Failed to create camera component");
-      goto error;
-   }
 
    err_status = raspicamcontrol_set_stereo_mode(camera->output[0], &state->camera_parameters.stereo_mode);
    err_status += raspicamcontrol_set_stereo_mode(camera->output[1], &state->camera_parameters.stereo_mode);
    err_status += raspicamcontrol_set_stereo_mode(camera->output[2], &state->camera_parameters.stereo_mode);
 
-   if (err_status != MMAL_SUCCESS)
-   {
-      status = MMAL_EAGAIN;
-      vcos_log_error("Could not set stereo mode : error %d", err_status);
-      goto error;
-   }
+   Error("Could not set stereo mode ")= static_cast<MMAL_STATUS_T>(err_status);
 
+   Error("Could not select camera ")=  mmal_port_parameter_set(camera->control, &camera_num.hdr);
 
-   status = mmal_port_parameter_set(camera->control, &camera_num.hdr);
+   Error("Camera doesn't have output ports") = camera->output_num == 0 ?  MMAL_ENOSYS : MMAL_SUCCESS;
 
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("Could not select camera : error %d", status);
-      goto error;
-   }
-
-   if (!camera->output_num)
-   {
-      status = MMAL_ENOSYS;
-      vcos_log_error("Camera doesn't have output ports");
-      goto error;
-   }
-
-   status = mmal_port_parameter_set_uint32(camera->control, MMAL_PARAMETER_CAMERA_CUSTOM_SENSOR_CONFIG, state->sensor_mode);
-
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("Could not set sensor mode : error %d", status);
-      goto error;
-   }
+   Error("Could not set sensor mode ")= mmal_port_parameter_set_uint32(camera->control, MMAL_PARAMETER_CAMERA_CUSTOM_SENSOR_CONFIG, state->sensor_mode);
 
    preview_port = camera->output[MMAL_CAMERA_PREVIEW_PORT];
    video_port = camera->output[MMAL_CAMERA_VIDEO_PORT];
@@ -922,21 +862,12 @@ static MMAL_STATUS_T create_camera_component(RASPISTILL_STATE *state)
          {{MMAL_PARAMETER_CHANGE_EVENT_REQUEST, sizeof(MMAL_PARAMETER_CHANGE_EVENT_REQUEST_T)},
           MMAL_PARAMETER_CAMERA_SETTINGS, 1};
 
-      status = mmal_port_parameter_set(camera->control, &change_event_request.hdr);
-      if ( status != MMAL_SUCCESS )
-      {
-         vcos_log_error("No camera settings events");
-      }
+      Error("No camera settings events",false)= mmal_port_parameter_set(camera->control, &change_event_request.hdr);
    }
 
    // Enable the camera, and tell it its control callback function
-   status = mmal_port_enable(camera->control, camera_control_callback);
 
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("Unable to enable control port : error %d", status);
-      goto error;
-   }
+      Error("Unable to enable control port")= mmal_port_enable(camera->control, camera_control_callback);
 
    //  set up the camera configuration
    {
@@ -969,35 +900,26 @@ static MMAL_STATUS_T create_camera_component(RASPISTILL_STATE *state)
    format->encoding = MMAL_ENCODING_OPAQUE;
    format->encoding_variant = MMAL_ENCODING_I420;
 
-   if(state->camera_parameters.shutter_speed > 6000000)
+   if(state->camera_parameters.shutter_speed > 6000*1000)
    {
         MMAL_PARAMETER_FPS_RANGE_T fps_range = {{MMAL_PARAMETER_FPS_RANGE, sizeof(fps_range)},
                                                      { 50, 1000 }, {166, 1000}};
         mmal_port_parameter_set(preview_port, &fps_range.hdr);
    }
-   else if(state->camera_parameters.shutter_speed > 1000000)
+   else if(state->camera_parameters.shutter_speed > 1000*1000)
    {
         MMAL_PARAMETER_FPS_RANGE_T fps_range = {{MMAL_PARAMETER_FPS_RANGE, sizeof(fps_range)},
                                                      { 166, 1000 }, {999, 1000}};
         mmal_port_parameter_set(preview_port, &fps_range.hdr);
    }
 
-   status = mmal_port_format_commit(preview_port);
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("camera viewfinder format couldn't be set");
-      goto error;
-   }
+  Error("camera viewfinder format couldn't be set")= mmal_port_format_commit(preview_port);
 
    // Set the same format on the video  port (which we don't use here)
    mmal_format_full_copy(video_port->format, format);
-   status = mmal_port_format_commit(video_port);
 
-   if (status  != MMAL_SUCCESS)
-   {
-      vcos_log_error("camera video format couldn't be set");
-      goto error;
-   }
+      Error("camera video format couldn't be set")= mmal_port_format_commit(video_port);
+   
 
    // Ensure there are enough buffers to avoid dropping frames
    if (video_port->buffer_num < VIDEO_OUTPUT_BUFFERS_NUM)
@@ -1029,26 +951,16 @@ static MMAL_STATUS_T create_camera_component(RASPISTILL_STATE *state)
    format->es->video.frame_rate.den = STILLS_FRAME_RATE_DEN;
 
 
-   status = mmal_port_format_commit(still_port);
-
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("camera still format couldn't be set");
-      goto error;
-   }
+      Error("camera still format couldn't be set")= mmal_port_format_commit(still_port);
 
    /* Ensure there are enough buffers to avoid dropping frames */
    if (still_port->buffer_num < VIDEO_OUTPUT_BUFFERS_NUM)
       still_port->buffer_num = VIDEO_OUTPUT_BUFFERS_NUM;
 
    /* Enable component */
-   status = mmal_component_enable(camera);
 
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("camera component couldn't be enabled");
-      goto error;
-   }
+      Error("camera component couldn't be enabled")= mmal_component_enable(camera);
+
 
 
    state->camera_component = camera;
@@ -1056,13 +968,14 @@ static MMAL_STATUS_T create_camera_component(RASPISTILL_STATE *state)
    if (state->verbose)
       fprintf(stderr, "Camera component done\n");
 
-   return status;
-
-error:
-
+  status = MMAL_SUCCESS;
+}
+catch(Mmal_exception & e)
+{
    if (camera)
       mmal_component_destroy(camera);
-
+   status = e.status;
+}
    return status;
 }
 
@@ -1092,23 +1005,14 @@ static MMAL_STATUS_T create_encoder_component(RASPISTILL_STATE *state)
 {
    MMAL_COMPONENT_T *encoder = 0;
    MMAL_PORT_T *encoder_input = NULL, *encoder_output = NULL;
-   MMAL_STATUS_T status;
    MMAL_POOL_T *pool;
+ try {
+      Error("Unable to create JPEG encoder component")= mmal_component_create(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER, &encoder);
 
-   status = mmal_component_create(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER, &encoder);
-
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("Unable to create JPEG encoder component");
-      goto error;
-   }
-
-   if (!encoder->input_num || !encoder->output_num)
-   {
-      status = MMAL_ENOSYS;
-      vcos_log_error("JPEG encoder doesn't have input/output ports");
-      goto error;
-   }
+      Error("JPEG encoder doesn't have input/output ports") =
+                                 (!encoder->input_num || !encoder->output_num)? 
+                                 MMAL_ENOSYS:
+                                 MMAL_SUCCESS;
 
    encoder_input = encoder->input[0];
    encoder_output = encoder->output[0];
@@ -1130,47 +1034,27 @@ static MMAL_STATUS_T create_encoder_component(RASPISTILL_STATE *state)
       encoder_output->buffer_num = encoder_output->buffer_num_min;
 
    // Commit the port changes to the output port
-   status = mmal_port_format_commit(encoder_output);
 
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("Unable to set format on video encoder output port");
-      goto error;
-   }
+      Error("Unable to set format on video encoder output port")= mmal_port_format_commit(encoder_output);
 
    // Set the JPEG quality level
-   status = mmal_port_parameter_set_uint32(encoder_output, MMAL_PARAMETER_JPEG_Q_FACTOR, state->quality);
 
-   if (status != MMAL_SUCCESS)
-   {
-      vcos_log_error("Unable to set JPEG quality");
-      goto error;
-   }
+      Error("Unable to set JPEG quality")= mmal_port_parameter_set_uint32(encoder_output, MMAL_PARAMETER_JPEG_Q_FACTOR, state->quality);
 
    // Set the JPEG restart interval
-   status = mmal_port_parameter_set_uint32(encoder_output, MMAL_PARAMETER_JPEG_RESTART_INTERVAL, state->restart_interval);
 
-   if (state->restart_interval && status != MMAL_SUCCESS)
-   {
-      vcos_log_error("Unable to set JPEG restart interval");
-      goto error;
-   }
+      Error("Unable to set JPEG restart interval")= mmal_port_parameter_set_uint32(encoder_output, MMAL_PARAMETER_JPEG_RESTART_INTERVAL, state->restart_interval);
 
    // Set up any required thumbnail
    {
       MMAL_PARAMETER_THUMBNAIL_CONFIG_T param_thumb = {{MMAL_PARAMETER_THUMBNAIL_CONFIGURATION, sizeof(MMAL_PARAMETER_THUMBNAIL_CONFIG_T)}, 0, 0, 0, 0};
 
-      status = mmal_port_parameter_set(encoder->control, &param_thumb.hdr);
+      mmal_port_parameter_set(encoder->control, &param_thumb.hdr);
    }
 
    //  Enable component
-   status = mmal_component_enable(encoder);
 
-   if (status  != MMAL_SUCCESS)
-   {
-      vcos_log_error("Unable to enable video encoder component");
-      goto error;
-   }
+      Error("Unable to enable video encoder component")= mmal_component_enable(encoder);
 
    /* Create pool of buffer headers for the output port to consume */
    pool = mmal_port_pool_create(encoder_output, encoder_output->buffer_num, encoder_output->buffer_size);
@@ -1186,14 +1070,14 @@ static MMAL_STATUS_T create_encoder_component(RASPISTILL_STATE *state)
    if (state->verbose)
       fprintf(stderr, "Encoder component done\n");
 
-   return status;
-
-   error:
-
+   return MMAL_SUCCESS;
+   }
+   catch(Mmal_exception & e){
    if (encoder)
       mmal_component_destroy(encoder);
 
-   return status;
+   return e.status;
+  }
 }
 
 /**
@@ -1672,8 +1556,8 @@ int main(int argc, const char **argv)
    // We have three components. Camera, Preview and encoder.
    // Camera and encoder are different in stills/video, but preview
    // is the same so handed off to a separate module
-
-   if ((status = create_camera_component(&state)) != MMAL_SUCCESS)
+   status = create_camera_component(&state);
+   if (status!= MMAL_SUCCESS)
    {
       vcos_log_error("%s: Failed to create camera component", __func__);
       exit_code = EX_SOFTWARE;
