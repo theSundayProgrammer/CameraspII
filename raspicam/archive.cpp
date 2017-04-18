@@ -35,18 +35,6 @@ using std::string;
 #define MAX_USER_EXIF_TAGS      32
 #define MAX_EXIF_PAYLOAD_LENGTH 128
 
-/// Frame advance method
-enum FRAME_NEXT {
- FRAME_NEXT_SINGLE        ,
- FRAME_NEXT_TIMELAPSE     ,
- FRAME_NEXT_KEYPRESS      ,
- FRAME_NEXT_FOREVER       ,
- FRAME_NEXT_GPIO          ,
- FRAME_NEXT_SIGNAL        ,
- FRAME_NEXT_IMMEDIATELY         
-};
-
-
 int mmal_status_to_int(MMAL_STATUS_T status);
 static void signal_handler(int signal_number);
 
@@ -69,7 +57,7 @@ typedef struct
    const char *exifTags[MAX_USER_EXIF_TAGS]; /// Array of pointers to tags supplied from the command line
    int enableExifTags;                 /// Enable/Disable EXIF tags in output
    int timelapse;                      /// Delay between each picture in timelapse mode. If 0, disable timelapse
-   FRAME_NEXT frameNextMethod;                /// Which method to use to advance to next frame
+   FRAME_NEXT frame_next_method;                /// Which method to use to advance to next frame
    int settings;                       /// Request settings from the camera
    int cameraNum;                      /// Camera number
    int burstCaptureMode;               /// Enable burst mode
@@ -96,38 +84,6 @@ static void display_valid_parameters(const char *app_name);
 static void store_exif_tag(RASPISTILL_STATE *state, const char *exif_tag);
 
 
-
-static struct
-{
-   const char *format;
-   MMAL_FOURCC_T encoding;
-} encoding_xref[] =
-{
-   {"jpg", MMAL_ENCODING_JPEG},
-   {"bmp", MMAL_ENCODING_BMP},
-   {"gif", MMAL_ENCODING_GIF},
-   {"png", MMAL_ENCODING_PNG}
-};
-
-static int encoding_xref_size = sizeof(encoding_xref) / sizeof(encoding_xref[0]);
-
-
-static struct
-{
-   const char *description;
-   FRAME_NEXT nextFrameMethod;
-} next_frame_description[] =
-{
-      {"Single capture",         FRAME_NEXT_SINGLE},
-      {"Capture on timelapse",   FRAME_NEXT_TIMELAPSE},
-      {"Capture on keypress",    FRAME_NEXT_KEYPRESS},
-      {"Run forever",            FRAME_NEXT_FOREVER},
-      {"Capture on GPIO",        FRAME_NEXT_GPIO},
-      {"Capture on signal",      FRAME_NEXT_SIGNAL},
-      {"Capture Immediately",    FRAME_NEXT_IMMEDIATELY}
- };
-
-static int next_frame_description_size = sizeof(next_frame_description) / sizeof(next_frame_description[0]);
 
 static void set_sensor_defaults(RASPISTILL_STATE *state)
 {
@@ -192,11 +148,7 @@ static void dump_status(RASPISTILL_STATE *state)
    }
 
    fprintf(stderr, "Capture method : ");
-   for (i=0;i<next_frame_description_size;i++)
-   {
-      if (state->frameNextMethod == next_frame_description[i].nextFrameMethod)
-         fprintf(stderr, "%s", next_frame_description[i].description);
-   }
+   fprintf(stderr, "%s", string_mode_from_frame_next(state->frame_next_method));
    fprintf(stderr, "\n\n");
 
       fprintf(stderr, "EXIF tags disabled\n");
@@ -223,7 +175,7 @@ static void default_status(RASPISTILL_STATE *state)
    state->encoding = MMAL_ENCODING_JPEG;
    state->enableExifTags=0;
    state->timelapse = 0;
-   state->frameNextMethod = FRAME_NEXT_SINGLE;
+   state->frame_next_method = FRAME_NEXT_SINGLE;
    state->settings = 0;
    state->cameraNum = 0;
    state->burstCaptureMode=0;
@@ -341,10 +293,10 @@ void save_config(  RASPISTILL_STATE& state,Json::Value& camera_config)
     camera_config["linkname"]=state.linkname;                     /// filename of output file
   camera_config["frameStart"]=state.frameStart;                     /// First number of frame output counter
   camera_config["verbose"]=state.verbose;                        /// !0 if want detailed run information
-  camera_config["encoding"]=state.encoding;             /// Encoding to use for the output file.
+  camera_config["encoding"]=string_from_img_format(state.encoding);             /// Encoding to use for the output file.
   camera_config["enableExifTags"]=state.enableExifTags;                 /// Enable/Disable EXIF tags in output
   camera_config["timelapse"]=state.timelapse;                      /// Delay between each picture in timelapse mode. If 0, disable timelapse
-  camera_config["frameNextMethod"]=state.frameNextMethod;                /// Which method to use to advance to next frame
+  camera_config["frame_next_method"]=string_mode_from_frame_next(state.frame_next_method);                /// Which method to use to advance to next frame
   camera_config["settings"]=state.settings;                       /// Request settings from the camera
   camera_config["cameraNum"]=state.cameraNum;                      /// Camera number
   camera_config["burstCaptureMode"]=state.burstCaptureMode;               /// Enable burst mode
@@ -366,9 +318,9 @@ void read_config(RASPISTILL_STATE& state,  Json::Value& camera_config )
   if(camera_config.isMember("filename"))
     state.filename=camera_config["filename"].asString();
   state.verbose=  camera_config["verbose"].asInt();                        /// !0 if want detailed run information
-  state.encoding=  camera_config["encoding"].asInt();             /// Encoding to use for the output file.
+  state.encoding=  img_format_from_string(camera_config["encoding"].asString().c_str());             /// Encoding to use for the output file.
   state.timelapse=  camera_config["timelapse"].asInt();                      /// Delay between each picture in timelapse mode. If 0, disable timelapse
-  state.frameNextMethod=  next_frame_description[camera_config["frameNextMethod"].asInt()].nextFrameMethod;                /// Which method to use to advance to next frame
+  //state.frame_next_method=  next_frame_description[camera_config["frame_next_method"].asInt()].nextFrameMethod;                /// Which method to use to advance to next frame
   state.settings=  camera_config["settings"].asInt();                       /// Request settings from the camera
   state.cameraNum=  camera_config["cameraNum"].asInt();                      /// Camera number
   state.burstCaptureMode=  camera_config["burstCaptureMode"].asInt();               /// Enable burst mode
