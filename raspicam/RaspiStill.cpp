@@ -143,8 +143,6 @@ typedef struct
    char *linkname;                     /// filename of output file
    int frameStart;                     /// First number of frame output counter
    int verbose;                        /// !0 if want detailed run information
-   int demoMode;                       /// Run app in demo mode
-   int demoInterval;                   /// Interval between camera settings changes
    MMAL_FOURCC_T encoding;             /// Encoding to use for the output file.
    const char *exifTags[MAX_USER_EXIF_TAGS]; /// Array of pointers to tags supplied from the command line
    int numExifTags;                    /// Number of supplied tags
@@ -299,8 +297,6 @@ static void default_status(RASPISTILL_STATE *state)
    state->linkname = NULL;
    state->frameStart = 0;
    state->verbose = 0;
-   state->demoMode = 0;
-   state->demoInterval = 250; // ms
    state->camera_component = NULL;
    state->encoder_component = NULL;
    state->preview_connection = NULL;
@@ -541,29 +537,6 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
          }
          else
             valid = 0;
-         break;
-      }
-
-      case CommandDemoMode: // Run in demo mode - no capture
-      {
-         // Demo mode might have a timing parameter
-         // so check if a) we have another parameter, b) its not the start of the next option
-         if (i + 1 < argc  && argv[i+1][0] != '-')
-         {
-            if (sscanf(argv[i + 1], "%u", &state->demoInterval) == 1)
-            {
-               // TODO : What limits do we need for timeout?
-               state->demoMode = 1;
-               i++;
-            }
-            else
-               valid = 0;
-         }
-         else
-         {
-            state->demoMode = 1;
-         }
-
          break;
       }
 
