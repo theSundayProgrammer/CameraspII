@@ -387,20 +387,21 @@ namespace raspicam {
            while ((ret  = sem_timedwait(&mutex, &ts)) == -1 && errno == EINTR)
                continue;       /* Restart if interrupted by handler */
 
-           if (ret == -1) {
+           if (ret == -1)
+           {
                if (errno == ETIMEDOUT)
                    cerr<<"sem_timedwait() timed out\n"<<endl;
                else
                    cerr<<"sem_timedwait"<<endl;
+               stopCapture();
                sem_destroy(&mutex);
                return 0;
            } else {
 
-            sem_wait ( &mutex );
-            sem_destroy ( &mutex );
             ret = userdata.offset;
-            stopCapture();
 
+            stopCapture();
+            sem_destroy ( &mutex );
             return ret;
            }
         }

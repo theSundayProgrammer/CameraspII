@@ -104,9 +104,8 @@ namespace camerasp
 	return;
       } else {
 	for (unsigned int i = 0; i < buffer->length; ++i ) 
-	  userdata->data[userdata->offset+i] = buffer->data[i];
+	  userdata->data[userdata->offset++] = buffer->data[i];
 
-	userdata->offset+=buffer->length;
       }
     }
     if (END_FLAG & flags) {
@@ -158,7 +157,6 @@ namespace camerasp
     changed_settings = true;
     horizontalFlip = false;
     verticalFlip = false;
-    sem_init(&mutex, 0, 0);
     encoding=MMAL_ENCODING_BMP;
     metering=MMAL_PARAM_EXPOSUREMETERINGMODE_AVERAGE;
     exposure=MMAL_PARAM_EXPOSUREMODE_AUTO;
@@ -434,30 +432,52 @@ namespace camerasp
   }
 
   int cam_still::take_picture(unsigned char *preallocated_data, size_t *length)
-  {
-    initialize();
-    int ret = 0;
-    RASPICAM_USERDATA *userdata = new RASPICAM_USERDATA();
-    userdata->encoderPool = encoder_pool;
-    userdata->mutex = &mutex;
-    userdata->data = preallocated_data;
-    userdata->offset = 0;
-    userdata->length = *length;
-    encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *) userdata;
-    if (start_capture()) 
-    {
-      encoder_output_port->userdata = NULL;
-      delete userdata;
-      sem_destroy(&mutex);
-      sem_init(&mutex, 0, 0);
-      return -1;
-    }
-    sem_wait(&mutex);
-    stop_capture();
-    *length =  userdata->offset ;
-    return 0;
-  }
+        {
+            initialize();
+            int ret = 0;
+            sem_t mutex;
+            timespec ts={0,0};
+            sem_init ( &mutex, 0, 0 );
+            RASPICAM_USERDATA  userdata;
+            userdata.encoderPool = encoder_pool;
+            userdata.mutex = &mutex;
+            userdata.data = preallocated_data;
+            userdata.offset = 0;
+            userdata.length = *length;
+            encoder_output_port->userdata = ( struct MMAL_PORT_USERDATA_T * ) &userdata;
+            if ( ( ret = start_capture() ) != 0 ) {
+                sem_destroy ( &mutex );
+                return -1;
+            }
+          if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
+          {
+               console->error("clock_gettime");
+               sem_destroy(&mutex);
+               return -1;
+           }
+           ts.tv_sec += 1;
+           
+           while ((ret  = sem_timedwait(&mutex, &ts)) == -1 && errno == EINTR)
+               continue;       /* Restart if interrupted by handler */
 
+           if (ret == -1)
+           {
+               if (errno == ETIMEDOUT)
+                   console->error("sem_timedwait() timed out\n");
+               else
+                   console->error("sem_timedwait");
+               stop_capture();
+               sem_destroy(&mutex);
+               return -1;
+           } else {
+
+            *length = userdata.offset;
+
+            stop_capture();
+            sem_destroy ( &mutex );
+            return 0;
+           }
+        }
   int cam_still::start_capture() {
     // If the parameters were changed and this function wasn't called, it will be called here
     // However if the parameters weren't changed, the function won't do anything - it will return right away
