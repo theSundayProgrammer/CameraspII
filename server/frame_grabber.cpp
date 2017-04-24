@@ -30,7 +30,7 @@ const std::string config_path = "/srv/camerasp/";
 void configure_console()
 {
   namespace spd = spdlog;
-  console = spd::stdout_color_mt("fg");
+  console = spd::rotating_logger_mt("fg", "/home/pi/logs/mylogfile", 1048576 * 5, 3);
   console->set_level(spd::level::debug);
 }
 
