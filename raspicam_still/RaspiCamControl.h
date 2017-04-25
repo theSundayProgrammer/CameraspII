@@ -84,6 +84,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
             MMAL_PARAM_IMAGEFX_CARTOON,
 
  */
+#include <iterator>
+#include <string>
+#include <fstream>
 #include <interface/mmal/mmal_component.h>
 /// Annotate bitmask options
 /// Supplied by user on command line
@@ -170,7 +173,7 @@ typedef struct raspicam_camera_parameters_s
 
 void raspicamcontrol_check_configuration(int min_gpu_mem);
 
-int raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, const char *arg1, const char *arg2);
+bool raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, std::istream_iterator<std::string>&);
 void raspicamcontrol_display_help();
 int raspicamcontrol_cycle_test(MMAL_COMPONENT_T *camera);
 
@@ -245,3 +248,19 @@ MMAL_FOURCC_T img_format_from_string(const char *str);
 FRAME_NEXT frame_next_from_string(const char *str);
 const char *string_mode_from_frame_next(FRAME_NEXT em);
 #endif /* RASPICAMCONTROL_H_ */
+
+/*
+#include <iostream>
+int main()
+{
+  std::fstream ifs("otions.txt");
+  std::istream_iterator<std::string>  ostr(ifs);
+  std::istream_iterator<std::string>  eos;
+  while(ostr!=eos)
+  {
+    std::cout << *ostr << std::endl;
+    ostr++;
+  }
+  return 0;
+}
+*/

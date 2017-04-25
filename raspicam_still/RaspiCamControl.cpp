@@ -29,6 +29,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <memory.h>
 #include <ctype.h>
+#include <iterator>
+#include <string>
+#include <fstream>
 extern "C" {
 #include "interface/vcos/vcos.h"
 
@@ -475,99 +478,99 @@ const char *string_from_stereo_mode(MMAL_STEREOSCOPIC_MODE_T em)
 }
 /**
  * Parse a possible command pair - command and parameter
- * @param arg1 Command
- * @param arg2 Parameter (could be NULL)
- * @return How many parameters were used, 0,1,2
+ * @param istr input stream
+ * @return true if success, false otherwise
  */
-int raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, const char *arg1, const char *arg2)
+bool raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, std::istream_iterator<std::string>& istr)
 {
-   int command_id, used = 0, num_parameters;
+   int command_id,  num_parameters;
+   using string = std::string;
+   std::istream_iterator<string> eos;
+   if (istr == eos)
+       return false;
 
-   if (!arg1)
-       return 0;
-
-   command_id = raspicli_get_command_id(cmdline_commands, cmdline_commands_size, arg1, &num_parameters);
+   command_id = raspicli_get_command_id(cmdline_commands, cmdline_commands_size, istr->c_str(), &num_parameters);
 
    // If invalid command, or we are missing a parameter, drop out
-   if (command_id==-1 || (command_id != -1 && num_parameters > 0 && arg2 == NULL))
-      return 0;
+   if (command_id==-1 || ( num_parameters > 0 && ++istr==eos))
+      return false;
 
    switch (command_id)
    {
    case CommandSharpness : // sharpness - needs single number parameter
-      sscanf(arg2, "%d", &params->sharpness);
-      used = 2;
+      sscanf(istr->c_str(), "%d", &params->sharpness);
+      
       break;
 
    case CommandContrast : // contrast - needs single number parameter
-      sscanf(arg2, "%d", &params->contrast);
-      used = 2;
+      sscanf(istr->c_str(), "%d", &params->contrast);
+      
       break;
 
    case CommandBrightness : // brightness - needs single number parameter
-      sscanf(arg2, "%d", &params->brightness);
-      used = 2;
+      sscanf(istr->c_str(), "%d", &params->brightness);
+      
       break;
 
    case CommandSaturation : // saturation - needs single number parameter
-      sscanf(arg2, "%d", &params->saturation);
-      used = 2;
+      sscanf(istr->c_str(), "%d", &params->saturation);
+      
       break;
 
    case CommandISO : // ISO - needs single number parameter
-      sscanf(arg2, "%d", &params->ISO);
-      used = 2;
+      sscanf(istr->c_str(), "%d", &params->ISO);
+      
       break;
 
    case CommandVideoStab : // video stabilisation - if here, its on
       params->videoStabilisation = 1;
-      used = 1;
+      
       break;
 
    case CommandEVComp : // EV - needs single number parameter
-      sscanf(arg2, "%d", &params->exposureCompensation);
-      used = 2;
+      sscanf(istr->c_str(), "%d", &params->exposureCompensation);
+      
       break;
 
    case CommandExposure : // exposure mode - needs string
-      params->exposureMode = exposure_mode_from_string(arg2);
-      used = 2;
+      params->exposureMode = exposure_mode_from_string(istr->c_str());
+      
       break;
 
    case CommandAWB : // AWB mode - needs single number parameter
-      params->awbMode = awb_mode_from_string(arg2);
-      used = 2;
+      params->awbMode = awb_mode_from_string(istr->c_str());
+      
       break;
 
    case CommandImageFX : // Image FX - needs string
-      params->imageEffect = imagefx_mode_from_string(arg2);
-      used = 2;
+      params->imageEffect = imagefx_mode_from_string(istr->c_str());
+      
       break;
 
    case CommandColourFX : // Colour FX - needs string "u:v"
-      sscanf(arg2, "%d:%d", &params->colourEffects.u, &params->colourEffects.v);
+      sscanf(istr->c_str(), "%d:%d", &params->colourEffects.u, &params->colourEffects.v);
       params->colourEffects.enable = 1;
-      used = 2;
+      
       break;
 
    case CommandMeterMode:
-      params->exposureMeterMode = metering_mode_from_string(arg2);
-      used = 2;
+      params->exposureMeterMode = metering_mode_from_string(istr->c_str());
+      
       break;
 
    case CommandRotation : // Rotation - degree
-      sscanf(arg2, "%d", &params->rotation);
-      used = 2;
+      sscanf(istr->c_str(), "%d", &params->rotation);
+      
       break;
 
    case CommandHFlip :
       params->hflip  = 1;
-      used = 1;
+      
       break;
 
    case CommandVFlip :
       params->vflip = 1;
-      used = 1;
+      
       break;
 
    case CommandROI :
@@ -575,11 +578,11 @@ int raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, const char
       double x,y,w,h;
       int args;
 
-      args = sscanf(arg2, "%lf,%lf,%lf,%lf", &x,&y,&w,&h);
+      args = sscanf(istr->c_str(), "%lf,%lf,%lf,%lf", &x,&y,&w,&h);
 
       if (args != 4 || x > 1.0 || y > 1.0 || w > 1.0 || h > 1.0)
       {
-         return 0;
+         return false;
       }
 
       // Make sure we stay within bounds
@@ -594,14 +597,14 @@ int raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, const char
       params->roi.w = w;
       params->roi.h = h;
 
-      used = 2;
+      
       break;
    }
 
    case CommandShutterSpeed : // Shutter speed needs single number parameter
    {
-      sscanf(arg2, "%d", &params->shutter_speed);
-      used = 2;
+      sscanf(istr->c_str(), "%d", &params->shutter_speed);
+      
       break;
    }
 
@@ -610,31 +613,31 @@ int raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, const char
       double r,b;
       int args;
 
-      args = sscanf(arg2, "%lf,%lf", &r,&b);
+      args = sscanf(istr->c_str(), "%lf,%lf", &r,&b);
 
       if (args != 2 || r > 8.0 || b > 8.0)
       {
-         return 0;
+         return false;
       }
 
       params->awb_gains_r = r;
       params->awb_gains_b = b;
 
-      used = 2;
+      
       break;
       }
 
    case CommandDRCLevel:
    {
-      params->drc_level = drc_mode_from_string(arg2);
-      used = 2;
+      params->drc_level = drc_mode_from_string(istr->c_str());
+      
       break;
    }
 
    case CommandStatsPass:
    {
       params->stats_pass = MMAL_TRUE;
-      used = 1;
+      
       break;
    }
 
@@ -643,7 +646,7 @@ int raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, const char
       char dummy;
       unsigned int bitmask;
       // If parameter is a number, assume its a bitmask, otherwise a string
-      if (sscanf(arg2, "%u%c", &bitmask, &dummy) == 1)
+      if (sscanf(istr->c_str(), "%u%c", &bitmask, &dummy) == 1)
       {
          params->enable_annotate |= bitmask;
       }
@@ -652,7 +655,7 @@ int raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, const char
          params->enable_annotate |= ANNOTATE_USER_TEXT;
          //copy string char by char and replace "\n" with newline character
          unsigned char c;
-         char const *s = arg2;
+         char const *s = istr->c_str();
          char *t = &params->annotate_string[0];
          int n=0;
          while ((c = *s++) && n < MMAL_CAMERA_ANNOTATE_MAX_TEXT_LEN_V3-1)
@@ -678,44 +681,43 @@ int raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, const char
 
          //params->annotate_string[MMAL_CAMERA_ANNOTATE_MAX_TEXT_LEN_V3-1] = '\0';
       }
-      used=2;
+      
       break;
    }
 
    case CommandAnnotateExtras:
    {
       // 3 parameters - text size (6-80), text colour (Hex VVUUYY) and background colour (Hex VVUUYY)
-      sscanf(arg2, "%u,%X,%X", &params->annotate_text_size,
+      sscanf(istr->c_str(), "%u,%X,%X", &params->annotate_text_size,
                                &params->annotate_text_colour,
                                &params->annotate_bg_colour);
-      used=2;
+      
       break;
    }
 
    case CommandStereoMode:
    {
-      params->stereo_mode.mode = stereo_mode_from_string(arg2);
-      used = 2;
+      params->stereo_mode.mode = stereo_mode_from_string(istr->c_str());
+      
       break;
    }
 
    case CommandStereoDecimate:
    {
       params->stereo_mode.decimate = MMAL_TRUE;
-      used = 1;
+      
       break;
    }
 
    case CommandStereoSwap:
    {
       params->stereo_mode.swap_eyes = MMAL_TRUE;
-      used = 1;
+      
       break;
    }
 
    }
-
-   return used;
+   return true;
 }
 
 /**
@@ -1520,4 +1522,17 @@ void raspicamcontrol_check_configuration(int min_gpu_mem)
    else
       vcos_log_error("Failed to run camera app. Please check for firmware updates\n");
 }
-
+/*
+#include <iostream>
+int main()
+{
+  std::fstream ifs("otions.txt");
+  std::istream_iterator<std::string>  ostr(ifs);
+  std::istream_iterator<std::string>  eos;
+  while(ostr!=eos)
+  {
+    std::cout << *ostr << std::endl;
+    ostr++;
+  }
+  return 0;
+}*/

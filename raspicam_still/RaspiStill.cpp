@@ -60,6 +60,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <errno.h>
 #include <sysexits.h>
 #include <gsl/gsl_util>
+#include <iterator>
+#include <string>
+#include <fstream>
 #define VERSION_STRING "v1.3.8"
 
 #include "bcm_host.h"
@@ -84,7 +87,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MMAL_CAMERA_PREVIEW_PORT 0
 #define MMAL_CAMERA_VIDEO_PORT 1
 #define MMAL_CAMERA_CAPTURE_PORT 2
-
+const char *app_name="RaspiStill";
 
 // Stills format information
 // 0 implies variable
@@ -384,27 +387,28 @@ static void dump_status(RASPISTILL_STATE *state)
 /**
  * Parse the incoming command line and put resulting parameters in to the state
  *
- * @param argc Number of arguments in command line
- * @param argv Array of pointers to strings from command line
  * @param state Pointer to state structure to assign any discovered parameters to
  * @return non-0 if failed for some reason, 0 otherwise
  */
-static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
+static int parse_cmdline(RASPISTILL_STATE *state)
 {
    // Parse the command line arguments.
    // We are looking for --<something> or -<abbreviation of something>
 
    int valid = 1;
-   int i;
-
-   for (i = 1; i < argc && valid; i++)
+   std::string cmd;
+  std::fstream ifs("options.txt");
+  std::istream_iterator<std::string>  ostr(ifs);
+  std::istream_iterator<std::string>  eos;
+  for(;ostr!=eos;++ostr)
    {
       int command_id, num_parameters;
 
-      if (!argv[i])
+      if (ostr->empty())
          continue;
-
-      if (argv[i][0] != '-')
+      cmd = *ostr;
+      const char *argv = ostr->c_str();
+      if (argv[0] != '-')
       {
          valid = 0;
          continue;
@@ -413,43 +417,39 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
       // Assume parameter is valid until proven otherwise
       valid = 1;
 
-      command_id = raspicli_get_command_id(cmdline_commands, cmdline_commands_size, &argv[i][1], &num_parameters);
-
+      command_id = raspicli_get_command_id(cmdline_commands, cmdline_commands_size, ++argv, &num_parameters);
       // If we found a command but are missing a parameter, continue (and we will drop out of the loop)
-      if (command_id != -1 && num_parameters > 0 && (i + 1 >= argc) )
+      if (command_id != -1 && num_parameters > 0 && ostr==eos )
          continue;
 
       //  We are now dealing with a command line option
       switch (command_id)
       {
       case CommandHelp:
-         display_valid_parameters(basename(argv[0]));
+         display_valid_parameters(app_name);
          // exit straight away if help requested
          return -1;
 
       case CommandWidth: // Width > 0
-         if (sscanf(argv[i + 1], "%u", &state->width) != 1)
+         if (sscanf((*++ostr).c_str(), "%u", &state->width) != 1)
             valid = 0;
          else
-            i++;
+            ++ostr;
          break;
 
       case CommandHeight: // Height > 0
-         if (sscanf(argv[i + 1], "%u", &state->height) != 1)
+         if (sscanf((*++ostr).c_str(), "%u", &state->height) != 1)
             valid = 0;
-         else
-            i++;
          break;
 
       case CommandQuality: // Quality = 1-100
-         if (sscanf(argv[i + 1], "%u", &state->quality) == 1)
+         if (sscanf((*++ostr).c_str(), "%u", &state->quality) == 1)
          {
             if (state->quality > 100)
             {
                fprintf(stderr, "Setting max quality = 100\n");
                state->quality = 100;
             }
-            i++;
          }
          else
             valid = 0;
@@ -462,12 +462,12 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
       case CommandOutput:  // output filename
       {
-         int len = strlen(argv[i + 1]);
+         int len = strlen((*++ostr).c_str());
          if (len)
          {
             //We use sprintf to append the frame number for timelapse mode
             //Ensure that any %<char> is either %% or %d.
-            const char *percent = argv[i+1];
+            const char *percent = ostr->c_str();
             while(valid && *percent && (percent=strchr(percent, '%')) != NULL)
             {
                int digits=0;
@@ -487,8 +487,7 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
             state->filename = (char*)malloc(len + 10); // leave enough space for any timelapse generated changes to filename
             vcos_assert(state->filename);
             if (state->filename)
-               strncpy(state->filename, argv[i + 1], len+1);
-            i++;
+               strncpy(state->filename, ostr->c_str(), len+1);
          }
          else
             valid = 0;
@@ -497,14 +496,13 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
       case CommandLink :
       {
-         int len = strlen(argv[i+1]);
+         int len = strlen((*++ostr).c_str());
          if (len)
          {
             state->linkname = (char*)malloc(len + 10);
             vcos_assert(state->linkname);
             if (state->linkname)
-               strncpy(state->linkname, argv[i + 1], len+1);
-            i++;
+               strncpy(state->linkname, ostr->c_str(), len+1);
          }
          else
             valid = 0;
@@ -514,10 +512,8 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
       case CommandFrameStart:  // use a staring value != 0
       {
-         if (sscanf(argv[i + 1], "%d", &state->frameStart) == 1)
-         {
-           i++;
-         }
+         if (sscanf((*++ostr).c_str(), "%d", &state->frameStart) == 1)
+         ;
          else
             valid = 0;
          break;
@@ -529,13 +525,11 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
       case CommandTimeout: // Time to run viewfinder for before taking picture, in seconds
       {
-         if (sscanf(argv[i + 1], "%u", &state->timeout) == 1)
+         if (sscanf((*++ostr).c_str(), "%u", &state->timeout) == 1)
          {
             // Ensure that if previously selected CommandKeypress we don't overwrite it
             if (state->timeout == 0 && state->frameNextMethod == FRAME_NEXT_SINGLE)
                state->frameNextMethod = FRAME_NEXT_FOREVER;
-
-            i++;
          }
          else
             valid = 0;
@@ -544,28 +538,27 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
       case CommandEncoding :
       {
-         int len = strlen(argv[i + 1]);
+         int len = strlen((*++ostr).c_str());
          valid = 0;
 
          if (len)
-           state->encoding = img_format_from_string(argv[i+1]);
+           state->encoding = img_format_from_string(ostr->c_str());
          break;
       }
 
       case CommandExifTag:
-         if ( strcmp( argv[ i + 1 ], "none" ) == 0 )
+         if ( strcmp( (*++ostr).c_str(), "none" ) == 0 )
          {
             state->enableExifTags = 0;
          }
          else
          {
-            store_exif_tag(state, argv[i+1]);
+            store_exif_tag(state, ostr->c_str());
          }
-         i++;
          break;
 
       case CommandTimelapse:
-         if (sscanf(argv[i + 1], "%u", &state->timelapse) != 1)
+         if (sscanf((*++ostr).c_str(), "%u", &state->timelapse) != 1)
             valid = 0;
          else
          {
@@ -574,8 +567,6 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
             else
                state->frameNextMethod = FRAME_NEXT_IMMEDIATELY;
 
-
-            i++;
          }
          break;
 
@@ -598,9 +589,8 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
       case CommandCamSelect:  //Select camera input port
       {
-         if (sscanf(argv[i + 1], "%u", &state->cameraNum) == 1)
+         if (sscanf((*++ostr).c_str(), "%u", &state->cameraNum) == 1)
          {
-            i++;
          }
          else
             valid = 0;
@@ -613,9 +603,8 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
       case CommandSensorMode:
       {
-         if (sscanf(argv[i + 1], "%u", &state->sensor_mode) == 1)
+         if (sscanf((*++ostr).c_str(), "%u", &state->sensor_mode) == 1)
          {
-            i++;
          }
          else
             valid = 0;
@@ -624,9 +613,8 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
       case CommandRestartInterval:
       {
-         if (sscanf(argv[i + 1], "%u", &state->restart_interval) == 1)
+         if (sscanf((*++ostr).c_str(), "%u", &state->restart_interval) == 1)
          {
-           i++;
          }
          else
             valid = 0;
@@ -638,16 +626,9 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
          // Try parsing for any image specific parameters
          // result indicates how many parameters were used up, 0,1,2
          // but we adjust by -1 as we have used one already
-         const char *second_arg = (i + 1 < argc) ? argv[i + 1] : NULL;
-         int parms_used = raspicamcontrol_parse_cmdline(&state->camera_parameters, &argv[i][1], second_arg);
-
-
-
          // If no parms were used, this must be a bad parameters
-         if (!parms_used)
+         if (!raspicamcontrol_parse_cmdline(&state->camera_parameters,ostr))
             valid = 0;
-         else
-            i += parms_used - 1;
 
          break;
       }
@@ -657,7 +638,7 @@ static int parse_cmdline(int argc, const char **argv, RASPISTILL_STATE *state)
 
    if (!valid)
    {
-      fprintf(stderr, "Invalid command line option (%s)\n", argv[i-1]);
+      fprintf(stderr, "Invalid command line option (%s)\n", cmd.c_str());
       return 1;
    }
 
@@ -1474,7 +1455,7 @@ static void rename_file(RASPISTILL_STATE *state,
       if (final_link) free(final_link);
    }
 }
-void initialise_state(int argc, const char **argv, RASPISTILL_STATE& state)
+void initialise_state( RASPISTILL_STATE& state)
 {
   
    // Register our application with the logging system
@@ -1486,24 +1467,16 @@ void initialise_state(int argc, const char **argv, RASPISTILL_STATE& state)
    signal(SIGUSR1, SIG_IGN);
    default_status(&state);
 
-   // Do we have any parameters
-   if (argc == 1)
-   {
-      fprintf(stdout, "\n%s Camera App %s\n\n", basename(argv[0]), VERSION_STRING);
-
-      display_valid_parameters(basename(argv[0]));
-      exit(EX_USAGE);
-   }
 
    // Parse the command line and put options in to our status structure
-   if (parse_cmdline(argc, argv, &state))
+   if (parse_cmdline(&state))
    {
       exit(EX_USAGE);
    }
 
    if (state.verbose)
    {
-      fprintf(stderr, "\n%s Camera App %s\n\n", basename(argv[0]), VERSION_STRING);
+      fprintf(stderr, "\n%s Camera App %s\n\n", app_name, VERSION_STRING);
 
       dump_status(&state);
    }
@@ -1528,7 +1501,7 @@ int main(int argc, const char **argv)
    MMAL_PORT_T *encoder_output_port = NULL;
    bcm_host_init();
    do {
-   initialise_state(argc, argv, state);
+   initialise_state(state);
 
    // OK, we have a nice set of parameters. Now set up our components
    // We have three components. Camera, Preview and encoder.
@@ -1574,7 +1547,7 @@ int main(int argc, const char **argv)
          // Connect camera to preview (which might be a null_sink if no preview required)
          status = connect_ports(camera_preview_port, preview_input_port, &state.preview_connection);
 
-      if (status == MMAL_SUCCESS)
+      if (status != MMAL_SUCCESS)
       {
          mmal_status_to_int(status);
          vcos_log_error("%s: Failed to connect camera to preview", __func__);
@@ -1772,4 +1745,13 @@ int main(int argc, const char **argv)
    return exit_code;
 }
 
-
+/*
+#include <iostream>
+int main()
+{
+  {
+    std::cout << *ostr << std::endl;
+    ostr++;
+  }
+  return 0;
+}*/
