@@ -1,0 +1,8 @@
+-tl 1000 
+-w 480 
+-h 640 
+-t 0 
+-o img_%04d.jpg 
+-x none
+-v
+
