@@ -1199,7 +1199,7 @@ static int wait_for_next_frame(RASPISTILL_STATE *state, int *frame)
       *frame+=1;
 
       // Have a sleep so we don't hog the CPU.
-      vcos_sleep(10000);
+      vcos_sleep(1000);
 
       // Run forever so never indicate end of loop
       return 1;
