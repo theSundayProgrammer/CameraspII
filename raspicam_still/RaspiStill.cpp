@@ -433,8 +433,6 @@ static int parse_cmdline(RASPISTILL_STATE *state)
       case CommandWidth: // Width > 0
          if (sscanf((*++ostr).c_str(), "%u", &state->width) != 1)
             valid = 0;
-         else
-            ++ostr;
          break;
 
       case CommandHeight: // Height > 0
