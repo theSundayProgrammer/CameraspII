@@ -79,9 +79,17 @@ namespace camerasp
             k = 0;
           }
         }
-        auto resp = get_image(k);
-        console->debug("size of data sent= {0}", resp.second.size());
-        connection->send(std::move(resp.first), std::move(resp.second));
+
+    // output the request
+    via::http::tx_response response(via::http::response_status::code::OK);
+    response.add_server_header();
+    response.add_date_header();
+    console->info("image number={0}", k);
+    response.add_header("Content-Type", "image/jpeg");
+    auto responsebody = timer_.get_image(k);
+    response.add_content_length_header(responsebody.size());
+        console->debug("size of data sent= {0}", responsebody.size());
+        connection->send(std::move(response), std::move(responsebody));
   }
   /*{
     via::http::tx_response response(via::http::response_status::code::OK);
@@ -280,20 +288,6 @@ const std::string response_body
     response.add_content_length_header(str.size());
     buffer_t ostr(str.begin(),str.end());
     connection->send(response, ostr);
-  }
-  std::pair<via::http::tx_response, buffer_t>
-    Handler::get_image(int k)
-  {
-    // output the request
-    via::http::tx_response response(via::http::response_status::code::OK);
-    response.add_server_header();
-    response.add_date_header();
-    console->info("image number={0}", k);
-    response.add_header("Content-Type", "image/jpeg");
-    auto responsebody = timer_.get_image(k);
-    response.add_content_length_header(responsebody.size());
-    
-    return std::make_pair(response, responsebody);
   }
 
 
