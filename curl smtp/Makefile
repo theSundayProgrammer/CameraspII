@@ -22,6 +22,6 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # $(RM) is rm -f by default
 clean:
-	$(RM) $(objs) $(deps) camerasp
+	$(RM) $(objs) $(deps) send
 
 -include $(deps)
