@@ -21,7 +21,8 @@
   <PropertyGroup Label="Globals">
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
-     <ProjectName>server2</ProjectName>
+    <ProjectName>server2</ProjectName>
+    <ProjectGuid>{21E45E40-6F6F-41E8-8110-5D13F2B17D9A}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -148,7 +149,7 @@
   <ItemGroup>
     <Text Include="options.txt" />
     <Text Include="ReadMe.txt" />
-  </ItemGroup> 
+  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\http\character.cpp" />
     <ClCompile Include="..\http\chunk.cpp" />
@@ -163,9 +164,9 @@
     <ClCompile Include="..\json\json_value.cpp" />
     <ClCompile Include="..\json\json_writer.cpp" />
     <ClCompile Include="camerasp_http_server.cpp" />
+    <ClCompile Include="cam_still_base.cpp" />
     <ClCompile Include="handler.cpp" />
-    <ClCompile Include="ImgInfo.cpp" />
-    <ClCompile Include="raspicamMock.cpp" />
+    <ClCompile Include="raspicam_mock.cpp" />
     <ClCompile Include="timer.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>

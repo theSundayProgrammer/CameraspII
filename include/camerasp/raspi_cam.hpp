@@ -1,7 +1,11 @@
 /**********************************************************
- Software developed by AVA ( Ava Group of the University of Cordoba, ava  at uco dot es)
- Main author Rafael Munoz Salinas (rmsalinas at uco dot es)
- This software is released under BSD license as expressed below
+ Copyright (c) 2017 Joseph Mariadassou 
+ theSundayProgrammer@gmail.com.
+ 
+This header was inspired by raspicam 
+http://github.com/cedric/raspicam
+
+original copyright follows:
 -------------------------------------------------------------------
 Copyright (c) 2013, AVA ( Ava Group University of Cordoba, ava  at uco dot es)
 All rights reserved.
@@ -55,24 +59,14 @@ namespace camerasp {
 
   private:
 
-    MMAL_COMPONENT_T * camera;	 /// Pointer to the camera component
-    MMAL_COMPONENT_T * encoder;	/// Pointer to the encoder component
-    MMAL_CONNECTION_T * encoder_connection; // Connection from the camera to the encoder
-    MMAL_POOL_T * encoder_pool;				  /// Pointer to the pool of buffers used by encoder output port
+    MMAL_COMPONENT_T * camera;	
+    MMAL_COMPONENT_T * encoder;
+    MMAL_CONNECTION_T * encoder_connection; 
+    MMAL_POOL_T * encoder_pool;		
     MMAL_PORT_T * camera_still_port;
     MMAL_PORT_T * encoder_input_port;
     MMAL_PORT_T * encoder_output_port;
-    RASPICAM_ENCODING encoding;
-    RASPICAM_EXPOSURE exposure;
-    RASPICAM_AWB awb;
-    RASPICAM_IMAGE_EFFECT imageEffect;
-    RASPICAM_METERING metering;
 
-    MMAL_FOURCC_T convertEncoding(RASPICAM_ENCODING encoding);
-    MMAL_PARAM_EXPOSUREMETERINGMODE_T convertMetering(RASPICAM_METERING metering);
-    MMAL_PARAM_EXPOSUREMODE_T convertExposure(RASPICAM_EXPOSURE exposure);
-    MMAL_PARAM_AWBMODE_T convertAWB(RASPICAM_AWB awb);
-    MMAL_PARAM_IMAGEFX_T convertImageEffect(RASPICAM_IMAGE_EFFECT imageEffect);
     void commitBrightness();
     void commitQuality();
     void commitRotation();
@@ -94,9 +88,13 @@ namespace camerasp {
     MMAL_STATUS_T connectPorts(MMAL_PORT_T *output_port, MMAL_PORT_T *input_port, MMAL_CONNECTION_T **connection);
 
     bool _isInitialized;
-    sem_t mutex;
 
 
+  MMAL_FOURCC_T encoding;
+  MMAL_PARAM_EXPOSUREMETERINGMODE_T metering;
+  MMAL_PARAM_EXPOSUREMODE_T exposure;
+  MMAL_PARAM_AWBMODE_T awb;
+  MMAL_PARAM_IMAGEFX_T imageEffect;
 
   public:
     ~cam_still();
@@ -108,17 +106,7 @@ namespace camerasp {
     void stop_capture();
 
     void commit_parameters();
-    void setExposure(RASPICAM_EXPOSURE exposure);
-    void setAWB(RASPICAM_AWB awb);
-    void setImageEffect(RASPICAM_IMAGE_EFFECT imageEffect);
-    void setMetering(RASPICAM_METERING metering);
-    void setEncoding(RASPICAM_ENCODING encoding);
 
-    RASPICAM_ENCODING get_encoding();
-    RASPICAM_EXPOSURE get_exposure();
-    RASPICAM_AWB get_AWB();
-    RASPICAM_IMAGE_EFFECT get_image_effect();
-    RASPICAM_METERING get_metering();
 
     //Returns an id of the camera. We assume the camera id is the one of the raspberry
     //the id is obtained using raspberry serial number obtained in /proc/cpuinfo

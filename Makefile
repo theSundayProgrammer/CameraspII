@@ -1,5 +1,4 @@
-SUBDIRS = server http json
-
+SUBDIRS = server json
 subdirs: $(SUBDIRS)
 
 .PHONY: subdirs $(SUBDIRS)
@@ -7,5 +6,8 @@ subdirs: $(SUBDIRS)
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-server: http json
+clean:
+	$(MAKE) -C server clean
+
+server: json
 

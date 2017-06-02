@@ -1,0 +1,27 @@
+// Configuration options
+{
+  "Camera": {
+      "height" : 480,
+      "horizontal" : 0,
+      "iso" : 360,
+      "vertical" : 1,
+      "width" : 640
+   },
+    "Logging": {
+      "path": "/home/pi/data/log",
+      "count": 5,
+      "size": 2,
+      "type": "debug"
+    },
+    "Data": {
+      "path_prefix": "/home/pi/data/backup",
+      "sample_period": 1,
+      "count": 1000
+    },
+    "Server": {
+      "port" : 8088,
+      "command": "/home/pi/bin/camerasp",
+      "home_page" : "/home/pi/data/web",
+      "log_folder" : "/home/pi/data/camerasp_log"
+    }
+}

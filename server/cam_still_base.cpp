@@ -5,7 +5,6 @@ Copyright Joseph Mariadassou (theSundayProgrammer@gmail.com).
 #include <camerasp/cam_still_base.hpp>
 namespace camerasp
 {
-  cam_still_base::~cam_still_base() { } 
 
   cam_still_base::cam_still_base() {
     width = 640;
