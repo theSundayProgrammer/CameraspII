@@ -41,7 +41,7 @@ class smtp_client
     string user, password;
     string url;
     string from;
-    string body;
+    std::ifstream ifs;    
     string subject;
     std::vector<string> recipient_ids;
     CURLcode send()
@@ -60,9 +60,8 @@ class smtp_client
       message.push_back(string("Message-ID: ") + "<" + to_string(u) + "@theSundayProgrammer.com>\r\n");
 
       message.push_back(string("Subject :") + subject + "\r\n");
+      //message.push_back(body);
       //message.push_back(string("\r\n"));
-      message.push_back(body);
-      message.push_back(string("\r\n"));
 
       curl_easy_setopt(curl, CURLOPT_USERNAME, user.c_str());
       curl_easy_setopt(curl, CURLOPT_PASSWORD, password.c_str());
@@ -90,8 +89,9 @@ class smtp_client
 
       start = message.begin();
       finish = message.end();
+      ifs.open("content.txt");
       CURLcode res = curl_easy_perform(curl);
-
+      ifs.close();
       if (res != CURLE_OK)
 	fprintf(stderr, "curl_easy_perform() failed: %s\n",
 	    curl_easy_strerror(res));
@@ -110,16 +110,32 @@ class smtp_client
     {
       smtp_client *this_= static_cast<smtp_client*>(userp);
 
-      if (this_->start == this_->finish)
-	return 0; 
       if((size == 0) || (nmemb == 0) || ((size*nmemb) < 1)) {
 	return 0;
       }
-      size_t len =this_->start->length();
-      memcpy(ptr, this_->start->data() , len);
-      this_->start++;
-      return len;
+      if (this_->start == this_->finish)
+      {
 
+	string s;
+	if(getline(this_->ifs,s,'\n'))
+	{
+	  s +=  "\r\n";
+	  size_t len =s.length();
+          //std::cout<<s;
+	  memcpy(ptr, s.data() , len);
+	  return len;
+	}
+	else
+	  return 0; 
+      }
+      else
+      {
+	size_t len =this_->start->length();
+          //std::cout<<*(this_->start);
+	memcpy(ptr, this_->start->data() , len);
+	this_->start++;
+	return len;
+      }
     }
 };
     
@@ -136,10 +152,6 @@ int main(void)
   smtp.url="smtp://smtp.gmail.com:587";
   smtp.from = "<joe.mariadassou@gmail.com> Chakra";
   smtp.subject = "Test Message";
-  string s;
-  std::ifstream ifs("content.txt");
-  while(getline(ifs,s,'\n'))
-    smtp.body += s + "\r\n";
    smtp.recipient_ids.push_back(TO);
    smtp.recipient_ids.push_back(CC);
   smtp.send();
