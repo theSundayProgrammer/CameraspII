@@ -1,14 +1,3 @@
-/***************************************************************************
- *
- * Copyright (C) 1998 - 2016, Daniel Stenberg, <daniel@haxx.se>, et al.
- *
- *
- ***************************************************************************/
-
-/* <DESC>
- * SMTP example using TLS
- * </DESC>
- */
 
 #include <stdio.h>
 #include <string.h>
@@ -17,35 +6,28 @@
 #include <string>
 #include <stdexcept>
 #include <iostream>
- /* Note that this example requires libcurl 7.20.0 or above.
- */
+#include <chrono>  // chrono::system_clock
+#include <ctime>   // localtime
+#include <sstream> // stringstream
+#include <fstream> // stringstream
+#include <iomanip> // put_time
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 
-
-
-struct upload_status {
-  std::vector<std::string>::iterator start,finish;
-};
-
-    using std::string;
-static size_t payload_source(void *ptr, size_t size, size_t nmemb, void *userp)
+std::string current_date_time()
 {
-  struct upload_status *upload_ctx = (struct upload_status *)userp;
+    auto now = std::chrono::system_clock::now(); // system time
+    auto in_time_t = std::chrono::system_clock::to_time_t(now); //convert to std::time_t
 
-  if((size == 0) || (nmemb == 0) || ((size*nmemb) < 1)) {
-    return 0;
-  }
-  if (upload_ctx->start == upload_ctx->finish)
-    return 0; 
-  size_t len =upload_ctx->start->length();
-  memcpy(ptr, upload_ctx->start->data() , len);
-  upload_ctx->start++;
-  return len;
-
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&in_time_t), "%a, %b %d %Y %X %z");
+    return ss.str();
 }
+
+
+using std::string;
 
 class smtp_client
 {
@@ -64,13 +46,12 @@ class smtp_client
     std::vector<string> recipient_ids;
     CURLcode send()
     {
-      string date ( "Date: Wed, 30 May 2017 08:54:29 +1100\r\n");
-      message.push_back(date);
+      string date ( "Date: ");
+      message.push_back(date + current_date_time() + "\r\n");
       string to = "To: ";
       to += *recipient_ids.begin() + "\r\n";
       message.push_back(to);
 
-      std::cerr << "OK Here " << __LINE__ << std::endl;
       message.push_back(string("From: ") + from + "\r\n");
 
 
@@ -79,7 +60,7 @@ class smtp_client
       message.push_back(string("Message-ID: ") + "<" + to_string(u) + "@theSundayProgrammer.com>\r\n");
 
       message.push_back(string("Subject :") + subject + "\r\n");
-      message.push_back(string("\r\n"));
+      //message.push_back(string("\r\n"));
       message.push_back(body);
       message.push_back(string("\r\n"));
 
@@ -96,31 +77,26 @@ class smtp_client
 
       curl_slist *recipients = nullptr;
       for(auto const& str: recipient_ids)
-{
+      {
 	recipients = curl_slist_append(recipients, str.c_str());
-      std::cerr <<str<< std::endl;
-}
+      }
       curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 
-      std::cerr << "OK Here " << __LINE__ << std::endl;
       curl_easy_setopt(curl, CURLOPT_READFUNCTION, smtp_client::callback);
       curl_easy_setopt(curl, CURLOPT_READDATA, this);
       curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 
       curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-      std::cerr << "OK Here " << __LINE__ << std::endl;
       start = message.begin();
       finish = message.end();
       CURLcode res = curl_easy_perform(curl);
 
-      std::cerr << "OK Here " << __LINE__ << std::endl;
       if (res != CURLE_OK)
 	fprintf(stderr, "curl_easy_perform() failed: %s\n",
 	    curl_easy_strerror(res));
       curl_slist_free_all(recipients);
 
-      std::cerr << "OK Here " << __LINE__ << std::endl;
     }
     ~smtp_client()
     {
@@ -136,7 +112,6 @@ class smtp_client
 
       if (this_->start == this_->finish)
 	return 0; 
-      //std::cerr << *(this_->start);
       if((size == 0) || (nmemb == 0) || ((size*nmemb) < 1)) {
 	return 0;
       }
@@ -155,19 +130,56 @@ int main(void)
 {
   CURLcode res = CURLE_OK;
   smtp_client smtp; 
-
+  std::cout << "Password:";
+  std::cin >> smtp.password;
   smtp.user= "joe.mariadassou@gmail.com";
-  smtp.password =  "954Vnrtz";
   smtp.url="smtp://smtp.gmail.com:587";
   smtp.from = "<joe.mariadassou@gmail.com> Chakra";
   smtp.subject = "Test Message";
-  smtp.body = "This is test message\r\n" 
-  "It could be a lot of lines, could be MIME encoded, whatever.\r\n"
-  "Check RFC5322.\r\n";
+  string s;
+  std::ifstream ifs("content.txt");
+  while(getline(ifs,s,'\n'))
+    smtp.body += s + "\r\n";
    smtp.recipient_ids.push_back(TO);
    smtp.recipient_ids.push_back(CC);
-      std::cerr << "OK Here " << __LINE__ << std::endl;
   smtp.send();
 
   return (int)res;
 }
+
+
+
+/*****************************
+
+From: steve_ho...@hotmail.com
+To: u...@domain.com
+Subject: Test Message
+Date: Mon, 02 Apr 2012 11:00:00 +0100
+Content-Type: multipart/mixed; boundary="pj+EhsWuSQJxx7pr"
+Mime-version: 1.0
+
+This is a multi-part message in MIME format.
+
+--pj+EhsWuSQJxx7pr
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+Hello
+
+--pj+EhsWuSQJxx7pr
+Content-Type: application/octet-stream;
+        name="Test.txt"
+Content-Transfer-Encoding: base64
+Content-Description: Test.txt
+Content-Disposition: attachment;
+        filename="Test.txt"; size=400;
+        creation-date="Mon, 02 Apr 2012 10:00:00 GMT";
+        modification-date="Mon, 02 Apr 2012 10:00:00 GMT"
+
+[base64 encoding text split across multiple lines, each being 76 characters
+long]
+
+--pj+EhsWuSQJxx7pr--
+
+
+*********************************************/

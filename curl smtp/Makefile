@@ -1,4 +1,5 @@
 
+
 CXX_FLAGS = -std=c++14 
 BUILD_DIR=./build
 CXX=g++
@@ -7,7 +8,7 @@ all : send
 .PHONY : all
 
 
-srcs = $(wildcard *.cpp)
+srcs = smtpClient.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
