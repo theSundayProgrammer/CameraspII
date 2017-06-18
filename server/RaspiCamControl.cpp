@@ -1,0 +1,1322 @@
+/*
+Copyright (c) 2013, Broadcom Europe Ltd
+Copyright (c) 2013, James Hughes
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the copyright holder nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+#include <stdio.h>
+#include <memory.h>
+#include <ctype.h>
+#include <iterator>
+#include <string>
+#include <fstream>
+extern "C" {
+#include "interface/vcos/vcos.h"
+
+#include "interface/vmcs_host/vc_vchi_gencmd.h"
+#include "interface/mmal/mmal.h"
+#include "interface/mmal/mmal_logging.h"
+#include "interface/mmal/util/mmal_util.h"
+#include "interface/mmal/util/mmal_util_params.h"
+#include "interface/mmal/util/mmal_default_components.h"
+}
+#include <raspi/RaspiCamControl.h>
+#include <raspi/RaspiCLI.h>
+#include <stdexcept>
+/// Cross reference structure, mode string against mode id
+typedef struct 
+{
+   const char *mode;
+   MMAL_PARAM_AWBMODE_T mmal_mode;
+   typedef MMAL_PARAM_AWBMODE_T value_type;
+} AWB_REF_T;
+typedef struct 
+{
+   const char *mode;
+   MMAL_PARAM_EXPOSUREMETERINGMODE_T mmal_mode;
+   typedef MMAL_PARAM_EXPOSUREMETERINGMODE_T value_type;
+} XM_REF_T;
+typedef struct 
+{
+   const char *mode;
+   MMAL_PARAMETER_DRC_STRENGTH_T mmal_mode;
+   typedef MMAL_PARAMETER_DRC_STRENGTH_T value_type;
+} DRC_REF_T;
+typedef struct 
+{
+   const char *mode;
+   MMAL_PARAM_IMAGEFX_T mmal_mode;
+   typedef MMAL_PARAM_IMAGEFX_T value_type;
+} IMGFX_REF_T;
+typedef struct 
+{
+   const char *mode;
+   MMAL_STEREOSCOPIC_MODE_T mmal_mode;
+   typedef MMAL_STEREOSCOPIC_MODE_T value_type;
+} STR_REF_T;
+typedef struct xref_t
+{
+   const char *mode;
+   MMAL_PARAM_EXPOSUREMODE_T mmal_mode;
+   typedef MMAL_PARAM_EXPOSUREMODE_T value_type;
+} XREF_T;
+
+
+
+struct img_fmt_t
+{
+   const char *mode;
+   MMAL_FOURCC_T mmal_mode;
+   typedef MMAL_FOURCC_T value_type;
+} ;
+img_fmt_t encoding_xref[] =
+{
+   {"jpg", MMAL_ENCODING_JPEG},
+   {"bmp", MMAL_ENCODING_BMP},
+   {"gif", MMAL_ENCODING_GIF},
+   {"png", MMAL_ENCODING_PNG}
+};
+
+static int encoding_xref_size = sizeof(encoding_xref) / sizeof(encoding_xref[0]);
+
+/// Structure to cross reference exposure strings against the MMAL parameter equivalent
+static XREF_T  exposure_map[] =
+{
+   {"off",           MMAL_PARAM_EXPOSUREMODE_OFF},
+   {"auto",          MMAL_PARAM_EXPOSUREMODE_AUTO},
+   {"night",         MMAL_PARAM_EXPOSUREMODE_NIGHT},
+   {"nightpreview",  MMAL_PARAM_EXPOSUREMODE_NIGHTPREVIEW},
+   {"backlight",     MMAL_PARAM_EXPOSUREMODE_BACKLIGHT},
+   {"spotlight",     MMAL_PARAM_EXPOSUREMODE_SPOTLIGHT},
+   {"sports",        MMAL_PARAM_EXPOSUREMODE_SPORTS},
+   {"snow",          MMAL_PARAM_EXPOSUREMODE_SNOW},
+   {"beach",         MMAL_PARAM_EXPOSUREMODE_BEACH},
+   {"verylong",      MMAL_PARAM_EXPOSUREMODE_VERYLONG},
+   {"fixedfps",      MMAL_PARAM_EXPOSUREMODE_FIXEDFPS},
+   {"antishake",     MMAL_PARAM_EXPOSUREMODE_ANTISHAKE},
+   {"fireworks",     MMAL_PARAM_EXPOSUREMODE_FIREWORKS}
+};
+
+static const int exposure_map_size = sizeof(exposure_map) / sizeof(exposure_map[0]);
+
+/// Structure to cross reference awb strings against the MMAL parameter equivalent
+static AWB_REF_T awb_map[] =
+{
+   {"off",           MMAL_PARAM_AWBMODE_OFF},
+   {"auto",          MMAL_PARAM_AWBMODE_AUTO},
+   {"sun",           MMAL_PARAM_AWBMODE_SUNLIGHT},
+   {"cloud",         MMAL_PARAM_AWBMODE_CLOUDY},
+   {"shade",         MMAL_PARAM_AWBMODE_SHADE},
+   {"tungsten",      MMAL_PARAM_AWBMODE_TUNGSTEN},
+   {"fluorescent",   MMAL_PARAM_AWBMODE_FLUORESCENT},
+   {"incandescent",  MMAL_PARAM_AWBMODE_INCANDESCENT},
+   {"flash",         MMAL_PARAM_AWBMODE_FLASH},
+   {"horizon",       MMAL_PARAM_AWBMODE_HORIZON}
+};
+
+static const int awb_map_size = sizeof(awb_map) / sizeof(awb_map[0]);
+
+/// Structure to cross reference image effect against the MMAL parameter equivalent
+static IMGFX_REF_T imagefx_map[] =
+{
+   {"none",          MMAL_PARAM_IMAGEFX_NONE},
+   {"negative",      MMAL_PARAM_IMAGEFX_NEGATIVE},
+   {"solarise",      MMAL_PARAM_IMAGEFX_SOLARIZE},
+   {"sketch",        MMAL_PARAM_IMAGEFX_SKETCH},
+   {"denoise",       MMAL_PARAM_IMAGEFX_DENOISE},
+   {"emboss",        MMAL_PARAM_IMAGEFX_EMBOSS},
+   {"oilpaint",      MMAL_PARAM_IMAGEFX_OILPAINT},
+   {"hatch",         MMAL_PARAM_IMAGEFX_HATCH},
+   {"gpen",          MMAL_PARAM_IMAGEFX_GPEN},
+   {"pastel",        MMAL_PARAM_IMAGEFX_PASTEL},
+   {"watercolour",   MMAL_PARAM_IMAGEFX_WATERCOLOUR},
+   {"film",          MMAL_PARAM_IMAGEFX_FILM},
+   {"blur",          MMAL_PARAM_IMAGEFX_BLUR},
+   {"saturation",    MMAL_PARAM_IMAGEFX_SATURATION},
+   {"colourswap",    MMAL_PARAM_IMAGEFX_COLOURSWAP},
+   {"washedout",     MMAL_PARAM_IMAGEFX_WASHEDOUT},
+   {"posterise",     MMAL_PARAM_IMAGEFX_POSTERISE},
+   {"colourpoint",   MMAL_PARAM_IMAGEFX_COLOURPOINT},
+   {"colourbalance", MMAL_PARAM_IMAGEFX_COLOURBALANCE},
+   {"cartoon",       MMAL_PARAM_IMAGEFX_CARTOON}
+ };
+
+static const int imagefx_map_size = sizeof(imagefx_map) / sizeof(imagefx_map[0]);
+
+static XM_REF_T metering_mode_map[] =
+{
+   {"average",       MMAL_PARAM_EXPOSUREMETERINGMODE_AVERAGE},
+   {"spot",          MMAL_PARAM_EXPOSUREMETERINGMODE_SPOT},
+   {"backlit",       MMAL_PARAM_EXPOSUREMETERINGMODE_BACKLIT},
+   {"matrix",        MMAL_PARAM_EXPOSUREMETERINGMODE_MATRIX}
+};
+
+static const int metering_mode_map_size = sizeof(metering_mode_map)/sizeof(metering_mode_map[0]);
+
+static DRC_REF_T drc_mode_map[] =
+{
+   {"off",           MMAL_PARAMETER_DRC_STRENGTH_OFF},
+   {"low",           MMAL_PARAMETER_DRC_STRENGTH_LOW},
+   {"med",           MMAL_PARAMETER_DRC_STRENGTH_MEDIUM},
+   {"high",          MMAL_PARAMETER_DRC_STRENGTH_HIGH}
+};
+
+static const int drc_mode_map_size = sizeof(drc_mode_map)/sizeof(drc_mode_map[0]);
+
+static STR_REF_T stereo_mode_map[] =
+{
+   {"off",           MMAL_STEREOSCOPIC_MODE_NONE},
+   {"sbs",           MMAL_STEREOSCOPIC_MODE_SIDE_BY_SIDE},
+   {"tb",            MMAL_STEREOSCOPIC_MODE_TOP_BOTTOM},
+};
+
+static const int stereo_mode_map_size = sizeof(stereo_mode_map)/sizeof(stereo_mode_map[0]);
+
+
+#define CommandSharpness   0
+#define CommandContrast    1
+#define CommandBrightness  2
+#define CommandSaturation  3
+#define CommandISO         4
+#define CommandVideoStab   5
+#define CommandEVComp      6
+#define CommandExposure    7
+#define CommandAWB         8
+#define CommandImageFX     9
+#define CommandColourFX    10
+#define CommandMeterMode   11
+#define CommandRotation    12
+#define CommandHFlip       13
+#define CommandVFlip       14
+#define CommandROI         15
+#define CommandShutterSpeed 16
+#define CommandAwbGains    17
+#define CommandDRCLevel    18
+#define CommandStatsPass   19
+#define CommandAnnotate    20
+#define CommandStereoMode  21
+#define CommandStereoDecimate 22
+#define CommandStereoSwap  23
+#define CommandAnnotateExtras 24
+
+static COMMAND_LIST  cmdline_commands[] =
+{
+   {CommandSharpness,   "-sharpness", "sh", "Set image sharpness (-100 to 100)",  1},
+   {CommandContrast,    "-contrast",  "co", "Set image contrast (-100 to 100)",  1},
+   {CommandBrightness,  "-brightness","br", "Set image brightness (0 to 100)",  1},
+   {CommandSaturation,  "-saturation","sa", "Set image saturation (-100 to 100)", 1},
+   {CommandISO,         "-ISO",       "ISO","Set capture ISO",  1},
+   {CommandVideoStab,   "-vstab",     "vs", "Turn on video stabilisation", 0},
+   {CommandEVComp,      "-ev",        "ev", "Set EV compensation - steps of 1/6 stop",  1},
+   {CommandExposure,    "-exposure",  "ex", "Set exposure mode (see Notes)", 1},
+   {CommandAWB,         "-awb",       "awb","Set AWB mode (see Notes)", 1},
+   {CommandImageFX,     "-imxfx",     "ifx","Set image effect (see Notes)", 1},
+   {CommandColourFX,    "-colfx",     "cfx","Set colour effect (U:V)",  1},
+   {CommandMeterMode,   "-metering",  "mm", "Set metering mode (see Notes)", 1},
+   {CommandRotation,    "-rotation",  "rot","Set image rotation (0-359)", 1},
+   {CommandHFlip,       "-hflip",     "hf", "Set horizontal flip", 0},
+   {CommandVFlip,       "-vflip",     "vf", "Set vertical flip", 0},
+   {CommandROI,         "-roi",       "roi","Set region of interest (x,y,w,d as normalised coordinates [0.0-1.0])", 1},
+   {CommandShutterSpeed,"-shutter",   "ss", "Set shutter speed in microseconds", 1},
+   {CommandAwbGains,    "-awbgains",  "awbg", "Set AWB gains - AWB mode must be off", 1},
+   {CommandDRCLevel,    "-drc",       "drc", "Set DRC Level (see Notes)", 1},
+   {CommandStatsPass,   "-stats",     "st", "Force recomputation of statistics on stills capture pass"},
+   {CommandStereoMode,  "-stereo",    "3d", "Select stereoscopic mode", 1},
+   {CommandStereoDecimate,"-decimate","dec", "Half width/height of stereo image"},
+   {CommandStereoSwap,  "-3dswap",    "3dswap", "Swap camera order for stereoscopic"},
+};
+
+static int cmdline_commands_size = sizeof(cmdline_commands) / sizeof(cmdline_commands[0]);
+
+
+/**
+ * Function to take a string, a mapping, and return the int equivalent
+ * @param str Incoming string to match
+ * @param map Mapping data
+ * @param num_refs The number of items in the mapping data
+ * @return The integer match for the string, or -1 if no match
+ */
+template <class T>
+typename T::value_type raspicli_map_xref(const char *str, const T *map, int num_refs)
+{
+   for (int i=0;i<num_refs;i++)
+   {
+      if (!strcasecmp(str, map[i].mode))
+      {
+         return map[i].mmal_mode;
+      }
+   }
+   throw std::runtime_error(std::string("invalid argument") + str);
+}
+
+/**
+ * Function to take a mmal enum (as int) and return the string equivalent
+ * @param en Incoming int to match
+ * @param map Mapping data
+ * @param num_refs The number of items in the mapping data
+ * @return const pointer to string, or NULL if no match
+ */
+template <class T>
+const char *raspicli_unmap_xref(typename T::value_type en, T map[], int num_refs)
+{
+   int i;
+
+   for (i=0;i<num_refs;i++)
+   {
+      if (en == map[i].mmal_mode)
+      {
+         return map[i].mode;
+      }
+   }
+   return NULL;
+}
+/*
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+const char *string_from_awb_mode(MMAL_PARAM_AWBMODE_T em)
+{
+ const char *str= raspicli_unmap_xref(em, awb_map, awb_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
+}
+
+/**
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+const char *string_from_img_format(MMAL_FOURCC_T em)
+{
+ const char *str= raspicli_unmap_xref(em,  encoding_xref, encoding_xref_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown format: %d", em);
+   return str;
+}
+/**
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+MMAL_FOURCC_T img_format_from_string(const char *str)
+{
+   return raspicli_map_xref(str, encoding_xref, encoding_xref_size);
+}
+/**
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+const char *string_from_exposure_mode(MMAL_PARAM_EXPOSUREMODE_T em)
+{
+ const char *str= raspicli_unmap_xref(em, exposure_map, exposure_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown format: %d", em);
+   return str;
+}
+/**
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+MMAL_PARAM_EXPOSUREMODE_T exposure_mode_from_string(const char *str)
+{
+  return raspicli_map_xref(str, exposure_map, exposure_map_size);
+}
+/**
+ * Convert string to the MMAL parameter for AWB mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+MMAL_PARAM_AWBMODE_T awb_mode_from_string(const char *str)
+{
+   return raspicli_map_xref(str, awb_map, awb_map_size);
+}
+
+/**
+ * Convert string to the MMAL parameter for image effects mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the strong, or the AUTO option if no match found
+ */
+MMAL_PARAM_IMAGEFX_T imagefx_mode_from_string(const char *str)
+{
+   return raspicli_map_xref(str, imagefx_map, imagefx_map_size);
+}
+const char *string_mode_from_imagefx(MMAL_PARAM_IMAGEFX_T em)
+{
+ const char *str= raspicli_unmap_xref(em,  imagefx_map, imagefx_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %d", em );
+   return str;
+}
+
+/**
+ * Convert string to the MMAL parameter for exposure metering mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+MMAL_PARAM_EXPOSUREMETERINGMODE_T metering_mode_from_string(const char *str)
+{
+return raspicli_map_xref(str, metering_mode_map, metering_mode_map_size);
+
+}
+
+const char *string_from_metering_mode(MMAL_PARAM_EXPOSUREMETERINGMODE_T em)
+{
+ const char *str= raspicli_unmap_xref(em, metering_mode_map, metering_mode_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
+}
+/**
+ * Convert string to the MMAL parameter for DRC level
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+MMAL_PARAMETER_DRC_STRENGTH_T drc_mode_from_string(const char *str)
+{
+return raspicli_map_xref(str, drc_mode_map, drc_mode_map_size);
+
+}
+
+/**
+ * Convert string to the MMAL parameter for exposure mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+const char *string_from_drc_mode(MMAL_PARAMETER_DRC_STRENGTH_T em)
+{
+ const char *str= raspicli_unmap_xref(em, drc_mode_map, drc_mode_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
+}
+/**
+ * Convert string to the MMAL parameter for exposure metering mode
+ * @param str Incoming string to match
+ * @return MMAL parameter matching the string, or the AUTO option if no match found
+ */
+MMAL_STEREOSCOPIC_MODE_T stereo_mode_from_string(const char *str)
+{
+return raspicli_map_xref(str,stereo_mode_map, stereo_mode_map_size); 
+
+}
+
+const char *string_from_stereo_mode(MMAL_STEREOSCOPIC_MODE_T em)
+{
+ const char *str= raspicli_unmap_xref(em, stereo_mode_map, stereo_mode_map_size);
+
+   if(str==NULL)
+     vcos_log_error("Unknown exposure mode: %s", str);
+   return str;
+}
+/**
+ * Parse a possible command pair - command and parameter
+ * @param istr input stream
+ * @return true if success, false otherwise
+ */
+bool raspicamcontrol_parse_cmdline(RASPICAM_CAMERA_PARAMETERS *params, std::istream_iterator<std::string>& istr)
+{
+   int command_id,  num_parameters;
+   using string = std::string;
+   std::istream_iterator<string> eos;
+   if (istr == eos)
+       return false;
+
+   command_id = raspicli_get_command_id(cmdline_commands, cmdline_commands_size, istr->c_str(), &num_parameters);
+
+   // If invalid command, or we are missing a parameter, drop out
+   if (command_id==-1 || ( num_parameters > 0 && ++istr==eos))
+      return false;
+
+   switch (command_id)
+   {
+   case CommandSharpness : // sharpness - needs single number parameter
+      sscanf(istr->c_str(), "%d", &params->sharpness);
+      
+      break;
+
+   case CommandContrast : // contrast - needs single number parameter
+      sscanf(istr->c_str(), "%d", &params->contrast);
+      
+      break;
+
+   case CommandBrightness : // brightness - needs single number parameter
+      sscanf(istr->c_str(), "%d", &params->brightness);
+      
+      break;
+
+   case CommandSaturation : // saturation - needs single number parameter
+      sscanf(istr->c_str(), "%d", &params->saturation);
+      
+      break;
+
+   case CommandISO : // ISO - needs single number parameter
+      sscanf(istr->c_str(), "%d", &params->ISO);
+      
+      break;
+
+   case CommandVideoStab : // video stabilisation - if here, its on
+      params->videoStabilisation = 1;
+      
+      break;
+
+   case CommandEVComp : // EV - needs single number parameter
+      sscanf(istr->c_str(), "%d", &params->exposureCompensation);
+      
+      break;
+
+   case CommandExposure : // exposure mode - needs string
+      params->exposureMode = exposure_mode_from_string(istr->c_str());
+      
+      break;
+
+   case CommandAWB : // AWB mode - needs single number parameter
+      params->awbMode = awb_mode_from_string(istr->c_str());
+      
+      break;
+
+   case CommandImageFX : // Image FX - needs string
+      params->imageEffect = imagefx_mode_from_string(istr->c_str());
+      
+      break;
+
+   case CommandColourFX : // Colour FX - needs string "u:v"
+      sscanf(istr->c_str(), "%d:%d", &params->colourEffects.u, &params->colourEffects.v);
+      params->colourEffects.enable = 1;
+      
+      break;
+
+   case CommandMeterMode:
+      params->exposureMeterMode = metering_mode_from_string(istr->c_str());
+      
+      break;
+
+   case CommandRotation : // Rotation - degree
+      sscanf(istr->c_str(), "%d", &params->rotation);
+      
+      break;
+
+   case CommandHFlip :
+      params->hflip  = 1;
+      
+      break;
+
+   case CommandVFlip :
+      params->vflip = 1;
+      
+      break;
+
+   case CommandROI :
+   {
+      double x,y,w,h;
+      int args;
+
+      args = sscanf(istr->c_str(), "%lf,%lf,%lf,%lf", &x,&y,&w,&h);
+
+      if (args != 4 || x > 1.0 || y > 1.0 || w > 1.0 || h > 1.0)
+      {
+         return false;
+      }
+
+      // Make sure we stay within bounds
+      if (x + w > 1.0)
+         w = 1 - x;
+
+      if (y + h > 1.0)
+         h = 1 - y;
+
+      params->roi.x = x;
+      params->roi.y = y;
+      params->roi.w = w;
+      params->roi.h = h;
+
+      
+      break;
+   }
+
+   case CommandShutterSpeed : // Shutter speed needs single number parameter
+   {
+      sscanf(istr->c_str(), "%d", &params->shutter_speed);
+      
+      break;
+   }
+
+   case CommandAwbGains :
+      {
+      double r,b;
+      int args;
+
+      args = sscanf(istr->c_str(), "%lf,%lf", &r,&b);
+
+      if (args != 2 || r > 8.0 || b > 8.0)
+      {
+         return false;
+      }
+
+      params->awb_gains_r = r;
+      params->awb_gains_b = b;
+
+      
+      break;
+      }
+
+   case CommandDRCLevel:
+   {
+      params->drc_level = drc_mode_from_string(istr->c_str());
+      
+      break;
+   }
+
+   case CommandStatsPass:
+   {
+      params->stats_pass = MMAL_TRUE;
+      
+      break;
+   }
+
+   case CommandStereoMode:
+   {
+      params->stereo_mode.mode = stereo_mode_from_string(istr->c_str());
+      
+      break;
+   }
+
+   case CommandStereoDecimate:
+   {
+      params->stereo_mode.decimate = MMAL_TRUE;
+      
+      break;
+   }
+
+   case CommandStereoSwap:
+   {
+      params->stereo_mode.swap_eyes = MMAL_TRUE;
+      
+      break;
+   }
+
+   }
+   return true;
+}
+
+/**
+ * Display help for command line options
+ */
+void raspicamcontrol_display_help()
+{
+   int i;
+
+   fprintf(stdout, "\nImage parameter commands\n\n");
+
+   raspicli_display_help(cmdline_commands, cmdline_commands_size);
+
+   fprintf(stdout, "\n\nNotes\n\nExposure mode options :\n%s", exposure_map[0].mode );
+
+   for (i=1;i<exposure_map_size;i++)
+   {
+      fprintf(stdout, ",%s", exposure_map[i].mode);
+   }
+
+   fprintf(stdout, "\n\nAWB mode options :\n%s", awb_map[0].mode );
+
+   for (i=1;i<awb_map_size;i++)
+   {
+      fprintf(stdout, ",%s", awb_map[i].mode);
+   }
+
+   fprintf(stdout, "\n\nImage Effect mode options :\n%s", imagefx_map[0].mode );
+
+   for (i=1;i<imagefx_map_size;i++)
+   {
+      fprintf(stdout, ",%s", imagefx_map[i].mode);
+   }
+
+   fprintf(stdout, "\n\nMetering Mode options :\n%s", metering_mode_map[0].mode );
+
+   for (i=1;i<metering_mode_map_size;i++)
+   {
+      fprintf(stdout, ",%s", metering_mode_map[i].mode);
+   }
+
+   fprintf(stdout, "\n\nDynamic Range Compression (DRC) options :\n%s", drc_mode_map[0].mode );
+
+   for (i=1;i<drc_mode_map_size;i++)
+   {
+      fprintf(stdout, ",%s", drc_mode_map[i].mode);
+   }
+
+   fprintf(stdout, "\n");
+}
+
+
+/**
+ * Dump contents of camera parameter structure to stderr for debugging/verbose logging
+ *
+ * @param params Const pointer to parameters structure to dump
+ */
+void raspicamcontrol_dump_parameters(const RASPICAM_CAMERA_PARAMETERS *params)
+{
+   const char *exp_mode = raspicli_unmap_xref(params->exposureMode, exposure_map, exposure_map_size);
+   const char *awb_mode = raspicli_unmap_xref(params->awbMode, awb_map, awb_map_size);
+   const char *image_effect = raspicli_unmap_xref(params->imageEffect, imagefx_map, imagefx_map_size);
+   const char *metering_mode = raspicli_unmap_xref(params->exposureMeterMode, metering_mode_map, metering_mode_map_size);
+
+   fprintf(stderr, "Sharpness %d, Contrast %d, Brightness %d\n", params->sharpness, params->contrast, params->brightness);
+   fprintf(stderr, "Saturation %d, ISO %d, Video Stabilisation %s, Exposure compensation %d\n", params->saturation, params->ISO, params->videoStabilisation ? "Yes": "No", params->exposureCompensation);
+   fprintf(stderr, "Exposure Mode '%s', AWB Mode '%s', Image Effect '%s'\n", exp_mode, awb_mode, image_effect);
+   fprintf(stderr, "Metering Mode '%s', Colour Effect Enabled %s with U = %d, V = %d\n", metering_mode, params->colourEffects.enable ? "Yes":"No", params->colourEffects.u, params->colourEffects.v);
+   fprintf(stderr, "Rotation %d, hflip %s, vflip %s\n", params->rotation, params->hflip ? "Yes":"No",params->vflip ? "Yes":"No");
+   fprintf(stderr, "ROI x %lf, y %f, w %f h %f\n", params->roi.x, params->roi.y, params->roi.w, params->roi.h);
+}
+
+/**
+ * Convert a MMAL status return value to a simple boolean of success
+ * ALso displays a fault if code is not success
+ *
+ * @param status The error code to convert
+ * @return 0 if status is success, 1 otherwise
+ */
+int mmal_status_to_int(MMAL_STATUS_T status)
+{
+   if (status == MMAL_SUCCESS)
+      return 0;
+   else
+   {
+      switch (status)
+      {
+      case MMAL_ENOMEM :   vcos_log_error("Out of memory"); break;
+      case MMAL_ENOSPC :   vcos_log_error("Out of resources (other than memory)"); break;
+      case MMAL_EINVAL:    vcos_log_error("Argument is invalid"); break;
+      case MMAL_ENOSYS :   vcos_log_error("Function not implemented"); break;
+      case MMAL_ENOENT :   vcos_log_error("No such file or directory"); break;
+      case MMAL_ENXIO :    vcos_log_error("No such device or address"); break;
+      case MMAL_EIO :      vcos_log_error("I/O error"); break;
+      case MMAL_ESPIPE :   vcos_log_error("Illegal seek"); break;
+      case MMAL_ECORRUPT : vcos_log_error("Data is corrupt \attention FIXME: not POSIX"); break;
+      case MMAL_ENOTREADY :vcos_log_error("Component is not ready \attention FIXME: not POSIX"); break;
+      case MMAL_ECONFIG :  vcos_log_error("Component is not configured \attention FIXME: not POSIX"); break;
+      case MMAL_EISCONN :  vcos_log_error("Port is already connected "); break;
+      case MMAL_ENOTCONN : vcos_log_error("Port is disconnected"); break;
+      case MMAL_EAGAIN :   vcos_log_error("Resource temporarily unavailable. Try again later"); break;
+      case MMAL_EFAULT :   vcos_log_error("Bad address"); break;
+      default :            vcos_log_error("Unknown status error"); break;
+      }
+
+      return 1;
+   }
+}
+
+/**
+ * Give the supplied parameter block a set of default values
+ * @params Pointer to parameter block
+ */
+void RaspiCamControl::set_defaults(RASPICAM_CAMERA_PARAMETERS *params)
+{
+   vcos_assert(params);
+
+   params->sharpness = 0;
+   params->contrast = 0;
+   params->brightness = 50;
+   params->saturation = 0;
+   params->ISO = 0;                    // 0 = auto
+   params->videoStabilisation = 0;
+   params->exposureCompensation = 0;
+   params->exposureMode = MMAL_PARAM_EXPOSUREMODE_AUTO;
+   params->exposureMeterMode = MMAL_PARAM_EXPOSUREMETERINGMODE_AVERAGE;
+   params->awbMode = MMAL_PARAM_AWBMODE_AUTO;
+   params->imageEffect = MMAL_PARAM_IMAGEFX_NONE;
+   params->colourEffects.enable = 0;
+   params->colourEffects.u = 128;
+   params->colourEffects.v = 128;
+   params->rotation = 0;
+   params->hflip = params->vflip = 0;
+   params->roi.x = params->roi.y = 0.0;
+   params->roi.w = params->roi.h = 1.0;
+   params->shutter_speed = 0;          // 0 = auto
+   params->awb_gains_r = 0;      // Only have any function if AWB OFF is used.
+   params->awb_gains_b = 0;
+   params->drc_level = MMAL_PARAMETER_DRC_STRENGTH_OFF;
+   params->stats_pass = MMAL_FALSE;
+   params->enable_annotate = 0;
+   params->stereo_mode.mode = MMAL_STEREOSCOPIC_MODE_NONE;
+   params->stereo_mode.decimate = MMAL_FALSE;
+   params->stereo_mode.swap_eyes = MMAL_FALSE;
+}
+
+/**
+ * Get all the current camera parameters from specified camera component
+ * @param camera Pointer to camera component
+ * @param params Pointer to parameter block to accept settings
+ * @return 0 if successful, non-zero if unsuccessful
+ */
+int RaspiCamControl::get_all_parameters(MMAL_COMPONENT_T *camera, RASPICAM_CAMERA_PARAMETERS *params)
+{
+   vcos_assert(camera);
+   vcos_assert(params);
+
+   if (!camera || !params)
+      return 1;
+
+/* TODO : Write these get functions
+   params->sharpness = get_sharpness(camera);
+   params->contrast = get_contrast(camera);
+   params->brightness = get_brightness(camera);
+   params->saturation = get_saturation(camera);
+   params->ISO = get_ISO(camera);
+   params->videoStabilisation = get_video_stabilisation(camera);
+   params->exposureCompensation = get_exposure_compensation(camera);
+   params->exposureMode = get_exposure_mode(camera);
+   params->awbMode = get_awb_mode(camera);
+   params->imageEffect = get_image_effect(camera);
+   params->colourEffects = get_colour_effect(camera);
+   params->thumbnailConfig = get_thumbnail_config(camera);
+*/
+   return 0;
+}
+
+/**
+ * Set the specified camera to all the specified settings
+ * @param camera Pointer to camera component
+ * @param params Pointer to parameter block containing parameters
+ * @return 0 if successful, none-zero if unsuccessful.
+ */
+int RaspiCamControl::set_all_parameters(MMAL_COMPONENT_T *camera, const RASPICAM_CAMERA_PARAMETERS *params)
+{
+   int result;
+
+   result  = set_saturation(camera, params->saturation);
+   result += set_sharpness(camera, params->sharpness);
+   result += set_contrast(camera, params->contrast);
+   result += set_brightness(camera, params->brightness);
+   result += set_ISO(camera, params->ISO);
+   result += set_video_stabilisation(camera, params->videoStabilisation);
+   result += set_exposure_compensation(camera, params->exposureCompensation);
+   result += set_exposure_mode(camera, params->exposureMode);
+   result += set_metering_mode(camera, params->exposureMeterMode);
+   result += set_awb_mode(camera, params->awbMode);
+   result += set_awb_gains(camera, params->awb_gains_r, params->awb_gains_b);
+   result += set_imageFX(camera, params->imageEffect);
+   result += set_colourFX(camera, &params->colourEffects);
+   //result += set_thumbnail_parameters(camera, &params->thumbnailConfig);  TODO Not working for some reason
+   result += set_rotation(camera, params->rotation);
+   result += set_flips(camera, params->hflip, params->vflip);
+   result += set_ROI(camera, params->roi);
+   result += set_shutter_speed(camera, params->shutter_speed);
+   result += set_DRC(camera, params->drc_level);
+   result += set_stats_pass(camera, params->stats_pass);
+   return result;
+}
+
+/**
+ * Adjust the saturation level for images
+ * @param camera Pointer to camera component
+ * @param saturation Value to adjust, -100 to 100
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_saturation(MMAL_COMPONENT_T *camera, int saturation)
+{
+   int ret = 0;
+
+   if (!camera)
+      return 1;
+
+   if (saturation >= -100 && saturation <= 100)
+   {
+      MMAL_RATIONAL_T value = {saturation, 100};
+      ret = mmal_status_to_int(mmal_port_parameter_set_rational(camera->control, MMAL_PARAMETER_SATURATION, value));
+   }
+   else
+   {
+      vcos_log_error("Invalid saturation value");
+      ret = 1;
+   }
+
+   return ret;
+}
+
+/**
+ * Set the sharpness of the image
+ * @param camera Pointer to camera component
+ * @param sharpness Sharpness adjustment -100 to 100
+ */
+int RaspiCamControl::set_sharpness(MMAL_COMPONENT_T *camera, int sharpness)
+{
+   int ret = 0;
+
+   if (!camera)
+      return 1;
+
+   if (sharpness >= -100 && sharpness <= 100)
+   {
+      MMAL_RATIONAL_T value = {sharpness, 100};
+      ret = mmal_status_to_int(mmal_port_parameter_set_rational(camera->control, MMAL_PARAMETER_SHARPNESS, value));
+   }
+   else
+   {
+      vcos_log_error("Invalid sharpness value");
+      ret = 1;
+   }
+
+   return ret;
+}
+
+/**
+ * Set the contrast adjustment for the image
+ * @param camera Pointer to camera component
+ * @param contrast Contrast adjustment -100 to  100
+ * @return
+ */
+int RaspiCamControl::set_contrast(MMAL_COMPONENT_T *camera, int contrast)
+{
+   int ret = 0;
+
+   if (!camera)
+      return 1;
+
+   if (contrast >= -100 && contrast <= 100)
+   {
+      MMAL_RATIONAL_T value = {contrast, 100};
+      ret = mmal_status_to_int(mmal_port_parameter_set_rational(camera->control, MMAL_PARAMETER_CONTRAST, value));
+   }
+   else
+   {
+      vcos_log_error("Invalid contrast value");
+      ret = 1;
+   }
+
+   return ret;
+}
+
+/**
+ * Adjust the brightness level for images
+ * @param camera Pointer to camera component
+ * @param brightness Value to adjust, 0 to 100
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_brightness(MMAL_COMPONENT_T *camera, int brightness)
+{
+   int ret = 0;
+
+   if (!camera)
+      return 1;
+
+   if (brightness >= 0 && brightness <= 100)
+   {
+      MMAL_RATIONAL_T value = {brightness, 100};
+      ret = mmal_status_to_int(mmal_port_parameter_set_rational(camera->control, MMAL_PARAMETER_BRIGHTNESS, value));
+   }
+   else
+   {
+      vcos_log_error("Invalid brightness value");
+      ret = 1;
+   }
+
+   return ret;
+}
+
+/**
+ * Adjust the ISO used for images
+ * @param camera Pointer to camera component
+ * @param ISO Value to set TODO :
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_ISO(MMAL_COMPONENT_T *camera, int ISO)
+{
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set_uint32(camera->control, MMAL_PARAMETER_ISO, ISO));
+}
+
+/**
+ * Adjust the metering mode for images
+ * @param camera Pointer to camera component
+ * @param saturation Value from following
+ *   - MMAL_PARAM_EXPOSUREMETERINGMODE_AVERAGE,
+ *   - MMAL_PARAM_EXPOSUREMETERINGMODE_SPOT,
+ *   - MMAL_PARAM_EXPOSUREMETERINGMODE_BACKLIT,
+ *   - MMAL_PARAM_EXPOSUREMETERINGMODE_MATRIX
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_metering_mode(MMAL_COMPONENT_T *camera, MMAL_PARAM_EXPOSUREMETERINGMODE_T m_mode )
+{
+   MMAL_PARAMETER_EXPOSUREMETERINGMODE_T meter_mode = {{MMAL_PARAMETER_EXP_METERING_MODE,sizeof(meter_mode)},
+                                                      m_mode};
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set(camera->control, &meter_mode.hdr));
+}
+
+
+/**
+ * Set the video stabilisation flag. Only used in video mode
+ * @param camera Pointer to camera component
+ * @param saturation Flag 0 off 1 on
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_video_stabilisation(MMAL_COMPONENT_T *camera, int vstabilisation)
+{
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set_boolean(camera->control, MMAL_PARAMETER_VIDEO_STABILISATION, vstabilisation));
+}
+
+/**
+ * Adjust the exposure compensation for images (EV)
+ * @param camera Pointer to camera component
+ * @param exp_comp Value to adjust, -10 to +10
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_exposure_compensation(MMAL_COMPONENT_T *camera, int exp_comp)
+{
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set_int32(camera->control, MMAL_PARAMETER_EXPOSURE_COMP , exp_comp));
+}
+
+
+/**
+ * Set exposure mode for images
+ * @param camera Pointer to camera component
+ * @param mode Exposure mode to set from
+ *   - MMAL_PARAM_EXPOSUREMODE_OFF,
+ *   - MMAL_PARAM_EXPOSUREMODE_AUTO,
+ *   - MMAL_PARAM_EXPOSUREMODE_NIGHT,
+ *   - MMAL_PARAM_EXPOSUREMODE_NIGHTPREVIEW,
+ *   - MMAL_PARAM_EXPOSUREMODE_BACKLIGHT,
+ *   - MMAL_PARAM_EXPOSUREMODE_SPOTLIGHT,
+ *   - MMAL_PARAM_EXPOSUREMODE_SPORTS,
+ *   - MMAL_PARAM_EXPOSUREMODE_SNOW,
+ *   - MMAL_PARAM_EXPOSUREMODE_BEACH,
+ *   - MMAL_PARAM_EXPOSUREMODE_VERYLONG,
+ *   - MMAL_PARAM_EXPOSUREMODE_FIXEDFPS,
+ *   - MMAL_PARAM_EXPOSUREMODE_ANTISHAKE,
+ *   - MMAL_PARAM_EXPOSUREMODE_FIREWORKS,
+ *
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_exposure_mode(MMAL_COMPONENT_T *camera, MMAL_PARAM_EXPOSUREMODE_T mode)
+{
+   MMAL_PARAMETER_EXPOSUREMODE_T exp_mode = {{MMAL_PARAMETER_EXPOSURE_MODE,sizeof(exp_mode)}, mode};
+
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set(camera->control, &exp_mode.hdr));
+}
+
+
+/**
+ * Set the aWB (auto white balance) mode for images
+ * @param camera Pointer to camera component
+ * @param awb_mode Value to set from
+ *   - MMAL_PARAM_AWBMODE_OFF,
+ *   - MMAL_PARAM_AWBMODE_AUTO,
+ *   - MMAL_PARAM_AWBMODE_SUNLIGHT,
+ *   - MMAL_PARAM_AWBMODE_CLOUDY,
+ *   - MMAL_PARAM_AWBMODE_SHADE,
+ *   - MMAL_PARAM_AWBMODE_TUNGSTEN,
+ *   - MMAL_PARAM_AWBMODE_FLUORESCENT,
+ *   - MMAL_PARAM_AWBMODE_INCANDESCENT,
+ *   - MMAL_PARAM_AWBMODE_FLASH,
+ *   - MMAL_PARAM_AWBMODE_HORIZON,
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_awb_mode(MMAL_COMPONENT_T *camera, MMAL_PARAM_AWBMODE_T awb_mode)
+{
+   MMAL_PARAMETER_AWBMODE_T param = {{MMAL_PARAMETER_AWB_MODE,sizeof(param)}, awb_mode};
+
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set(camera->control, &param.hdr));
+}
+
+int RaspiCamControl::set_awb_gains(MMAL_COMPONENT_T *camera, float r_gain, float b_gain)
+{
+   MMAL_PARAMETER_AWB_GAINS_T param = {{MMAL_PARAMETER_CUSTOM_AWB_GAINS,sizeof(param)}, {0,0}, {0,0}};
+
+   if (!camera)
+      return 1;
+
+   if (!r_gain || !b_gain)
+      return 0;
+
+   param.r_gain.num = (unsigned int)(r_gain * 65536);
+   param.b_gain.num = (unsigned int)(b_gain * 65536);
+   param.r_gain.den = param.b_gain.den = 65536;
+   return mmal_status_to_int(mmal_port_parameter_set(camera->control, &param.hdr));
+}
+
+/**
+ * Set the image effect for the images
+ * @param camera Pointer to camera component
+ * @param imageFX Value from
+ *   - MMAL_PARAM_IMAGEFX_NONE,
+ *   - MMAL_PARAM_IMAGEFX_NEGATIVE,
+ *   - MMAL_PARAM_IMAGEFX_SOLARIZE,
+ *   - MMAL_PARAM_IMAGEFX_POSTERIZE,
+ *   - MMAL_PARAM_IMAGEFX_WHITEBOARD,
+ *   - MMAL_PARAM_IMAGEFX_BLACKBOARD,
+ *   - MMAL_PARAM_IMAGEFX_SKETCH,
+ *   - MMAL_PARAM_IMAGEFX_DENOISE,
+ *   - MMAL_PARAM_IMAGEFX_EMBOSS,
+ *   - MMAL_PARAM_IMAGEFX_OILPAINT,
+ *   - MMAL_PARAM_IMAGEFX_HATCH,
+ *   - MMAL_PARAM_IMAGEFX_GPEN,
+ *   - MMAL_PARAM_IMAGEFX_PASTEL,
+ *   - MMAL_PARAM_IMAGEFX_WATERCOLOUR,
+ *   - MMAL_PARAM_IMAGEFX_FILM,
+ *   - MMAL_PARAM_IMAGEFX_BLUR,
+ *   - MMAL_PARAM_IMAGEFX_SATURATION,
+ *   - MMAL_PARAM_IMAGEFX_COLOURSWAP,
+ *   - MMAL_PARAM_IMAGEFX_WASHEDOUT,
+ *   - MMAL_PARAM_IMAGEFX_POSTERISE,
+ *   - MMAL_PARAM_IMAGEFX_COLOURPOINT,
+ *   - MMAL_PARAM_IMAGEFX_COLOURBALANCE,
+ *   - MMAL_PARAM_IMAGEFX_CARTOON,
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_imageFX(MMAL_COMPONENT_T *camera, MMAL_PARAM_IMAGEFX_T imageFX)
+{
+   MMAL_PARAMETER_IMAGEFX_T imgFX = {{MMAL_PARAMETER_IMAGE_EFFECT,sizeof(imgFX)}, imageFX};
+
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set(camera->control, &imgFX.hdr));
+}
+
+/* TODO :what to do with the image effects parameters?
+   MMAL_PARAMETER_IMAGEFX_PARAMETERS_T imfx_param = {{MMAL_PARAMETER_IMAGE_EFFECT_PARAMETERS,sizeof(imfx_param)},
+                              imageFX, 0, {0}};
+mmal_port_parameter_set(camera->control, &imfx_param.hdr);
+                             */
+
+/**
+ * Set the colour effect  for images (Set UV component)
+ * @param camera Pointer to camera component
+ * @param colourFX  Contains enable state and U and V numbers to set (e.g. 128,128 = Black and white)
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_colourFX(MMAL_COMPONENT_T *camera, const MMAL_PARAM_COLOURFX_T *colourFX)
+{
+   MMAL_PARAMETER_COLOURFX_T colfx = {{MMAL_PARAMETER_COLOUR_EFFECT,sizeof(colfx)}, 0, 0, 0};
+
+   if (!camera)
+      return 1;
+
+   colfx.enable = colourFX->enable;
+   colfx.u = colourFX->u;
+   colfx.v = colourFX->v;
+
+   return mmal_status_to_int(mmal_port_parameter_set(camera->control, &colfx.hdr));
+
+}
+
+
+/**
+ * Set the rotation of the image
+ * @param camera Pointer to camera component
+ * @param rotation Degree of rotation (any number, but will be converted to 0,90,180 or 270 only)
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_rotation(MMAL_COMPONENT_T *camera, int rotation)
+{
+   int ret;
+   int my_rotation = ((rotation % 360 ) / 90) * 90;
+
+   ret = mmal_port_parameter_set_int32(camera->output[0], MMAL_PARAMETER_ROTATION, my_rotation);
+   mmal_port_parameter_set_int32(camera->output[1], MMAL_PARAMETER_ROTATION, my_rotation);
+   mmal_port_parameter_set_int32(camera->output[2], MMAL_PARAMETER_ROTATION, my_rotation);
+
+   return ret;
+}
+
+/**
+ * Set the flips state of the image
+ * @param camera Pointer to camera component
+ * @param hflip If true, horizontally flip the image
+ * @param vflip If true, vertically flip the image
+ *
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_flips(MMAL_COMPONENT_T *camera, int hflip, int vflip)
+{
+   MMAL_PARAMETER_MIRROR_T mirror = {{MMAL_PARAMETER_MIRROR, sizeof(MMAL_PARAMETER_MIRROR_T)}, MMAL_PARAM_MIRROR_NONE};
+
+   if (hflip && vflip)
+      mirror.value = MMAL_PARAM_MIRROR_BOTH;
+   else
+   if (hflip)
+      mirror.value = MMAL_PARAM_MIRROR_HORIZONTAL;
+   else
+   if (vflip)
+      mirror.value = MMAL_PARAM_MIRROR_VERTICAL;
+
+   mmal_port_parameter_set(camera->output[0], &mirror.hdr);
+   mmal_port_parameter_set(camera->output[1], &mirror.hdr);
+   return mmal_port_parameter_set(camera->output[2], &mirror.hdr);
+}
+
+/**
+ * Set the ROI of the sensor to use for captures/preview
+ * @param camera Pointer to camera component
+ * @param rect   Normalised coordinates of ROI rectangle
+ *
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_ROI(MMAL_COMPONENT_T *camera, PARAM_FLOAT_RECT_T rect)
+{
+   MMAL_PARAMETER_INPUT_CROP_T crop = {{MMAL_PARAMETER_INPUT_CROP, sizeof(MMAL_PARAMETER_INPUT_CROP_T)}};
+
+   crop.rect.x = (65536 * rect.x);
+   crop.rect.y = (65536 * rect.y);
+   crop.rect.width = (65536 * rect.w);
+   crop.rect.height = (65536 * rect.h);
+
+   return mmal_port_parameter_set(camera->control, &crop.hdr);
+}
+
+/**
+ * Adjust the exposure time used for images
+ * @param camera Pointer to camera component
+ * @param shutter speed in microseconds
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_shutter_speed(MMAL_COMPONENT_T *camera, int speed)
+{
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set_uint32(camera->control, MMAL_PARAMETER_SHUTTER_SPEED, speed));
+}
+
+/**
+ * Adjust the Dynamic range compression level
+ * @param camera Pointer to camera component
+ * @param strength Strength of DRC to apply
+ *        MMAL_PARAMETER_DRC_STRENGTH_OFF
+ *        MMAL_PARAMETER_DRC_STRENGTH_LOW
+ *        MMAL_PARAMETER_DRC_STRENGTH_MEDIUM
+ *        MMAL_PARAMETER_DRC_STRENGTH_HIGH
+ *
+ * @return 0 if successful, non-zero if any parameters out of range
+ */
+int RaspiCamControl::set_DRC(MMAL_COMPONENT_T *camera, MMAL_PARAMETER_DRC_STRENGTH_T strength)
+{
+   MMAL_PARAMETER_DRC_T drc = {{MMAL_PARAMETER_DYNAMIC_RANGE_COMPRESSION, sizeof(MMAL_PARAMETER_DRC_T)}, strength};
+
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set(camera->control, &drc.hdr));
+}
+
+int RaspiCamControl::set_stats_pass(MMAL_COMPONENT_T *camera, int stats_pass)
+{
+   if (!camera)
+      return 1;
+
+   return mmal_status_to_int(mmal_port_parameter_set_boolean(camera->control, MMAL_PARAMETER_CAPTURE_STATS_PASS, stats_pass));
+}
+
+
+
+int RaspiCamControl::set_stereo_mode(MMAL_PORT_T *port, MMAL_PARAMETER_STEREOSCOPIC_MODE_T *stereo_mode)
+{
+   MMAL_PARAMETER_STEREOSCOPIC_MODE_T stereo = { {MMAL_PARAMETER_STEREOSCOPIC_MODE, sizeof(stereo)},
+                               MMAL_STEREOSCOPIC_MODE_NONE, MMAL_FALSE, MMAL_FALSE };
+   if (stereo_mode->mode != MMAL_STEREOSCOPIC_MODE_NONE)
+   {
+      stereo.mode = stereo_mode->mode;
+      stereo.decimate = stereo_mode->decimate;
+      stereo.swap_eyes = stereo_mode->swap_eyes;
+   }
+   return mmal_status_to_int(mmal_port_parameter_set(port, &stereo.hdr));
+}
+
+/**
+ * Asked GPU how much memory it has allocated
+ *
+ * @return amount of memory in MB
+ */
+static int raspicamcontrol_get_mem_gpu(void)
+{
+   char response[80] = "";
+   int gpu_mem = 0;
+   if (vc_gencmd(response, sizeof response, "get_mem gpu") == 0)
+      vc_gencmd_number_property(response, "gpu", &gpu_mem);
+   return gpu_mem;
+}
+
+/**
+ * Ask GPU about its camera abilities
+ * @param supported None-zero if software supports the camera 
+ * @param detected  None-zero if a camera has been detected
+ */
+static void raspicamcontrol_get_camera(int *supported, int *detected)
+{
+   char response[80] = "";
+   if (vc_gencmd(response, sizeof response, "get_camera") == 0)
+   {
+      if (supported)
+         vc_gencmd_number_property(response, "supported", supported);
+      if (detected)
+         vc_gencmd_number_property(response, "detected", detected);
+   }
+}
+
+/**
+ * Check to see if camera is supported, and we have allocated enough meooryAsk GPU about its camera abilities
+ * @param supported None-zero if software supports the camera 
+ * @param detected  None-zero if a camera has been detected
+ */
+void raspicamcontrol_check_configuration(int min_gpu_mem)
+{
+   int gpu_mem = raspicamcontrol_get_mem_gpu();
+   int supported = 0, detected = 0;
+   raspicamcontrol_get_camera(&supported, &detected);
+   if (!supported)
+      vcos_log_error("Camera is not enabled in this build. Try running \"sudo raspi-config\" and ensure that \"camera\" has been enabled\n");
+   else if (gpu_mem < min_gpu_mem)
+      vcos_log_error("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
+   else if (!detected)
+      vcos_log_error("Camera is not detected. Please check carefully the camera module is installed correctly\n");
+   else
+      vcos_log_error("Failed to run camera app. Please check for firmware updates\n");
+}
