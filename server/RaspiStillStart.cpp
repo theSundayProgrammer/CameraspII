@@ -49,18 +49,6 @@ char const *cmd= "/home/pi/bin/camerasp";
 
 #define ASIO_ERROR_CODE asio::error_code
 
-/**
- * Allocates and generates a filename based on the
- * user-supplied pattern and the frame number.
- * On successful return, finalName and tempName point to malloc()ed strings
- * which must be freed externally.  (On failure, returns nulls that
- * don't need free()ing.)
- *
- * @param finalName pointer receives an
- * @param pattern sprintf pattern with %d to be replaced by frame
- * @param frame for timelapse, the frame number
- * @return Returns a MMAL_STATUS_T giving result of operation
-*/
 
 std::string create_file_name(   char * pattern, int frame)
 {
@@ -357,42 +345,42 @@ int main(int argc, char *argv[],  char *env[])
   shared_state& state = *mem;
   auto io_service=std::make_shared<asio::io_context>();
   asio::signal_set signals_(*io_service);
-      // The signal set is used to register termination notifications
-      signals_.add(SIGINT);
-      signals_.add(SIGTERM);
-      signals_.add(SIGCHLD);
+  // The signal set is used to register termination notifications
+  signals_.add(SIGINT);
+  signals_.add(SIGTERM);
+  signals_.add(SIGCHLD);
   pid_t child_pid; 
-      // signal handler for SIGCHLD must be set before the process is forked
-      // In a service 'spawn' forks a child process
-      std::function<void(ASIO_ERROR_CODE,int)> signal_handler = 
-	[&] (ASIO_ERROR_CODE const& error, int signal_number)
-	{ 
-	  if(signal_number == SIGCHLD)
-	  {
-            int ret;
-	    dump_status(state);
-            waitpid(child_pid,&ret,0);
-	  } else {
-            state.keep_running=0;
-	    signals_.async_wait(signal_handler);
-	  }
-	};
-  
+  // signal handler for SIGCHLD must be set before the process is forked
+  // In a service 'spawn' forks a child process
+  std::function<void(ASIO_ERROR_CODE,int)> signal_handler = 
+    [&] (ASIO_ERROR_CODE const& error, int signal_number)
+    { 
+      if(signal_number == SIGCHLD)
+      {
+	int ret;
+	dump_status(state);
+	waitpid(child_pid,&ret,0);
+      } else {
+	state.keep_running=0;
+	signals_.async_wait(signal_handler);
+      }
+    };
+
   signals_.async_wait(signal_handler);
 
-    Json::Value root = camerasp::get_DOM(config_path + "/options.json");
-    {
+  Json::Value root = camerasp::get_DOM(config_path + "/options.json");
+  {
     auto server_config = root["Server"];
     if (!server_config.empty())
     {
       std::string pwd = server_config["password"].asString();
       strcpy(state.password_smtp,pwd.c_str());
     }
-    }
+  }
   child_pid =  spawn_reader(argc,argv,env);
   fprintf(stderr,"Child pid: %d\n", child_pid);
-    web_server server(root,state);
-    server.run(io_service,argv,env);
+  web_server server(root,state);
+  server.run(io_service,argv,env);
   fprintf(stderr,"Child pid: %d stopped\n", child_pid);
   dump_status(state);
   return 0; 
@@ -405,22 +393,22 @@ int main(int argc, char *argv[],  char *env[])
 void default_resource_send(const http_server &server,
                            const std::shared_ptr<http_server::Response> &response,
                            const std::shared_ptr<std::ifstream> &ifs)
- {
-    //read and send 128 KB at a time
-    static std::vector<char> buffer(131072); // Safe when server is running on one thread
-    std::streamsize read_length=ifs->read(&buffer[0], buffer.size()).gcount();
-    if(read_length>0) {
-        response->write(&buffer[0], read_length);
-        if(read_length==static_cast<std::streamsize>(buffer.size())) {
-            server.send(
-                response, 
-                    [&server, response, ifs]
-                (const std::error_code &ec) {
-                if(!ec)
-                    default_resource_send(server, response, ifs);
-                else
-                    console->warn("Connection interrupted");
-            });
-        }
+{
+  //read and send 128 KB at a time
+  static std::vector<char> buffer(131072); // Safe when server is running on one thread
+  std::streamsize read_length=ifs->read(&buffer[0], buffer.size()).gcount();
+  if(read_length>0) {
+    response->write(&buffer[0], read_length);
+    if(read_length==static_cast<std::streamsize>(buffer.size())) {
+      server.send(
+	  response, 
+	  [&server, response, ifs]
+	  (const std::error_code &ec) {
+	  if(!ec)
+	  default_resource_send(server, response, ifs);
+	  else
+	  console->warn("Connection interrupted");
+	  });
     }
+  }
 }
