@@ -44,6 +44,5 @@ inc.tar.bz2
 include/asio.hpp
 include/boost/
 include/gsl/
-include/raspi/
 include/raspicam/
 include/spdlog/
