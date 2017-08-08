@@ -8,7 +8,7 @@
 #include <curl/curl.h>
 #include <iostream>
 #include <tuple>
-#include "smtpClient.hpp"
+#include <camerasp/smtpClient.hpp>
 using namespace std;
 using namespace cv;
 

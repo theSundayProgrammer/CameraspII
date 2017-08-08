@@ -64,7 +64,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <raspi/RaspiCLI.h>
 #include <semaphore.h>
 #include <camerasp/ipc.hpp>
-#include "smtpClient.hpp"
+#include <camerasp/smtpClient.hpp>
 
 // Standard port setting for the camera component
 #define MMAL_CAMERA_PREVIEW_PORT 0

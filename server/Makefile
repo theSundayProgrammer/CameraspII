@@ -10,7 +10,7 @@ CFLAGS+= -std=c++14 -DSTANDALONE -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS 
 
 LDFLAGS+=-L/opt/vc/lib -lbcm_host -lvcos -lpthread -lrt -lm -lboost_system -lboost_filesystem -L../lib -ljson
 
-INCLUDES+=-I./ -I/opt/vc/include
+INCLUDES+=-I../includes -I/opt/vc/include
 CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs 
 CXX=g++-6
 
