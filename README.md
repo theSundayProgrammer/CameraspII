@@ -1,7 +1,7 @@
 # CameraspII
 ## Acknowledgements
 TheSundayProgrammer acknowledges with thanks the use of the following projects in [CameraspII](http://github.com/theSundayProgrammer/CameraspII)
- * the userland code for capturing images library from [James Hughes](https://github.com/JamesH65/userland)
+ * the userland library code for capturing images from [James Hughes](https://github.com/JamesH65/userland)
  * The web server was adapted from [Ole Christian Eidheim](https://github.com/eidheim/Simple-Web-Server)
  * The asynchronouds model is driven using Chris Kohloff's [asio](https://github.com/chriskohlhoff/asio)
  * [Boost](www.boost.org)  "ipc" as well as other Boost projects
