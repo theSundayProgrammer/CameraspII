@@ -70,7 +70,7 @@ class web_server
 {
   public:
     web_server(Json::Value& root,shared_state& state_)
-       :root_(root)
+      :root_(root)
        ,state(state_)
   {
 
@@ -86,52 +86,52 @@ class web_server
     server.config.thread_pool_size=2;
   }
     auto send_failure (
-	std::shared_ptr<http_server::Response> http_response,
-	std::string const& message)
+        std::shared_ptr<http_server::Response> http_response,
+        std::string const& message)
     {
       *http_response << "HTTP/1.1 400 Bad Request\r\n"
-	<<  "Content-Length: " << message.size()<< "\r\n"
-	<<  "Content-type: " << "application/text" <<"\r\n"
-	<< "\r\n"
-	<< message;
+        <<  "Content-Length: " << message.size()<< "\r\n"
+        <<  "Content-type: " << "application/text" <<"\r\n"
+        << "\r\n"
+        << message;
     }
     auto send_success (
-	std::shared_ptr<http_server::Response> http_response,
-	std::string const& message)
+        std::shared_ptr<http_server::Response> http_response,
+        std::string const& message)
     {
       *http_response <<  "HTTP/1.1 200 OK\r\n" 
-	<<  "Content-Length: " << message.size()<< "\r\n"
-	<<  "Content-type: " << "application/text" <<"\r\n"
-	<< "\r\n"
-	<< message;
+        <<  "Content-Length: " << message.size()<< "\r\n"
+        <<  "Content-type: " << "application/text" <<"\r\n"
+        << "\r\n"
+        << message;
     }
 
 
     auto send_image (
-	std::shared_ptr<http_server::Response> http_response,
-	int n)
+        std::shared_ptr<http_server::Response> http_response,
+        int n)
 
     {
-	try
-        {
-           auto fName  = create_file_name(state.filename,n);
-           std::ostringstream ostr;
-            
-            fprintf(stderr,"testing send%s\n", fName.c_str());
-	      ostr<< std::ifstream(fName.c_str()).rdbuf();
-	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
-	      <<  "Content-Length: " << ostr.str().size()<< "\r\n"
-	      <<  "Content-type: " << "image/jpeg" <<"\r\n"
-	    << "Cache-Control: no-cache, must-revalidate" << "\r\n"
-	      << "\r\n"
-              << ostr.str()
-             ;
-	}
+      try
+      {
+        auto fName  = create_file_name(state.filename,n);
+        std::ostringstream ostr;
+
+        fprintf(stderr,"testing send%s\n", fName.c_str());
+        ostr<< std::ifstream(fName.c_str()).rdbuf();
+        *http_response <<  "HTTP/1.1 200 OK\r\n" 
+          <<  "Content-Length: " << ostr.str().size()<< "\r\n"
+          <<  "Content-type: " << "image/jpeg" <<"\r\n"
+          << "Cache-Control: no-cache, must-revalidate" << "\r\n"
+          << "\r\n"
+          << ostr.str()
+          ;
+      }
       catch(std::runtime_error& e)
       {
 
-	std::string success("Issue with reading imaghe file");
-	send_failure(http_response,success);
+        std::string success("Issue with reading imaghe file");
+        send_failure(http_response,success);
       }
     }
 
@@ -139,49 +139,49 @@ class web_server
 
 
     void do_fallback(
-	std::shared_ptr<http_server::Response> http_response,
-	std::shared_ptr<http_server::Request> http_request)
+        std::shared_ptr<http_server::Response> http_response,
+        std::shared_ptr<http_server::Request> http_request)
     {
       try {
-	auto web_root_path = 
-	  boost::filesystem::canonical(home_page);
-	auto path=boost::filesystem::canonical(web_root_path/http_request->path);
-	//Check if path is within web_root_path
-	if(std::distance(web_root_path.begin(),web_root_path.end()) >
-	    std::distance(path.begin(), path.end()) ||
-	    !std::equal(web_root_path.begin(), web_root_path.end(), path.begin()))
-	  throw std::invalid_argument("path must be within root path");
-	if(boost::filesystem::is_directory(path))
-	  path/="index.html";
-	if(!(boost::filesystem::exists(path) &&
-	      boost::filesystem::is_regular_file(path)))
-	  throw std::invalid_argument("file does not exist");
+        auto web_root_path = 
+          boost::filesystem::canonical(home_page);
+        auto path=boost::filesystem::canonical(web_root_path/http_request->path);
+        //Check if path is within web_root_path
+        if(std::distance(web_root_path.begin(),web_root_path.end()) >
+            std::distance(path.begin(), path.end()) ||
+            !std::equal(web_root_path.begin(), web_root_path.end(), path.begin()))
+          throw std::invalid_argument("path must be within root path");
+        if(boost::filesystem::is_directory(path))
+          path/="index.html";
+        if(!(boost::filesystem::exists(path) &&
+              boost::filesystem::is_regular_file(path)))
+          throw std::invalid_argument("file does not exist");
 
-	std::string cache_control, etag;
+        std::string cache_control, etag;
 
-	// Uncomment the following line to enable Cache-Control
-	// cache_control="Cache-Control: max-age=86400\r\n";
+        // Uncomment the following line to enable Cache-Control
+        // cache_control="Cache-Control: max-age=86400\r\n";
 
-	auto ifs=std::make_shared<std::ifstream>();
-	ifs->open(path.string(), std::ifstream::in | std::ios::binary | std::ios::ate);
+        auto ifs=std::make_shared<std::ifstream>();
+        ifs->open(path.string(), std::ifstream::in | std::ios::binary | std::ios::ate);
 
-	if(*ifs) {
-	  auto length=ifs->tellg();
-	  ifs->seekg(0, std::ios::beg);
+        if(*ifs) {
+          auto length=ifs->tellg();
+          ifs->seekg(0, std::ios::beg);
 
-	  *http_response << "HTTP/1.1 200 OK\r\n" << cache_control << etag 
-	    << "Content-Length: " << length << "\r\n\r\n";
-	  default_resource_send(server, http_response, ifs);
-	}
-	else
-	  throw std::invalid_argument("could not read file");
+          *http_response << "HTTP/1.1 200 OK\r\n" << cache_control << etag 
+            << "Content-Length: " << length << "\r\n\r\n";
+          default_resource_send(server, http_response, ifs);
+        }
+        else
+          throw std::invalid_argument("could not read file");
       }
       catch(const std::exception &e) {
-	std::string content="Could not open path "+http_request->path+": "+e.what();
-	*http_response << "HTTP/1.1 400 Bad Request\r\n"
-	  << "Content-Length: " << content.length() << "\r\n"
-	  << "\r\n" 
-	  << content;
+        std::string content="Could not open path "+http_request->path+": "+e.what();
+        *http_response << "HTTP/1.1 400 Bad Request\r\n"
+          << "Content-Length: " << content.length() << "\r\n"
+          << "\r\n" 
+          << content;
       }
     }
     void run(std::shared_ptr<asio::io_context> io_service, char *argv[], char* env[])
@@ -190,31 +190,31 @@ class web_server
 
       // get previous image
       server.resource[R"(^/image\?prev=([0-9]+)$)"]["GET"]=[&](
-	  std::shared_ptr<http_server::Response> http_response,
-	  std::shared_ptr<http_server::Request> http_request)
+          std::shared_ptr<http_server::Response> http_response,
+          std::shared_ptr<http_server::Request> http_request)
       {
         std::string number=  http_request->path_match[1];
         int n = atoi(number.c_str());
         fprintf(stderr, "Str %s=%d\n",number.c_str(),n); 
         fprintf(stderr, "Count=%d, max_frames=%d",state.frame,state.max_frames);
-	send_image(http_response,(state.frame-n)%state.max_frames);
+        send_image(http_response,(state.frame-n)%state.max_frames);
       };
 
       // get current image
       server.resource["^/image"]["GET"]=[&](
-	  std::shared_ptr<http_server::Response> http_response,
-	  std::shared_ptr<http_server::Request> http_request)
+          std::shared_ptr<http_server::Response> http_response,
+          std::shared_ptr<http_server::Request> http_request)
       {
-	send_image(http_response,1);
+        send_image(http_response,1);
       };
 
-       ;
+      ;
       //default page server
       server.default_resource["GET"]=[&](
-	  std::shared_ptr<http_server::Response> http_response,
-	  std::shared_ptr<http_server::Request> http_request) 
+          std::shared_ptr<http_server::Response> http_response,
+          std::shared_ptr<http_server::Request> http_request) 
       {
-	do_fallback( http_response, http_request);
+        do_fallback( http_response, http_request);
       } ;
 
 
@@ -231,7 +231,7 @@ class web_server
     posix_spawn_file_actions_t child_fd_actions;
     Json::Value& root_;
     shared_state& state;
-   http_server server;
+    http_server server;
 };
 int mmal_status_to_int(MMAL_STATUS_T status);
 
@@ -357,12 +357,12 @@ int main(int argc, char *argv[],  char *env[])
     { 
       if(signal_number == SIGCHLD)
       {
-	int ret;
-	dump_status(state);
-	waitpid(child_pid,&ret,0);
+        int ret;
+        dump_status(state);
+        waitpid(child_pid,&ret,0);
       } else {
-	state.keep_running=0;
-	signals_.async_wait(signal_handler);
+        state.keep_running=0;
+        signals_.async_wait(signal_handler);
       }
     };
 
