@@ -1,27 +1,28 @@
+
 // Configuration options
 {
-  "Camera": {
-    "height": 240,
-      "width": 320
-  },
-    "Logging": {
-      "path": "/home/chakra/data/log",
-      "count": 5,
-      "size": 2,
-      "type": "debug"
-    },
-    "Data": {
-      "path_prefix": "/home/chakra/data/backup",
-      "sample_period": 1,
-      "count": 1000
-    },
-    "Server": {
-      "port" : 8088,
-      "command": "/home/pi/bin/camerasp",
+   "Camera" : {
+      "height" : 480,
+      "horizontal" : 0,
+      "iso" : 360,
+      "vertical" : 1,
+      "width" : 640
+   },
+   "Data" : {
+      "count" : 1000,
+      "path_prefix" : "/home/chakra/data/backup",
+      "sample_period" : 1
+   },
+   "Logging" : {
+      "count" : 5,
+      "path" : "/home/chakra/data/log",
+      "size" : 2,
+      "type" : "debug"
+   },
+   "Server" : {
+      "command" : "/home/chakra/bin/camerasp",
       "home_page" : "/home/chakra/data/web",
-      "log_folder" : "/home/chakra/data/camerasp_log"
-    }
+      "log_folder" : "/home/chakra/data/camerasp_log",
+      "port" : 8088
+   }
 }
-
-
-    

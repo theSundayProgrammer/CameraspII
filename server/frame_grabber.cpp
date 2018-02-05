@@ -30,7 +30,7 @@ const std::string config_path = "/srv/camerasp/";
 void configure_console()
 {
   namespace spd = spdlog;
-  console = spd::stdout_color_mt("fg");
+  console = spd::rotating_logger_mt("fg", "/home/pi/logs/mylogfile", 1048576 * 5, 3);
   console->set_level(spd::level::debug);
 }
 
@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
 
     shared_response_data& response = *static_cast<shared_response_data *>(region_response.get_address());
 
-    console->debug("Line {0}",__LINE__);
 
+    console->debug("Line {0}",__LINE__);
     asio::io_service frame_grabber_service;
     // The signal set is used to register termination notifications
     asio::signal_set signals_(frame_grabber_service);
@@ -72,9 +72,22 @@ int main(int argc, char *argv[])
 
     //configure frame grabber
     Json::Value root=camerasp::get_DOM(config_path + "options.json");
-    camerasp::periodic_frame_grabber timer(frame_grabber_service, root["Data"]);
+    camerasp::periodic_frame_grabber timer(frame_grabber_service, root);
     timer.resume();
     console->debug("Line {0}",__LINE__);
+	auto capture_frame = [&](int k){
+	  try
+	  {
+	    std::string error(4,'\0');
+	    auto image= timer.get_image(k);
+	    response.set(error+image); 
+	  }
+	  catch(std::runtime_error& er)
+	  {
+            response.set("EMPT");
+            console->debug("Error=EMPTY"); 
+	  }	
+	};
     // Start worker threads 
     std::thread thread1{ [&]() { 
       for(;;)
@@ -84,8 +97,7 @@ int main(int argc, char *argv[])
 	if (std::regex_search(uri, m,std::regex("image\\?prev=([0-9]+)$") ))
 	{
 	  int k = atoi(m[1].str().c_str());
-	  auto image= timer.get_image(k);
-	  response.set(image); 
+          capture_frame(k);
 	}
 	else if (std::regex_search(uri,m,std::regex("flip\\?vertical=(0|1)$")))
 	{
@@ -119,9 +131,9 @@ int main(int argc, char *argv[])
 	}        
 	else if (std::regex_search(uri,m,std::regex("image")))
 	{
-	  auto image= timer.get_image(0);
-	  response.set(image); 
-	}        
+	  int k = 0;
+          capture_frame(k);
+	}
 	else if (std::regex_search(uri,m,std::regex("exit")))
 	{
 	  timer.pause();

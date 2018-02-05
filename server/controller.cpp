@@ -1,6 +1,5 @@
 ﻿
-//////////////////////////////////////////////////////////////////////////////
-// Copyright 2016-2017 (c) Joseph Mariadassou
+////////////////////////////////////////////////////////////////////////////// // Copyright 2016-2017 (c) Joseph Mariadassou
 // theSundayProgrammer@gmail.com
 // Distributed under the Boost Software License, Version 1.0.
 // 
@@ -8,6 +7,7 @@
 //////////////////////////////////////////////////////////////////////////////
 #include <camerasp/server_http.hpp>
 #include <json/reader.h>
+#include <json/writer.h>
 #include <asio.hpp>
 #include <spawn.h>
 #include <string>
@@ -19,6 +19,8 @@
 #include <camerasp/ipc.hpp>
 #include <boost/filesystem.hpp>
 #include <sys/wait.h>
+#include <sstream>
+#include <gsl/gsl_util>
 std::shared_ptr<spdlog::logger> console;
 #ifdef RASPICAM_MOCK
 const std::string config_path = "./";
@@ -32,8 +34,6 @@ char const *cmd= "/home/pi/bin/camerasp";
 
 
 using asio::ip::udp;
-const std::string send_message{"12068c99-18de-48e1-87b4-3e09bbbd8b15-Camerasp"};
-const std::string recv_message{"ee7f7fc7-9d54-480b-868d-fde1f5a67ab6-Camerasp"};
 class address_broadcasting_server
 {
 public:
@@ -75,14 +75,17 @@ private:
   udp::endpoint sender_endpoint_;
   enum { max_length = 1024 };
   char data_[max_length];
+const std::string send_message{"12068c99-18de-48e1-87b4-3e09bbbd8b15-Camerasp"};
+const std::string recv_message{"ee7f7fc7-9d54-480b-868d-fde1f5a67ab6-Camerasp"};
 };
 
 //ToDo: set executable file name in json config
 char const *log_folder="/tmp/frame_grabber.log";
 #define ASIO_ERROR_CODE asio::error_code
-typedef SimpleWeb::Server<SimpleWeb::HTTP> HttpServer;
-void default_resource_send(const HttpServer &server,
-                           const std::shared_ptr<HttpServer::Response> &response,
+typedef SimpleWeb::Server<SimpleWeb::HTTP> http_server;
+using server_base = SimpleWeb::ServerBase<SimpleWeb::HTTP>;
+void default_resource_send(const http_server &server,
+                           const std::shared_ptr<http_server::Response> &response,
                            const std::shared_ptr<std::ifstream> &ifs) ;
 enum class process_state{  started, stop_pending, stopped};
 
@@ -110,18 +113,6 @@ class web_server
        ,root_(root)
   {
 
-    //Child process
-    //Important: the working directory of the child process
-    // is the same as that of the parent process.
-    int ret;
-    if (ret = posix_spawn_file_actions_init (&child_fd_actions))
-      console->error("posix_spawn_file_actions_init"), exit(ret);
-    if (ret = posix_spawn_file_actions_addopen (
-	  &child_fd_actions, 1,log_folder , 
-	  O_WRONLY | O_CREAT | O_TRUNC, 0644))
-      console->error("posix_spawn_file_actions_addopen"), exit(ret);
-    if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
-      console->error("posix_spawn_file_actions_adddup2"), exit(ret);
 
     // server config
     unsigned port_number=8088;
@@ -131,11 +122,240 @@ class web_server
     server.config.port=port_number;
     server.config.thread_pool_size=2;
   }
+    auto send_failure (
+	std::shared_ptr<http_server::Response> http_response,
+	std::string const& message)
+    {
+      *http_response << "HTTP/1.1 400 Bad Request\r\n"
+	<<  "Content-Length: " << message.size()<< "\r\n"
+	<<  "Content-type: " << "application/text" <<"\r\n"
+	<< "\r\n"
+	<< message;
+    }
+    auto send_success (
+	std::shared_ptr<http_server::Response> http_response,
+	std::string const& message)
+    {
+      *http_response <<  "HTTP/1.1 200 OK\r\n" 
+	<<  "Content-Length: " << message.size()<< "\r\n"
+	<<  "Content-type: " << "application/text" <<"\r\n"
+	<< "\r\n"
+	<< message;
+    }
+
+    void exec_cmd (
+	std::shared_ptr<http_server::Response> http_response,
+	std::shared_ptr<http_server::Request> http_request)
+
+    {
+      if(fg_state == process_state::started )
+	try
+	{
+	  std::string str =http_request->path_match[0];
+	  request->set(str);
+	  camerasp::buffer_t data = response->try_get();
+	  *http_response <<  "HTTP/1.1 200 OK\r\n" 
+	    <<  "Content-Length: " << data.size()<< "\r\n"
+	    <<  "Content-type: " << "application/text" <<"\r\n"
+	    << "Cache-Control: no-cache, must-revalidate" << "\r\n"
+	    << "\r\n"
+	    << data;
+	}
+      catch(std::runtime_error& e)
+      {
+
+	std::string success("Frame Grabber hung. Issue start command");
+	send_failure(http_response,success);
+      }
+      else
+      {
+	std::string success("Frame Grabber not running. Issue start command");
+	send_failure(http_response,success);
+      }
+    }
+    auto send_image (
+	std::shared_ptr<http_server::Response> http_response,
+	std::shared_ptr<http_server::Request> http_request)
+
+    {
+      if(fg_state == process_state::started )
+	try{
+	  std::string str =http_request->path_match[0];
+	  request->set(str);
+	  camerasp::buffer_t data = response->try_get();
+	  std::string err(data, 0,4);
+	  if (err== std::string(4,'\0'))
+	  {
+	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
+	      <<  "Content-Length: " << data.size()-4<< "\r\n"
+	      <<  "Content-type: " << "image/jpeg" <<"\r\n"
+	    << "Cache-Control: no-cache, must-revalidate" << "\r\n"
+	      << "\r\n"
+	      << std::string(data,4);
+	  }
+	  else
+	  {
+	    send_failure(http_response,err + "No image Available");
+	  }
+	}
+      catch(std::runtime_error& e)
+      {
+
+	std::string success("Frame Grabber hung. Issue start command");
+	send_failure(http_response,success);
+      }
+      else
+      {
+	std::string success("Frame Grabber not running. Issue start command");
+	send_failure(http_response,success);
+      }
+    }
+    void set_props(
+	std::shared_ptr<http_server::Response> http_response,
+	std::shared_ptr<http_server::Request> http_request)
+    {
+      try
+      {
+
+	std::ostringstream ostr;
+	ostr<<http_request->content.rdbuf();
+	std::string istr=ostr.str();
+	auto camera = root_["Camera"];
+	std::regex pat("(\\w+)=(\\d+)");
+	for(std::sregex_iterator p(std::begin(istr),std::end(istr),pat);
+	    p!=std::sregex_iterator{};
+	    ++p)  
+	{
+	  camera[(*p)[1].str()]= atoi((*p)[2].str().c_str());
+	}
+
+	Json::StyledWriter writer; 
+	root_["Camera"] = camera;
+	auto update = writer.write(root_);
+	camerasp::write_file_content(config_path + "options.json",update);
+	std::string data{"Config file updated. Restart camera"};
+	*http_response <<  "HTTP/1.1 200 OK\r\n" 
+	  <<  "Content-Length: " << data.size()<< "\r\n"
+	  <<  "Content-type: " << "application/text" <<"\r\n"
+	  << "Cache-Control: no-cache, must-revalidate" << "\r\n"
+	  << "\r\n"
+	  << data;
+      }
+      catch(std::runtime_error& e)
+      {
+	std::string success("Frame Grabber not running. Issue start command");
+	send_failure(http_response,success);
+      }
+    }
+    void stop_camera(
+	std::shared_ptr<http_server::Response> http_response,
+	std::shared_ptr<http_server::Request> http_request)
+    {
+      std::string success("Succeeded");
+      //
+      struct sigaction act;
+      memset(&act,'\0',sizeof(act));
+      sigaction(SIGCHLD,nullptr, &act);
+      console->debug("Mask= {0},{1},{2},{3}", act.sa_mask.__val[0],act.sa_mask.__val[1],act.sa_mask.__val[2],act.sa_mask.__val[3]); 
+      if(fg_state == process_state::started )
+	try{
+	  request->set("exit");
+	  camerasp::buffer_t data = response->try_get();
+	  console->info("stop executed");
+	  int status =0;
+	  unsigned n=0;
+	  while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
+	  {
+	    usleep(100*1000);
+	    ++n;
+	  } 
+	  if(n==20)kill(child_pid,SIGKILL);
+	  fg_state = process_state::stopped;
+	  send_success(http_response,success);
+	}
+      catch (std::exception& e)
+      {
+	success="stop failed - abortng";
+	console->info(success);
+	kill(child_pid,SIGKILL);
+	fg_state = process_state::stop_pending;
+	send_success(http_response,success);
+      }
+      else if (fg_state == process_state::stop_pending)
+      {
+	success= "Stop Pending. try again later";
+	send_failure(http_response,success);
+      }
+      else
+      {
+	success="Not running when command received";
+	send_failure(http_response,success);
+      }
+    }
+
+    void do_fallback(
+	std::shared_ptr<http_server::Response> http_response,
+	std::shared_ptr<http_server::Request> http_request)
+    {
+      try {
+	auto web_root_path = 
+	  boost::filesystem::canonical(home_page);
+	auto path=boost::filesystem::canonical(web_root_path/http_request->path);
+	//Check if path is within web_root_path
+	if(std::distance(web_root_path.begin(),web_root_path.end()) >
+	    std::distance(path.begin(), path.end()) ||
+	    !std::equal(web_root_path.begin(), web_root_path.end(), path.begin()))
+	  throw std::invalid_argument("path must be within root path");
+	if(boost::filesystem::is_directory(path))
+	  path/="index.html";
+	if(!(boost::filesystem::exists(path) &&
+	      boost::filesystem::is_regular_file(path)))
+	  throw std::invalid_argument("file does not exist");
+
+	std::string cache_control, etag;
+
+	// Uncomment the following line to enable Cache-Control
+	// cache_control="Cache-Control: max-age=86400\r\n";
+
+	auto ifs=std::make_shared<std::ifstream>();
+	ifs->open(path.string(), std::ifstream::in | std::ios::binary | std::ios::ate);
+
+	if(*ifs) {
+	  auto length=ifs->tellg();
+	  ifs->seekg(0, std::ios::beg);
+
+	  *http_response << "HTTP/1.1 200 OK\r\n" << cache_control << etag 
+	    << "Content-Length: " << length << "\r\n\r\n";
+	  default_resource_send(server, http_response, ifs);
+	}
+	else
+	  throw std::invalid_argument("could not read file");
+      }
+      catch(const std::exception &e) {
+	std::string content="Could not open path "+http_request->path+": "+e.what();
+	*http_response << "HTTP/1.1 400 Bad Request\r\n"
+	  << "Content-Length: " << content.length() << "\r\n"
+	  << "\r\n" 
+	  << content;
+      }
+    }
     void run(std::shared_ptr<asio::io_context> io_service, char *argv[], char* env[])
     {
       using namespace camerasp;
 
 
+      //Child process
+      //Important: the working directory of the child process
+      // is the same as that of the parent process.
+      int ret;
+      if (ret = posix_spawn_file_actions_init (&child_fd_actions))
+	console->error("posix_spawn_file_actions_init"), exit(ret);
+      if (ret = posix_spawn_file_actions_addopen (
+	    &child_fd_actions, 1,log_folder , 
+	    O_WRONLY | O_CREAT | O_TRUNC, 0644))
+	console->error("posix_spawn_file_actions_addopen"), exit(ret);
+      if (ret = posix_spawn_file_actions_adddup2 (&child_fd_actions, 1, 2))
+	console->error("posix_spawn_file_actions_adddup2"), exit(ret);
       // 
       server.io_service = io_service;
       // The signal set is used to register termination notifications
@@ -146,167 +366,132 @@ class web_server
 
       // signal handler for SIGCHLD must be set before the process is forked
       // In a service 'spawn' forks a child process
-      process_state fg_state = process_state::stopped;
       std::function<void(ASIO_ERROR_CODE,int)> signal_handler = 
-      [&] (ASIO_ERROR_CODE const& error, int signal_number)
-      { 
-	if(signal_number == SIGCHLD)
-	{
-	  fg_state = process_state::stopped;
-	  console->debug("Process stopped");
-	  waitpid(child_pid,NULL,0);
-	  signals_.async_wait(signal_handler);
-	} else {
-	  console->debug("SIGTERM received");
-	  server.stop();
-	}
-      };
-      // register the handle_stop callback
+	[&] (ASIO_ERROR_CODE const& error, int signal_number)
+	{ 
+	  if(signal_number == SIGCHLD)
+	  {
+	    fg_state = process_state::stopped;
+	    console->debug("Process stopped");
+	    waitpid(child_pid,NULL,0);
+	    signals_.async_wait(signal_handler);
+	  } else {
+	    console->debug("SIGTERM received");
+	    server.stop();
+	  }
+	};
 
-      signals_.async_wait(signal_handler);
       if (int ret = posix_spawnp (&child_pid, cmd, &child_fd_actions, 
 	    NULL, argv, env))
 	console->error("posix_spawn"), exit(ret);
       console->info("Child pid: {0}\n", child_pid);
       fg_state = process_state::started;
-      // send message 
-      auto send_failure = [&] (
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::string const& message)
-      {
-	*http_response << "HTTP/1.1 400 Bad Request\r\n"
-	  <<  "Content-Length: " << message.size()<< "\r\n"
-	  <<  "Content-type: " << "application/text" <<"\r\n"
-	  << "\r\n"
-	  << message;
-      };
-      auto send_success = [&] (
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::string const& message)
-      {
-	*http_response <<  "HTTP/1.1 200 OK\r\n" 
-	  <<  "Content-Length: " << message.size()<< "\r\n"
-	  <<  "Content-type: " << "application/text" <<"\r\n"
-	  << "\r\n"
-	  << message;
-      };
-      // get image 
-      auto exec_cmd =[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
-
-      {
-	if(fg_state == process_state::started )
-	{ 
-	  try
-	  {
-	    std::string str =http_request->path_match[0];
-	    request->set(str);
-	    camerasp::buffer_t data = response->try_get();
-	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
-	      <<  "Content-Length: " << data.size()<< "\r\n"
-	      <<  "Content-type: " << "application/text" <<"\r\n"
-	      << "\r\n"
-	      << data;
-	  }
-	  catch(std::runtime_error& e)
-	  {
-
-	    std::string success("Frame Grabber not running. Issue start command");
-	    send_failure(http_response,success);
-	  }
-	}
-	else
-	{
-	  std::string success("Frame Grabber not running. Issue start command");
-	  send_failure(http_response,success);
-	}
-      };
-      auto get_image =[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
-
-      {
-	if(fg_state == process_state::started )
-	{
-	  try{
-	    std::string str =http_request->path_match[0];
-	    request->set(str);
-	    camerasp::buffer_t data = response->try_get();
-	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
-	      <<  "Content-Length: " << data.size()<< "\r\n"
-	      <<  "Content-type: " << "image/jpeg" <<"\r\n"
-	      << "\r\n"
-	      << data;
-	  }
-	  catch(std::runtime_error& e)
-	  {
-
-	    std::string success("Frame Grabber not running. Issue start command");
-	    send_failure(http_response,success);
-	  }
-	}
-	else
-	{
-	  std::string success("Frame Grabber not running. Issue start command");
-	  send_failure(http_response,success);
-	}
-      };
 
       // get previous image
-      server.resource["^/image\\?prev=([0-9]+)$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+      server.resource[R"(^/image\?prev=([0-9]+)$)"]["GET"]=[&](
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
-	get_image(http_response,http_request);
+	send_image(http_response,http_request);
       };
 
-      // flip horizontal vertical
-      server.resource["^/flip\\?horizontal=(0|1)$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+      // replace camera properties
+      server.resource["^/camera"]["PUT"]=[&](  
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
-	exec_cmd(http_response,http_request);
+	set_props(http_response,http_request);
       };
-      server.resource["^/flip\\?vertical=(0|1)$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+      // flip horizontal vertical
+      server.resource["^/flip"]["PUT"]=[&](  //\\?horizontal=(0|1)$
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
-	exec_cmd(http_response,http_request);
+	try
+	{
+
+	  camerasp::buffer_t data("Success");
+	  std::ostringstream ostr;
+	  ostr<<http_request->content.rdbuf();
+	  std::string istr=ostr.str();
+	  auto camera = root_["Camera"];
+	  std::regex pat("(\\w+)=(0|1)");
+	  for(std::sregex_iterator p(std::begin(istr),std::end(istr),pat);
+	      p!=std::sregex_iterator{};
+	      ++p)  
+	  {
+	    camera[(*p)[1].str()]= atoi((*p)[2].str().c_str());
+	    if(fg_state == process_state::started )
+	    { 
+	      request->set(std::string("/flip?")+(*p)[0].str().c_str());
+	      data = data+response->try_get() + "\r\n";
+	    }
+	  }
+
+	  Json::StyledWriter writer; 
+	  root_["Camera"] = camera;
+	  auto update = writer.write(root_);
+	  write_file_content(config_path + "options.json",update);
+	  *http_response <<  "HTTP/1.1 200 OK\r\n" 
+	    <<  "Content-Length: " << data.size()<< "\r\n"
+	    <<  "Content-type: " << "application/text" <<"\r\n"
+	    << "Cache-Control: no-cache, must-revalidate" << "\r\n"
+	    << "\r\n"
+	    << data;
+	}
+	catch(std::runtime_error& e)
+	{
+
+	  std::string success("Frame Grabber not running. Issue start command");
+	  send_failure(http_response,success);
+	}
       };
       server.resource["^/resume$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
 	exec_cmd(http_response,http_request);
       };
       // pause/resume
       server.resource["^/pause$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
 	exec_cmd(http_response,http_request);
       };
       server.resource["^/resume$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
 	exec_cmd(http_response,http_request);
       };
       // get current image
-      server.resource["^/image$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+      server.resource["^/image"]["GET"]=[&](
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
-	get_image(http_response,http_request);
+	send_image(http_response,http_request);
       };
 
       //restart capture
+      server.resource["^/config$"]["GET"]=[&](
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
+      {
+	Json::Value root = camerasp::get_DOM(config_path + "options.json");
+
+	Json::FastWriter writer; 
+	auto camera_config = root["Camera"];
+	auto response = writer.write(camera_config);
+	send_success(http_response,response );
+      };
       server.resource["^/start$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
 	std::string success("Succeeded");
+
+	console->info("Resart Child command received");
 	if(fg_state == process_state::started )
 	{
 	  success="Already Running";
@@ -327,19 +512,35 @@ class web_server
 	  send_success(http_response,success);
 	}
       };
-
+      auto kill_child = [=]()
+      {
+	if(fg_state==process_state::started)
+	{ 
+	  int status =0;
+	  unsigned n=0;
+	  kill(child_pid,SIGTERM);
+	  while(n< 20 && 0 <= waitpid(child_pid,&status,WNOHANG))
+	  {
+	    usleep(100*1000);
+	    ++n;
+	  } 
+	  if(n==20)
+	    kill(child_pid,SIGKILL);
+	  fg_state==process_state::stopped;
+	}   
+      };
+      auto _1 = gsl::finally([=](){kill_child();});
       //stop capture
       server.resource["^/abort$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
 	std::string success("Succeeded");
 	//
 	if(fg_state == process_state::started )
 
 	{
-	  kill(child_pid,SIGKILL);
-	  fg_state = process_state::stop_pending;
+	  kill_child();
 	  send_success(http_response,success);
 	}
 	else if (fg_state == process_state::stop_pending)
@@ -355,87 +556,21 @@ class web_server
       };
       //stop capture
       server.resource["^/stop$"]["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request)
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request)
       {
-	std::string success("Succeeded");
-	//
-	if(fg_state == process_state::started )
-	  try{
-	    request->set("exit");
-	    camerasp::buffer_t data = response->try_get();
-	    console->info("stop executed");
-	    fg_state = process_state::stop_pending;
-	    send_success(http_response,success);
-	  }
-	catch (std::exception& e)
-	{
-	  success="stop failed - abortng";
-	  console->info(success);
-	  kill(child_pid,SIGKILL);
-	  fg_state = process_state::stop_pending;
-	  send_success(http_response,success);
-	}
-	else if (fg_state == process_state::stop_pending)
-	{
-	  success= "Stop Pending. try again later";
-	  send_failure(http_response,success);
-	}
-	else
-	{
-	  success="Not running when command received";
-	  send_failure(http_response,success);
-	}
-      };
+	stop_camera( http_response, http_request);
+      } ;
       //default page server
       server.default_resource["GET"]=[&](
-	  std::shared_ptr<HttpServer::Response> http_response,
-	  std::shared_ptr<HttpServer::Request> http_request) {
-	try {
-	  auto web_root_path = 
-	    boost::filesystem::canonical(home_page);
-	  auto path=boost::filesystem::canonical(web_root_path/http_request->path);
-	  //Check if path is within web_root_path
-	  if(std::distance(web_root_path.begin(),web_root_path.end()) >
-	      std::distance(path.begin(), path.end()) ||
-	      !std::equal(web_root_path.begin(), web_root_path.end(), path.begin()))
-	    throw std::invalid_argument("path must be within root path");
-	  if(boost::filesystem::is_directory(path))
-	    path/="index.html";
-	  if(!(boost::filesystem::exists(path) &&
-		boost::filesystem::is_regular_file(path)))
-	    throw std::invalid_argument("file does not exist");
-
-	  std::string cache_control, etag;
-
-	  // Uncomment the following line to enable Cache-Control
-	  // cache_control="Cache-Control: max-age=86400\r\n";
-
-	  auto ifs=std::make_shared<std::ifstream>();
-	  ifs->open(path.string(), std::ifstream::in | std::ios::binary | std::ios::ate);
-
-	  if(*ifs) {
-	    auto length=ifs->tellg();
-	    ifs->seekg(0, std::ios::beg);
-
-	    *http_response << "HTTP/1.1 200 OK\r\n" << cache_control << etag 
-	      << "Content-Length: " << length << "\r\n\r\n";
-	    default_resource_send(server, http_response, ifs);
-	  }
-	  else
-	    throw std::invalid_argument("could not read file");
-	}
-	catch(const std::exception &e) {
-	  std::string content="Could not open path "+http_request->path+": "+e.what();
-	  *http_response << "HTTP/1.1 400 Bad Request\r\n"
-	    << "Content-Length: " << content.length() << "\r\n"
-	    << "\r\n" 
-	    << content;
-	}
-      };
+	  std::shared_ptr<http_server::Response> http_response,
+	  std::shared_ptr<http_server::Request> http_request) 
+      {
+	do_fallback( http_response, http_request);
+      } ;
 
 
-
+      signals_.async_wait(signal_handler);
       //start() returns on SIGTERM
       server.start();
       if(fg_state == process_state::started )
@@ -450,12 +585,13 @@ class web_server
     }
   private:
 
+    process_state fg_state = process_state::stopped;
     shared_mem_ptr<shared_response_data> response;
     shared_mem_ptr<shared_request_data> request;
     pid_t child_pid;
     posix_spawn_file_actions_t child_fd_actions;
     Json::Value& root_;
-    HttpServer server;
+    http_server server;
 };
 
 int main(int argc, char *argv[], char* env[])
@@ -492,8 +628,8 @@ int main(int argc, char *argv[], char* env[])
   return 0;
 }
 
-void default_resource_send(const HttpServer &server,
-                           const std::shared_ptr<HttpServer::Response> &response,
+void default_resource_send(const http_server &server,
+                           const std::shared_ptr<http_server::Response> &response,
                            const std::shared_ptr<std::ifstream> &ifs) {
     //read and send 128 KB at a time
     static std::vector<char> buffer(131072); // Safe when server is running on one thread
