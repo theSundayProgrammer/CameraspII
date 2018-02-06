@@ -184,17 +184,24 @@ class web_server
 	  request->set(str);
 	  camerasp::buffer_t data = response->try_get();
 	  std::string err(data, 0,4);
+ 
+             console->error("Getting image");
 	  if (err== std::string(4,'\0'))
 	  {
 	    *http_response <<  "HTTP/1.1 200 OK\r\n" 
 	      <<  "Content-Length: " << data.size()-4<< "\r\n"
 	      <<  "Content-type: " << "image/jpeg" <<"\r\n"
-	    << "Cache-Control: no-cache, must-revalidate" << "\r\n"
+	      << "Cache-Control: no-cache, must-revalidate" << "\r\n"
 	      << "\r\n"
-	      << std::string(data,4);
+	      << std::string(data.begin()+4, data.end());
+
+             console->error("sending image");
+             //ofstream ofs("/home/pi/data/testingsend.jpg");
+             //ofs.write(data.begin()+4, data.size()-4);
 	  }
 	  else
 	  {
+             console->error("Not sending image");
 	    send_failure(http_response,err + "No image Available");
 	  }
 	}
