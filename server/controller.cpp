@@ -418,21 +418,21 @@ public:
 
 		// get previous image
 		server.resource[R"(^/image\?prev=([0-9]+)$)"]["GET"] = [&](
-																															 std::shared_ptr<http_server::Response> http_response,
-																															 std::shared_ptr<http_server::Request> http_request) {
+					std::shared_ptr<http_server::Response> http_response,
+					std::shared_ptr<http_server::Request> http_request) {
 			send_image(http_response, http_request);
 		};
 
 		// replace camera properties
 		server.resource["^/camera"]["PUT"] = [&](
-																						 std::shared_ptr<http_server::Response> http_response,
-																						 std::shared_ptr<http_server::Request> http_request) {
+							std::shared_ptr<http_server::Response> http_response,
+							std::shared_ptr<http_server::Request> http_request) {
 			set_props(http_response, http_request);
 		};
 		// flip horizontal vertical
 		server.resource["^/flip"]["PUT"] = [&]( //\\?horizontal=(0|1)$
-																					 std::shared_ptr<http_server::Response> http_response,
-																					 std::shared_ptr<http_server::Request> http_request) {
+							std::shared_ptr<http_server::Response> http_response,
+							std::shared_ptr<http_server::Request> http_request) {
 			try
 			{
 
@@ -476,32 +476,32 @@ public:
 			}
 		};
 		server.resource["^/resume$"]["GET"] = [&](
-																							std::shared_ptr<http_server::Response> http_response,
-																							std::shared_ptr<http_server::Request> http_request) {
+					std::shared_ptr<http_server::Response> http_response,
+					std::shared_ptr<http_server::Request> http_request) {
 			exec_cmd(http_response, http_request);
 		};
 		// pause/resume
 		server.resource["^/pause$"]["GET"] = [&](
-																						 std::shared_ptr<http_server::Response> http_response,
-																						 std::shared_ptr<http_server::Request> http_request) {
+					std::shared_ptr<http_server::Response> http_response,
+					std::shared_ptr<http_server::Request> http_request) {
 			exec_cmd(http_response, http_request);
 		};
 		server.resource["^/resume$"]["GET"] = [&](
-																							std::shared_ptr<http_server::Response> http_response,
-																							std::shared_ptr<http_server::Request> http_request) {
+					std::shared_ptr<http_server::Response> http_response,
+					std::shared_ptr<http_server::Request> http_request) {
 			exec_cmd(http_response, http_request);
 		};
 		// get current image
 		server.resource["^/image"]["GET"] = [&](
-																						std::shared_ptr<http_server::Response> http_response,
-																						std::shared_ptr<http_server::Request> http_request) {
+					std::shared_ptr<http_server::Response> http_response,
+					std::shared_ptr<http_server::Request> http_request) {
 			send_image(http_response, http_request);
 		};
 
 		//restart capture
 		server.resource["^/config$"]["GET"] = [&](
-																							std::shared_ptr<http_server::Response> http_response,
-																							std::shared_ptr<http_server::Request> http_request) {
+						std::shared_ptr<http_server::Response> http_response,
+						std::shared_ptr<http_server::Request> http_request) {
 			Json::Value root = camerasp::get_DOM(config_path + "options.json");
 
 			Json::FastWriter writer;
@@ -510,8 +510,8 @@ public:
 			send_success(http_response, response);
 		};
 		server.resource["^/start$"]["GET"] = [&](
-																						 std::shared_ptr<http_server::Response> http_response,
-																						 std::shared_ptr<http_server::Request> http_request) {
+						std::shared_ptr<http_server::Response> http_response,
+						std::shared_ptr<http_server::Request> http_request) {
 			std::string success("Succeeded");
 
 			console->info("Resart Child command received");
@@ -527,8 +527,7 @@ public:
 			}
 			else
 			{
-				if (int ret = posix_spawnp(&child_pid, cmd,
-																	 &child_fd_actions, NULL, argv, env))
+				if (int ret = posix_spawnp(&child_pid, cmd, &child_fd_actions, NULL, argv, env))
 					console->error("posix_spawn"), exit(ret);
 				fg_state = process_state::started;
 				console->info("Child pid: {0}\n", child_pid);
@@ -554,8 +553,8 @@ public:
 		auto _1 = gsl::finally([=]() { kill_child(); });
 		//stop capture
 		server.resource["^/abort$"]["GET"] = [&](
-																						 std::shared_ptr<http_server::Response> http_response,
-																						 std::shared_ptr<http_server::Request> http_request) {
+				std::shared_ptr<http_server::Response> http_response,
+				std::shared_ptr<http_server::Request> http_request) {
 			std::string success("Succeeded");
 			//
 			if (fg_state == process_state::started)
@@ -577,14 +576,14 @@ public:
 		};
 		//stop capture
 		server.resource["^/stop$"]["GET"] = [&](
-																						std::shared_ptr<http_server::Response> http_response,
-																						std::shared_ptr<http_server::Request> http_request) {
+						std::shared_ptr<http_server::Response> http_response,
+						std::shared_ptr<http_server::Request> http_request) {
 			stop_camera(http_response, http_request);
 		};
 		//default page server
 		server.default_resource["GET"] = [&](
-																				 std::shared_ptr<http_server::Response> http_response,
-																				 std::shared_ptr<http_server::Request> http_request) {
+						std::shared_ptr<http_server::Response> http_response,
+						std::shared_ptr<http_server::Request> http_request) {
 			do_fallback(http_response, http_request);
 		};
 
