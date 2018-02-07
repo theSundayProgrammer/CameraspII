@@ -392,7 +392,7 @@ public:
 		Json::StyledWriter writer;
 		root_["Camera"] = camera;
 		auto update = writer.write(root_);
-		write_file_content(config_path + "options.json", update);
+		camerasp::write_file_content(config_path + "options.json", update);
 		*http_response << "HTTP/1.1 200 OK\r\n"
 										<< "Content-Length: " << data.size() << "\r\n"
 										<< "Content-type: "
