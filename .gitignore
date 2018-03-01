@@ -39,10 +39,3 @@ asio/
 include/mmal
 include/vcos
 lib/
-SQLiteCPP/
-inc.tar.bz2
-include/asio.hpp
-include/boost/
-include/gsl/
-include/raspicam/
-include/spdlog/

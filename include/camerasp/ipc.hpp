@@ -1,4 +1,8 @@
 #pragma once
+<<<<<<< HEAD
+=======
+#include <camerasp/utils.hpp>
+>>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
 #include <boost/scope_exit.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/shared_memory_object.hpp>
@@ -38,6 +42,10 @@ struct shared_data{
       }
       if(k<10)
       {
+<<<<<<< HEAD
+=======
+	console->debug("Response received");
+>>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
 	ipc::sharable_lock<upgradable_mutex_type> lock(mutex);
 	return std::string(response,data_length);
       }
@@ -48,6 +56,10 @@ struct shared_data{
     }
     camerasp::buffer_t get() const {
       task.wait();
+<<<<<<< HEAD
+=======
+      console->debug("Response received");
+>>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
       ipc::sharable_lock<upgradable_mutex_type> lock(mutex);
       return std::string(response,data_length);
     }
@@ -60,6 +72,10 @@ struct shared_data{
 	std::copy(std::begin(str),std::end(str),std::begin(response));
 	data_length=str.length();
 	task.post();
+<<<<<<< HEAD
+=======
+	console->debug("Response sent");
+>>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
       }
     }
   public:
@@ -100,6 +116,7 @@ template<class T>
 class shared_mem_ptr
 {
   public:
+<<<<<<< HEAD
     shared_mem_ptr(const char* name,bool owner_):
       remover(owner_?name:nullptr)
       ,owner(owner_)
@@ -126,20 +143,43 @@ class shared_mem_ptr
     {
       return *ptr;
     }
+=======
+    shared_mem_ptr(const char* name):
+      remover(name)
+      ,shm_mem(ipc::open_or_create , name, ipc::read_write)
+  {
+    // Construct the shared_request_data.
+
+
+    shm_mem.truncate(sizeof (T));
+
+    region_ptr = std::make_unique<ipc::mapped_region> (shm_mem, ipc::read_write);
+
+    ptr =static_cast<T*> (region_ptr->get_address());
+    new (ptr) T;
+    console->debug("Created response {0}", name);
+  }
+>>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
     T* operator->()
     {
       return ptr;
     }
     ~shared_mem_ptr()
     {
+<<<<<<< HEAD
     if(owner)
+=======
+>>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
       ptr->~T();
     }
   private:
     shm_remove remover;
     ipc::shared_memory_object shm_mem;
     std::unique_ptr<ipc::mapped_region> region_ptr;
+<<<<<<< HEAD
     bool owner;
+=======
+>>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
     T* ptr;
 };
 

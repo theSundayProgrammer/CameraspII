@@ -1,8 +1,8 @@
 
 INCLUDES = -I ../include
-CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
+CXX_FLAGS = -std=c++14 -pthread -O3 -DRASPICAM_MOCK -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
-CXX=g++-6
+CXX=g++
 
 all : camerasp webserver pinger
 .PHONY : all
@@ -33,13 +33,12 @@ pinger: $(cli_objs)
 camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
-                   -L../lib -ljson -ljpeg -lmmal -lmmal_core -lmmal_util
-	cp $@ /home/pi/bin
+                   -L../lib -ljson -ljpeg 
 webserver: $(webobjs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
                    -L../lib -ljson -ljpeg 
-	cp $@ /home/pi/bin
+
 $(BUILD_DIR)/%.o: %.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 

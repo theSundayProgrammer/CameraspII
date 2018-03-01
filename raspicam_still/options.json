@@ -1,0 +1,83 @@
+
+// Configuration options
+{
+   "CamControl" : {
+      "ISO" : 0,
+      "annotate_bg_colour" : -1,
+      "annotate_text_colour" : -1,
+      "annotate_text_size" : 0,
+      "awbMode" : "auto",
+      "awb_gains_b" : 0,
+      "awb_gains_r" : 0,
+      "brightness" : 50,
+      "colourEffect" : {
+         "enable" : 0,
+         "u" : 128,
+         "v" : 128
+      },
+      "contrast" : 0,
+      "drc_level" : "off",
+      "enable_annotate" : 0,
+      "exposureCompensation" : 0,
+      "exposureMeterMode" : "average",
+      "exposureMode" : "auto",
+      "hflip" : 0,
+      "imageEffect" : "none",
+      "roi" : {
+         "h" : 1,
+         "w" : 1,
+         "x" : 0,
+         "y" : 0
+      },
+      "rotation" : 0,
+      "saturation" : 0,
+      "sharpness" : 0,
+      "shutter_speed" : 0,
+      "stats_pass" : 0,
+      "stereo_mode_decimate" : 0,
+      "stereo_mode_mode" : "off",
+      "stereo_mode_swap_eyes" : 0,
+      "videoStabilisation" : 0
+   },
+   "Camera" : {
+      "burstCaptureMode" : 0,
+      "cameraNum" : 0,
+      "datetime" : 0,
+      "enableExifTags" : 0,
+      "encoding" : "JPG",
+      "filename" : "img_%04d.jpg",
+      "frameNextMethod" : 1,
+      "frameStart" : 0,
+      "height" : 480,
+      "horizontal" : 0,
+      "iso" : 360,
+      "quality" : 85,
+      "restart_interval" : 0,
+      "sensor_mode" : 0,
+      "settings" : 0,
+      "timelapse" : 1000,
+      "timeout" : 5000,
+      "timestamp" : 0,
+      "verbose" : 1,
+      "vertical" : 1,
+      "wantRAW" : 0,
+      "width" : 640
+   },
+   "Data" : {
+      "count" : 1000,
+      "path_prefix" : "/home/pi/data/backup",
+      "sample_period" : 1
+   },
+   "Logging" : {
+      "count" : 5,
+      "path" : "/home/pi/data/log",
+      "size" : 2,
+      "type" : "debug"
+   },
+   "Server" : {
+      "command" : "/home/pi/bin/camerasp",
+      "home_page" : "/home/pi/data/web",
+      "log_folder" : "/home/pi/data/camerasp_log",
+      "port" : 8088
+   }
+}

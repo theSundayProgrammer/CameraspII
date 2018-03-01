@@ -1,0 +1,192 @@
+<html>
+<head>
+<style> /* Dropdown Button */
+.dropbtn {
+    padding: 8px;
+    background-color: #4CAF50;
+    font-size: 12px;
+    border: none;
+    cursor: pointer;
+}
+
+button:disabled {
+    color: #010101;
+}
+button:enabled {
+    color: white;
+}
+
+/* The container <div> - needed to position the dropdown content */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+aside {float:left;} 
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {background-color: #f1f1f1}
+
+/* Show the dropdown menu on hover */
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* Change the background color of the dropdown button when the dropdown content is shown */
+.dropdown:hover .dropbtn {
+    background-color: #3e8e41;
+}
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js">
+</script> 
+<script>
+var newImage = new Image();
+newImage.src = "./image";
+var proceed = true;
+function setheight(h) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      // Action to be performed when the document is read;
+      var resp = this.responseText;
+      document.getElementById("Rstatus").innerHTML = resp;
+    }
+  };
+  xhttp.open("PUT", "camera", false);
+  w = (h/240)*320;
+  var cmd ="height="+h + "   width=" + w;
+  xhttp.send(cmd);
+}
+function setwidth(w) 
+{
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      // Action to be performed when the document is read;
+      var resp = this.responseText;
+      document.getElementById("Rstatus").innerHTML = resp;
+    }
+  };
+  xhttp.open("PUT", "./camera", false);
+  h = 240*(w/320);
+  var cmd ="height="+h + "   width=" + w;
+  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  xhttp.send(cmd);
+}
+function updateImage()
+{
+  if(newImage.complete && proceed) 
+  {
+    document.getElementById("Rpi").src = newImage.src;
+    newImage = new Image();
+    newImage.src = "./image";
+  }
+  if(proceed)
+    setTimeout(updateImage, 1000);
+}
+function stopFg()
+{
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 ) {
+      // Action to be performed when the document is read;
+      var resp = this.responseText;
+      document.getElementById("Rstatus").innerHTML = resp;
+    }
+  };
+  xhttp.open("GET", "./stop", false);
+  xhttp.send();
+
+  document.getElementById("frame_grabber_stop").disabled=true;
+  document.getElementById("frame_grabber_start").disabled=false;
+}
+function toggleMirror(){};
+function toggleFlip(){};
+function startFg()
+{
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 ) {
+      // Action to be performed when the document is read;
+      var resp = this.responseText;
+      document.getElementById("Rstatus").innerHTML = resp;
+    }
+  };
+  xhttp.open("GET", "./start", false);
+  xhttp.send();
+
+  document.getElementById("frame_grabber_stop").disabled=false;
+  document.getElementById("frame_grabber_start").disabled=true;
+}
+</script>
+</head>
+
+<aside id="cameraConfig">
+<table>
+<tr>
+<th> Attribute </th>
+<th> value </th>
+</tr>
+
+<tr>
+<td>Length</td>
+<td id="camlength">100</td>
+</tr>
+<tr>
+<td>Width</td>
+<td id="camwidth">100</td>
+</tr>
+<tr>
+<td>ISO</td>
+<td id="camISO">100</td>
+</tr>
+ </table>
+</aside>
+ <body onload=updateImage()>
+  <img id="Rpi" src="./image" alt="Security Camera View" height="480" width="640"> 
+<br/>
+<div class="dropdown">
+  <button class="dropbtn">Width</button>
+  <div class="dropdown-content">
+    <a href="#" onclick="setwidth(320)">320</a>
+    <a href="#" onclick="setwidth(640)">640</a>
+    <a href="#" onclick="setwidth(1280)">1280</a>
+  </div>
+</div>
+<div class="dropdown">
+  <button class="dropbtn">Height</button>
+  <div class="dropdown-content">
+    <a href="#" onclick="setheight(240)">240</a>
+    <a href="#" onclick="setheight(480)">480</a>
+    <a href="#" onclick="setheight(960)">960</a>
+  </div>
+</div>
+<button class="dropbtn" id="frameGrabberMirror" onclick = "toggleMirror()" > Mirror </button>
+<button class="dropbtn" id="frameGrabberFlip"  onclick = "toggleFlip()" > Flip </button>
+<button class="dropbtn" id="frameGrabberStart"  onclick = "startFg()" > Start </button>
+<button class="dropbtn" id="frameGrabberStop" onclick = "stopFg()" > Stop </button>
+<br/>
+<p id="Rstatus">Hello World</p>
+</body>
+</html>
+
+</head>
+
+ </html>
