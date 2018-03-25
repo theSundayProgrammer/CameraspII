@@ -20,6 +20,7 @@ srcs = frame_grabber.cpp \
 	jpgconvert.cpp \
 	raspicam_mock.cpp \
 	timer.cpp \
+	file_saver.cpp \
 	utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)

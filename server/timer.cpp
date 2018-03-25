@@ -12,38 +12,6 @@
 #include <sstream>
 namespace camerasp
 {
-
-  file_saver::file_saver( Json::Value const& backup):
-    current_count(0)
-    ,cur(0)
-  {
-    max_files= backup["count"].asInt();
-    image_path= backup["path_prefix"].asString();
-  }
-
-
-  camerasp::buffer_t file_saver::get_image(unsigned int k)
-  {
-    std::ostringstream ostr;
-    unsigned next = current_count < max_files && k >= current_count?
-      0:
-      (cur+max_files-k)%max_files;
-    ostr<<image_path<<next<<std::ends;
-
-    std::ifstream img_file(ostr.str(),std::ios::binary);
-    std::ostringstream img_str;
-    img_str<<img_file.rdbuf();
-    return img_str.str();
-  }
-  void file_saver::save_image(camerasp::buffer_t const& image)
-  {
-    std::ostringstream ostr;
-    unsigned int k=cur;
-    ostr<<image_path<<k<<std::ends;
-    std::ofstream(ostr.str(),std::ios::binary) << image;
-    ++cur;
-    if(current_count < max_files) ++current_count;
-  }
   periodic_frame_grabber::periodic_frame_grabber(
       asio::io_context& io_service,
       Json::Value const& root)
