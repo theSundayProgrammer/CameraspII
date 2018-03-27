@@ -10,6 +10,7 @@
 #include <jpeg/jpgconvert.hpp>
 #include <fstream>
 #include <sstream>
+void handle_motion(const char* fName);
 namespace camerasp
 {
   periodic_frame_grabber::periodic_frame_grabber(
@@ -18,7 +19,7 @@ namespace camerasp
     : timer_(io_service)
     ,cur_img(0)
     ,current_count(0)
-    ,file_saver_(root["Data"])
+    ,file_saver_(root["Data"], root["home_path"].asString())
   {
     auto backup=root["Data"];
     auto secs = backup["sample_period"].asInt();

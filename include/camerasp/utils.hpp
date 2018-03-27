@@ -10,9 +10,8 @@
 #include <string>
 #include <vector>
 #include <json/reader.h>
-#include <spdlog/spdlog.h>
 #include <camerasp/raspicamtypes.h>
-extern std::shared_ptr<spdlog::logger> console;
+#include <camerasp/logger.hpp>
 #include <mmal/mmal_types.h>
 #include <mmal/mmal_parameters_camera.h>
 #ifdef __GNUC__

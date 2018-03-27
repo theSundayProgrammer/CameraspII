@@ -1,5 +1,6 @@
 // Configuration options
 {
+  "home_path" : "/home/pi",
   "Camera": {
       "height" : 480,
       "horizontal" : 0,
@@ -8,13 +9,13 @@
       "width" : 640
    },
     "Logging": {
-      "path": "/home/pi/data/log",
+      "path": "data/log",
       "count": 5,
       "size": 2,
       "type": "debug"
     },
     "Data": {
-      "path_prefix": "/home/pi/data/backup",
+      "path_prefix": "data/backup",
       "sample_period": 1,
       "count": 1000
     },

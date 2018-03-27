@@ -20,6 +20,7 @@
 #include <camerasp/utils.hpp>
 #include <camerasp/timer.hpp>
 #include <camerasp/ipc.hpp>
+#include <boost/filesystem.hpp>
 std::shared_ptr<spdlog::logger> console;
 #ifdef RASPICAM_MOCK
 const std::string config_path = "./";
@@ -27,18 +28,31 @@ const std::string config_path = "./";
 const std::string config_path = "/srv/camerasp/";
 #endif
 #define ASIO_ERROR_CODE asio::error_code
-void configure_console()
+std::string home_path;
+void configure_console(Json::Value& root)
 {
   namespace spd = spdlog;
-  console = spd::rotating_logger_mt("fg", "/home/pi/logs/mylogfile", 1048576 * 5, 3);
+  boost::filesystem::path root_path(home_path);
+  auto log_config = root["Logging"];
+  auto json_path = log_config["path"];
+  auto logpath = root_path/(json_path.asString());
+  auto size_mega_bytes = log_config["size"].asInt();
+  auto count_files = log_config["count"].asInt();
+  
+  console = spd::rotating_logger_mt("fg", logpath.string(), 1048576 * size_mega_bytes, count_files);
   console->set_level(spd::level::debug);
 }
 
 int main(int argc, char *argv[])
 {
   using namespace boost::interprocess;
+    Json::Value root = camerasp::get_DOM(config_path + "options.json");
+    //configure console
+    home_path = root["home_path"].asString();
+  
   try {
-    configure_console();
+    Json::Value root=camerasp::get_DOM(config_path + "options.json");
+    configure_console(root);
     // Construct the :shared_request_data.
     shared_memory_object shm(open_only, REQUEST_MEMORY_NAME, read_write);
 
@@ -71,7 +85,6 @@ int main(int argc, char *argv[])
 	});
 
     //configure frame grabber
-    Json::Value root=camerasp::get_DOM(config_path + "options.json");
     camerasp::periodic_frame_grabber timer(frame_grabber_service, root);
     timer.resume();
     console->debug("Line {0}",__LINE__);

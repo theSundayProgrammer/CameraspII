@@ -5,20 +5,23 @@
 // 
 // http://www.boost.org/LICENSE_1_0.txt)
 //////////////////////////////////////////////////////////////////////////////
-
-#include <camerasp/timer.hpp>
+#include <camerasp/file_saver.hpp>
 #include <jpeg/jpgconvert.hpp>
 #include <fstream>
 #include <sstream>
+#include <boost/filesystem.hpp>
+#include <camerasp/logger.hpp>
 namespace camerasp
 {
 
-  file_saver::file_saver( Json::Value const& backup):
+  file_saver::file_saver( Json::Value const& backup, const std::string& home_path):
     current_count(0)
     ,cur(0)
   {
     max_files= backup["count"].asInt();
-    image_path= backup["path_prefix"].asString();
+    boost::filesystem::path root_path(home_path);
+    auto size_mega_bytes = backup["size"].asInt();
+    image_path= (root_path/backup["path_prefix"].asString()).string();
     console->debug("path={0},count={1}",image_path,max_files);
   }
 
@@ -36,7 +39,7 @@ namespace camerasp
     img_str<<img_file.rdbuf();
     return img_str.str();
   }
-  void file_saver::save_image(camerasp::buffer_t const& image)
+  std::string file_saver::save_image(camerasp::buffer_t const& image)
   {
     std::ostringstream ostr;
     unsigned int k=cur;
@@ -45,5 +48,6 @@ namespace camerasp
     ++cur;
     if(cur == max_files) cur=0;
     if(current_count < max_files) ++current_count;
+    return ostr.str();
   }
 }
