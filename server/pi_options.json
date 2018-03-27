@@ -6,7 +6,8 @@
       "horizontal" : 0,
       "iso" : 360,
       "vertical" : 1,
-      "width" : 640
+      "width" : 640,
+      "min_motion_changes" : 50
    },
     "Logging": {
       "path": "data/log",

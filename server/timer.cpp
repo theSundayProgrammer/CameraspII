@@ -77,9 +77,10 @@ namespace camerasp
       auto buffer = grab_picture();
       if (!buffer.empty())
       {
-      file_saver_.save_image(buffer);
+         auto fName = file_saver_.save_image(buffer);
 	std::lock_guard<std::mutex> lock(image_buffers[next].m);
 	image_buffers[next].buffer.swap(buffer);
+         handle_motion(fName.c_str());
       }
       if (current_count < max_size) ++current_count;
       cur_img = (cur_img + 1) % max_size;

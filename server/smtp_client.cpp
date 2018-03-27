@@ -1,6 +1,4 @@
 #include <camerasp/smtp_client.hpp>
-#include <stdio.h>
-#include <string.h>
 #include <curl/curl.h>
 #include <vector>
 #include <string>
@@ -23,7 +21,7 @@
 //#include <boost/archive/iterators/insert_linebreaks.hpp>
 //#include <boost/archive/iterators/remove_whitespace.hpp>
 
-
+#include <camerasp/logger.hpp>
 
 std::string current_GMT_time()
 {
@@ -105,8 +103,7 @@ std::string current_date_time()
       CURLcode res = curl_easy_perform(curl);
       ifs.close();
       if (res != CURLE_OK)
-	fprintf(stderr, "curl_easy_perform() failed: %s\n",
-	    curl_easy_strerror(res));
+	console->warn("curl_easy_perform() failed: {0}", curl_easy_strerror(res));
       curl_slist_free_all(recipients);
 
     }

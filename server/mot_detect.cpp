@@ -9,9 +9,9 @@
 #include <iostream>
 #include <tuple>
 #include <camerasp/smtp_client.hpp>
+#include <camerasp/logger.hpp>
 using namespace std;
 using namespace cv;
-
 // Check if there is motion in the result matrix
 // count the number of changes and return.
 std::tuple<cv::Rect,int>
@@ -50,6 +50,7 @@ detect_motion(const Mat& motion, const Rect& bounding_box )
 //    - Build the directory and image names.
 void handle_motion(const char* fName)
 {
+#include "password.cpp"
   static int current_state=0;
   static smtp_client smtp;
   CURLcode res = CURLE_OK;
@@ -71,6 +72,14 @@ void handle_motion(const char* fName)
       current_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR) ;
       cvtColor(current_frame, current_frame, CV_RGB2GRAY);
       current_state =1;
+      smtp.password = pwd;
+      smtp.user = "theSundayProgrammer@gmail.com";
+      smtp.url = "smtps://smtp.gmail.com:465";
+      smtp.from = "<theSundayProgrammer@gmail.com> camerasp";
+      smtp.subject = "Motion detection";
+     
+          smtp.recipient_ids.push_back("joseph.mariadassou@outlook.com");
+          smtp.recipient_ids.push_back("parama_chakra@yahoo.com");
       return;
     case 1:
       next_frame =  cv::imread(fName, CV_LOAD_IMAGE_COLOR) ;
@@ -83,7 +92,7 @@ void handle_motion(const char* fName)
 
         // If more than 'there_is_motion' pixels are changed, we say there is motion
         // and store an image on disk
-        int there_is_motion = 250;
+        int there_is_motion = 50;
 
 
         // Erode kernel
@@ -113,15 +122,15 @@ void handle_motion(const char* fName)
         int height = current_frame.rows-20;
         std::tie(rect,number_of_changes) = detect_motion(motion,  cv::Rect( x_start,  y_start, width,height));
         std::cout << number_of_changes << std::endl;
+        if (number_of_changes >0) console->info("Number of Changes in image = {0}", number_of_changes); 
         // If a lot of changes happened, we assume something changed.
         if(number_of_changes>=there_is_motion)
         {
           smtp.file_name = fName;
           //if(number_of_sequence>0)
           { 
-            std::cout << "Image Name: " << smtp.file_name  << "\n"
-              << "Top Left: " << rect.x << " " << rect.y << "\n" 
-              << "Dimensions: " << rect.width << " " << rect.height << "\n" ;
+            console->info("Image Name: {0}", smtp.file_name); 
+            console->info("Top Left:{0},{1} ", rect.x , rect.y );
             smtp.send();
           }
           number_of_sequence++;
