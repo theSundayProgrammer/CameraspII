@@ -26,6 +26,6 @@ namespace camerasp{
   //std::string  get_image(unsigned int k);
 
   bool is_integer(const std::string & s, int* k);
-  Json::Value & getRoot();
+  Json::Value & get_root();
   void write_file_content(std::string const& path, std::string const& dat)    ;
 }

@@ -10,13 +10,18 @@
 #include <algorithm>
 #include <map>
 #include <cstdarg>
-#include <regex>
+#include <mutex>
 #include <fstream>
 #include <sstream>
 #include <camerasp/raspicamtypes.h>
 #include <camerasp/utils.hpp>
 #include <mmal/mmal_types.h>
 #include <mmal/mmal_parameters_camera.h>
+#ifdef RASPICAM_MOCK
+const std::string config_path = "./";
+#else
+const std::string config_path = "/srv/camerasp/";
+#endif
 namespace camerasp{
   void write_file_content(std::string const& path, std::string const& dat)    {
     std::ofstream ofs(path);
@@ -68,7 +73,16 @@ namespace camerasp{
 
     return true;//(*p == 0);
   }
+static std::once_flag config_flag;
 
+  Json::Value& get_root()
+{
+  static Json::Value root;
+  std::call_once(config_flag,[&]() {
+     root=get_DOM(config_path+"options.json");
+     });
+  return root;
+}
 MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) {
     if ( str=="OFF" ) return MMAL_PARAM_EXPOSUREMODE_OFF;
     if ( str=="AUTO" ) return MMAL_PARAM_EXPOSUREMODE_AUTO;
