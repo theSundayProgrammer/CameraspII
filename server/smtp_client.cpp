@@ -3,7 +3,6 @@
 #include <vector>
 #include <string>
 #include <stdexcept>
-#include <iostream>
 #include <chrono>	// chrono::system_clock
 #include <ctime>	 // localtime
 #include <sstream> // stringstream
@@ -16,11 +15,7 @@
 
 #include <sstream> // stringstream
 #include <boost/archive/iterators/base64_from_binary.hpp>
-//#include <boost/archive/iterators/binary_from_base64.hpp>
 #include <boost/archive/iterators/transform_width.hpp>
-//#include <boost/archive/iterators/insert_linebreaks.hpp>
-//#include <boost/archive/iterators/remove_whitespace.hpp>
-
 #include <camerasp/logger.hpp>
 
 std::string current_GMT_time()
@@ -158,7 +153,8 @@ size_t smtp_client::next_line(void *ptr)
 		++call_back_state;
 		break;
 	case 9:
-		ostr << "Hello"
+		ostr << "Picture taken at " 
+		     << current_date_time()
 				 << "\r\n";
 		++call_back_state;
 		break;
