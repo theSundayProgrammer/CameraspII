@@ -12,8 +12,6 @@
 #include <json/reader.h>
 #include <camerasp/raspicamtypes.h>
 #include <camerasp/logger.hpp>
-#include <mmal/mmal_types.h>
-#include <mmal/mmal_parameters_camera.h>
 #ifdef __GNUC__
 typedef int errno_t;
 errno_t fopen_s(FILE** fp, const char* name, const char* mode);
@@ -28,8 +26,6 @@ namespace camerasp{
   //std::string  get_image(unsigned int k);
 
   bool is_integer(const std::string & s, int* k);
-  MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) ;
-  MMAL_PARAM_AWBMODE_T get_awb_from_string ( const std::string& str ) ;
-
+  Json::Value & getRoot();
   void write_file_content(std::string const& path, std::string const& dat)    ;
 }
