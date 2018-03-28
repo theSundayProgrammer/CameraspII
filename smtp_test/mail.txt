@@ -1,0 +1,3 @@
+Hi John,
+I’m sending this mail with curl thru my gmail account.
+Bye!
