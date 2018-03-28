@@ -99,31 +99,6 @@ MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) {
     if ( str=="HORIZON" ) return MMAL_PARAM_AWBMODE_HORIZON;
     return MMAL_PARAM_AWBMODE_AUTO;
   }
-  /*
-MMAL_FOURCC_T
-    convertEncoding(RASPICAM_ENCODING encoding)  {
-    switch (encoding)    {
-    case RASPICAM_ENCODING_JPEG:
-      return MMAL_ENCODING_JPEG;
-    case RASPICAM_ENCODING_BMP:
-      return MMAL_ENCODING_BMP;
-    case RASPICAM_ENCODING_GIF:
-      return MMAL_ENCODING_GIF;
-    case RASPICAM_ENCODING_PNG:
-      return MMAL_ENCODING_PNG;
-    case RASPICAM_ENCODING_RGB:
-      return MMAL_ENCODING_BMP;
-    default:
-      return -1;
-    }
-  }
-  RASPICAM_FORMAT get_format_from_string ( const std::string& str ) {
-    if(str=="GREY") return RASPICAM_FORMAT_GRAY;
-    if(str=="YUV") return RASPICAM_FORMAT_YUV420;
-    return RASPICAM_FORMAT_RGB;
-
-  }
-*/
 
 }
 
