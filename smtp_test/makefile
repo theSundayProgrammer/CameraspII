@@ -8,16 +8,18 @@ all : test
 .PHONY : all
 
 
-srcs = main.cpp smtp_client.cpp
-objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
-deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
-
+objs = $(BUILD_DIR)/main.o $(BUILD_DIR)/smtp_client.o
+deps = $(BUILD_DIR)/main.d $(BUILD_DIR)/smtp_client.d
 
 test: $(objs)
 	$(CXX) -g  -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lcurl 
-$(BUILD_DIR)/%.o: %.cpp
+
+$(BUILD_DIR)/main.o: main.cpp
+	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
+
+$(BUILD_DIR)/smtp_client.o: ../server/smtp_client.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
 .PHONY: clean
