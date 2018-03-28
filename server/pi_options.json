@@ -13,7 +13,8 @@
       "path": "data/log",
       "count": 5,
       "size": 2,
-      "type": "debug"
+      "type": "debug",
+      "weblog": "data/web/log"
     },
     "Data": {
       "path_prefix": "data/backup",
