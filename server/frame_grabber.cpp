@@ -22,11 +22,6 @@
 #include <camerasp/ipc.hpp>
 #include <boost/filesystem.hpp>
 std::shared_ptr<spdlog::logger> console;
-#ifdef RASPICAM_MOCK
-const std::string config_path = "./";
-#else
-const std::string config_path = "/srv/camerasp/";
-#endif
 #define ASIO_ERROR_CODE asio::error_code
 std::string home_path;
 void configure_console(Json::Value& root)
@@ -42,16 +37,14 @@ void configure_console(Json::Value& root)
   console = spd::rotating_logger_mt("fg", logpath.string(), 1048576 * size_mega_bytes, count_files);
   console->set_level(spd::level::debug);
 }
-
 int main(int argc, char *argv[])
 {
   using namespace boost::interprocess;
-    Json::Value root = camerasp::get_DOM(config_path + "options.json");
+  auto&   root = camerasp::get_root();
     //configure console
     home_path = root["home_path"].asString();
   
   try {
-    Json::Value root=camerasp::get_DOM(config_path + "options.json");
     configure_console(root);
     // Construct the :shared_request_data.
     shared_memory_object shm(open_only, REQUEST_MEMORY_NAME, read_write);
@@ -60,7 +53,6 @@ int main(int argc, char *argv[])
 
     shared_request_data& request = *static_cast<shared_request_data *>(region.get_address());
 
-    console->debug("Line {0}",__LINE__);
 
     // Construct the :shared_response data.
     shared_memory_object shm_response(open_only, RESPONSE_MEMORY_NAME, read_write);
@@ -70,7 +62,6 @@ int main(int argc, char *argv[])
     shared_response_data& response = *static_cast<shared_response_data *>(region_response.get_address());
 
 
-    console->debug("Line {0}",__LINE__);
     asio::io_service frame_grabber_service;
     // The signal set is used to register termination notifications
     asio::signal_set signals_(frame_grabber_service);
@@ -87,7 +78,6 @@ int main(int argc, char *argv[])
     //configure frame grabber
     camerasp::periodic_frame_grabber timer(frame_grabber_service, root);
     timer.resume();
-    console->debug("Line {0}",__LINE__);
 	auto capture_frame = [&](int k){
 	  try
 	  {
@@ -158,7 +148,6 @@ int main(int argc, char *argv[])
       }
 
     } };
-    console->debug("Line {0}",__LINE__);
     frame_grabber_service.run();
     thread1.join();
     //std::string uri=request.get();

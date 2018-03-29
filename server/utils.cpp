@@ -10,13 +10,18 @@
 #include <algorithm>
 #include <map>
 #include <cstdarg>
-#include <regex>
+#include <mutex>
 #include <fstream>
 #include <sstream>
 #include <camerasp/raspicamtypes.h>
 #include <camerasp/utils.hpp>
 #include <mmal/mmal_types.h>
 #include <mmal/mmal_parameters_camera.h>
+#ifdef RASPICAM_MOCK
+const std::string config_path = "./";
+#else
+const std::string config_path = "/srv/camerasp/";
+#endif
 namespace camerasp{
   void write_file_content(std::string const& path, std::string const& dat)    {
     std::ofstream ofs(path);
@@ -68,7 +73,16 @@ namespace camerasp{
 
     return true;//(*p == 0);
   }
+static std::once_flag config_flag;
 
+  Json::Value& get_root()
+{
+  static Json::Value root;
+  std::call_once(config_flag,[&]() {
+     root=get_DOM(config_path+"options.json");
+     });
+  return root;
+}
 MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) {
     if ( str=="OFF" ) return MMAL_PARAM_EXPOSUREMODE_OFF;
     if ( str=="AUTO" ) return MMAL_PARAM_EXPOSUREMODE_AUTO;
@@ -99,31 +113,6 @@ MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) {
     if ( str=="HORIZON" ) return MMAL_PARAM_AWBMODE_HORIZON;
     return MMAL_PARAM_AWBMODE_AUTO;
   }
-  /*
-MMAL_FOURCC_T
-    convertEncoding(RASPICAM_ENCODING encoding)  {
-    switch (encoding)    {
-    case RASPICAM_ENCODING_JPEG:
-      return MMAL_ENCODING_JPEG;
-    case RASPICAM_ENCODING_BMP:
-      return MMAL_ENCODING_BMP;
-    case RASPICAM_ENCODING_GIF:
-      return MMAL_ENCODING_GIF;
-    case RASPICAM_ENCODING_PNG:
-      return MMAL_ENCODING_PNG;
-    case RASPICAM_ENCODING_RGB:
-      return MMAL_ENCODING_BMP;
-    default:
-      return -1;
-    }
-  }
-  RASPICAM_FORMAT get_format_from_string ( const std::string& str ) {
-    if(str=="GREY") return RASPICAM_FORMAT_GRAY;
-    if(str=="YUV") return RASPICAM_FORMAT_YUV420;
-    return RASPICAM_FORMAT_RGB;
-
-  }
-*/
 
 }
 

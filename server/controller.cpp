@@ -439,8 +439,7 @@ int main(int argc, char *argv[], char *env[])
     auto logpath = root_path / (json_path.asString());
     auto size_mega_bytes = log_config["size"].asInt();
     auto count_files = log_config["count"].asInt();
-      console = spd::rotating_logger_mt("console", logpath, 1024 * 1024 * size_mega_bytes, count_files);
-    //console = spdlog::stdout_color_mt("console");
+    console = spdlog::rotating_logger_mt("console", logpath.string(), 1024 * 1024 * size_mega_bytes, count_files);
     console->set_level(spdlog::level::debug);
     console->debug("Starting");
     auto io_service = std::make_shared<asio::io_context>();
