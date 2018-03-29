@@ -6,10 +6,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <curl/curl.h>
-#include <iostream>
 #include <tuple>
 #include <camerasp/smtp_client.hpp>
 #include <camerasp/logger.hpp>
+#include <camerasp/utils.hpp>
 using namespace std;
 using namespace cv;
 // Check if there is motion in the result matrix
@@ -45,12 +45,24 @@ detect_motion(const Mat& motion, const Rect& bounding_box )
   }
   return make_tuple(cv::Rect(),0);
 }
+
+static void init_smtp(smtp_client& smtp){
+  auto root = camerasp::get_root();
+  auto email = root["email"];
+  
+  smtp.password = email["pwd"].asString();
+  smtp.user = email["uid"].asString();
+  smtp.url = email["host"].asString();
+  smtp.from = "<theSundayProgrammer@gmail.com> camerasp";
+  smtp.subject = "Motion detection";
+  smtp.recipient_ids.push_back("joseph.mariadassou@outlook.com");
+  smtp.recipient_ids.push_back("parama_chakra@yahoo.com");
+}
 // When motion is detected we write the image to disk
 //    - Check if the directory exists where the image will be stored.
 //    - Build the directory and image names.
 void handle_motion(const char* fName)
 {
-#include "password.cpp"
   static int current_state=0;
   static smtp_client smtp;
   CURLcode res = CURLE_OK;
@@ -72,14 +84,7 @@ void handle_motion(const char* fName)
       current_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR) ;
       cvtColor(current_frame, current_frame, CV_RGB2GRAY);
       current_state =1;
-      smtp.password = pwd;
-      smtp.user = "theSundayProgrammer@gmail.com";
-      smtp.url = "smtps://smtp.gmail.com:465";
-      smtp.from = "<theSundayProgrammer@gmail.com> camerasp";
-      smtp.subject = "Motion detection";
-     
-          smtp.recipient_ids.push_back("joseph.mariadassou@outlook.com");
-          smtp.recipient_ids.push_back("parama_chakra@yahoo.com");
+      init_smtp(smtp);    
       return;
     case 1:
       next_frame =  cv::imread(fName, CV_LOAD_IMAGE_COLOR) ;
@@ -121,7 +126,6 @@ void handle_motion(const char* fName)
         int width = current_frame.cols-20;
         int height = current_frame.rows-20;
         std::tie(rect,number_of_changes) = detect_motion(motion,  cv::Rect( x_start,  y_start, width,height));
-        std::cout << number_of_changes << std::endl;
         if (number_of_changes >0) console->info("Number of Changes in image = {0}", number_of_changes); 
         // If a lot of changes happened, we assume something changed.
         if(number_of_changes>=there_is_motion)
