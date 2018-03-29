@@ -84,7 +84,7 @@ CURLcode smtp_client::send()
 	curl_easy_setopt(curl, CURLOPT_READDATA, this);
 	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
 	start = message.begin();
 	finish = message.end();
