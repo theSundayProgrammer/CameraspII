@@ -49,17 +49,17 @@ CURLcode smtp_client::send()
 {
 	std::string date("Date: ");
 	message.push_back(date + current_date_time() + "\r\n");
-	std::string to = "To: ";
+	std::string to = "To:";
 	to += *recipient_ids.begin() + "\r\n";
 	message.push_back(to);
 
-	message.push_back(std::string("From: ") + from + "\r\n");
+	message.push_back(std::string("From:") + from + "\r\n");
 
 	boost::uuids::random_generator gen;
 	boost::uuids::uuid u = gen();
-	message.push_back(std::string("Message-ID: ") + "<" + to_string(u) + "@theSundayProgrammer.com>\r\n");
+	message.push_back(std::string("Message-ID:") + "<" + to_string(u) + "@theSundayProgrammer.com>\r\n");
 
-	message.push_back(std::string("Subject :") + subject + "\r\n");
+	message.push_back(std::string("Subject:") + subject + "\r\n");
 	//message.push_back(body);
 	//message.push_back(string("\r\n"));
 
@@ -84,7 +84,7 @@ CURLcode smtp_client::send()
 	curl_easy_setopt(curl, CURLOPT_READDATA, this);
 	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 
-	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+//	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
 	start = message.begin();
 	finish = message.end();
@@ -179,7 +179,7 @@ size_t smtp_client::next_line(void *ptr)
 		++call_back_state;
 		break;
 	case 14:
-		ostr << "Content-Description: " << file_name << "\r\n";
+		ostr << "Content-Description: " << file_name << ".jpg" << "\r\n";
 		++call_back_state;
 		break;
 	case 15:
@@ -255,7 +255,7 @@ size_t smtp_client::callback(void *ptr, size_t size, size_t nmemb, void *userp)
 {
 	smtp_client *this_ = static_cast<smtp_client *>(userp);
 
-	if ((size == 0) || (nmemb == 0) || ((size * nmemb) < 1))
+	if ((size == 0) || (nmemb == 0) )
 	{
 		return 0;
 	}
