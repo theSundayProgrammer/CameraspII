@@ -41,12 +41,13 @@ std::string current_date_time()
 
 smtp_client::smtp_client()
 {
-	curl = curl_easy_init();
-	if (curl == nullptr)
-		throw std::runtime_error("Cannot initialise curl");
+
 }
 CURLcode smtp_client::send()
 {
+	curl = curl_easy_init();
+	if (curl == nullptr)
+		throw std::runtime_error("Cannot initialise curl");
 	std::string date("Date: ");
 	message.push_back(date + current_date_time() + "\r\n");
 	std::string to = "To:";
@@ -78,6 +79,7 @@ CURLcode smtp_client::send()
 	{
 		recipients = curl_slist_append(recipients, str.c_str());
 	}
+	if(recipients)
 	curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 
 	curl_easy_setopt(curl, CURLOPT_READFUNCTION, smtp_client::callback);
