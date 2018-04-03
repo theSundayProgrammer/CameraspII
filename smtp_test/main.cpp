@@ -92,20 +92,29 @@ private:
       std::cout << "Connect failed: " << error.message() << "\n";
     }
   }
- void on_read (void (client::*write_handle) (),
-               std::string const& request_,
-               bool wait_for_reply=true)      {
+ void on_read_no_reply (void (client::*write_handle) (),
+               std::string const& request_)      {
       asio::async_write(
         socket_,
           asio::buffer(request_),
-          [this,&write_handle,wait_for_reply](const asio::error_code &error,
+          [this,write_handle](const asio::error_code &error,
             size_t bytes_transferred){
-              if (!error) {
-                if (wait_for_reply)
-                   this->on_write(write_handle);
-                else
+              if (!error) 
                    (this->*write_handle)();
-              }
+              else
+                std::cout << "Write failed: " << error.message() << "\n";
+
+          });
+    }
+    void on_read (void (client::*write_handle) (),
+               std::string const& request_)      {
+      asio::async_write(
+        socket_,
+          asio::buffer(request_),
+          [this,write_handle](const asio::error_code &error,
+            size_t bytes_transferred){
+              if (!error) 
+                this->on_write(write_handle);
               else
                 std::cout << "Write failed: " << error.message() << "\n";
 
@@ -116,7 +125,7 @@ void on_write (void (client::*read_handle)())    {
         socket_,
         asio::buffer(reply_, max_length),
         asio::transfer_at_least(4),
-        [this,&read_handle](const asio::error_code &error,
+        [this,read_handle](const asio::error_code &error,
               size_t bytes_transferred){
                 if (!error)    {
                   std::cout << "Reply: ";
@@ -162,13 +171,13 @@ void handle_recpt( ){
   on_read(&client::handle_data, std::string("DATA")  + "\r\n");
 }
 void handle_data( ){
-  on_read(&client::handle_data_from, std::string("SUBJECT:")+ mail_subject  + "\r\n", false);
+  on_read_no_reply(&client::handle_data_from, std::string("SUBJECT:")+ mail_subject  + "\r\n");
 }
 void handle_data_from( ){
-  on_read(&client::handle_data_to, std::string("From:")+mail_from+""  + "\r\n", false);
+  on_read(&client::handle_data_to, std::string("From:")+mail_from+""  + "\r\n");
 }
 void handle_data_to( ){
-  on_read(&client::handle_message, std::string("To:")+mail_to+"\r\n"  + "\r\n", false);
+  on_read_no_reply(&client::handle_message, std::string("To:")+mail_to+"\r\n"  + "\r\n");
 }
 void handle_message( ){
   on_read(&client::handle_finish, std::string("Motion detetected on ") + current_date_time() + "\r\n" + ".\r\n");
