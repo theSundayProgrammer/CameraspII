@@ -1,6 +1,6 @@
 
 INCLUDES = -I ../include
-CXX_FLAGS = -std=c++14 -pthread -g -O3 -DASIO_STANDALONE -Wtrigraphs
+CXX_FLAGS = -pthread -g -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++
 LDFLAGS=-lcrypto -lssl -lboost_system -lrt -lboost_filesystem

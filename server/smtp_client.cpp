@@ -28,7 +28,6 @@ std::string current_GMT_time()
 	return ss.str();
 }
 
-using namespace boost::archive::iterators;
 std::string current_date_time()
 {
 	auto now = std::chrono::system_clock::now();								// system time
@@ -39,6 +38,7 @@ std::string current_date_time()
 	return ss.str();
 }
 
+using namespace boost::archive::iterators;
 smtp_client::smtp_client()
 {
 
