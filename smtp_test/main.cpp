@@ -49,18 +49,21 @@ class client
 {
 public:
   client(asio::io_service &io_service,
-         asio::ssl::context &context,
-         asio::ip::tcp::resolver::iterator endpoint_iterator)
+         asio::ssl::context &context
+         )
       : socket_(io_service, context)
   {
     socket_.set_verify_mode(asio::ssl::verify_peer);
     socket_.set_verify_callback(
         std::bind(&client::verify_certificate, this, std::placeholders::_1, std::placeholders::_2));
-    asio::async_connect(socket_.lowest_layer(), endpoint_iterator,
+  }
+  void send(asio::ip::tcp::resolver::iterator endpoint_iterator)
+  {
+          asio::async_connect(socket_.lowest_layer(), endpoint_iterator,
                         std::bind(&client::handle_connect, this,
                                   std::placeholders::_1));
-  }
 
+  }
 private:
   bool verify_certificate(bool preverified,
                           asio::ssl::verify_context &ctx)
@@ -198,7 +201,11 @@ private:
   }
   void handle_message()
   {
-    on_read(&client::handle_finish, std::string("Motion detetected on ") + current_date_time() + "\r\n" + ".\r\n");
+    on_read(&client::handle_quit, std::string("Motion detetected on ") + current_date_time() + "\r\n" + ".\r\n");
+  }
+  void handle_quit()
+  {
+  on_read(&client::handle_finish, std::string("QUIT") + "\r\n");
   }
   void handle_finish()
   {
@@ -249,22 +256,23 @@ int main(int argc, char *argv[])
     }
     console = spdlog::stdout_color_mt("smtp_logger");
     console->set_level(spdlog::level::debug);
-    asio::io_service io_service;
-
-    asio::ip::tcp::resolver resolver(io_service);
-    asio::ip::tcp::resolver::query query(argv[1], argv[2]);
-    asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
-
     asio::ssl::context ctx(asio::ssl::context::sslv23);
     ctx.load_verify_file("cacert.pem");
-
-    client c(io_service, ctx, iterator);
+    
+    asio::io_service io_service;
+    client c(io_service, ctx);
     c.uid = argv[3];
     c.pwd = argv[4];
     c.server = argv[1];
     c.mail_to = "joseph.mariadassou@outlook.com";
     c.mail_from = "theSundayProgrammer@gmail.com";
     c.mail_subject = "Motion Detected";
+
+    asio::ip::tcp::resolver resolver(io_service);
+    asio::ip::tcp::resolver::query query(argv[1], argv[2]);
+    asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
+
+    c.send(iterator);
     io_service.run();
   }
   catch (std::exception &e)
