@@ -245,8 +245,15 @@ size_t smtp_client::next_line(void *ptr)
 		++call_back_state;
 		break;
 	case 23:
-		return 0;
+		ostr << "\r\n";
+		++call_back_state;
 		break;
+	case 24:
+		ostr << "QUIT" << "\r\n";
+		++call_back_state;
+		break;
+  case 25:
+	   return 0;
 	}
 	std::string str = ostr.str();
 	size_t len = str.length();
