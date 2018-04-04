@@ -10,8 +10,8 @@ all : test
 
 
 
-objs = $(BUILD_DIR)/main.o 
-deps = $(BUILD_DIR)/main.d 
+objs = $(BUILD_DIR)/main.o $(BUILD_DIR)/smtp_mail.o
+deps = $(BUILD_DIR)/main.d $(BUILD_DIR)/smtp_mail.d
 
 test: $(objs)
 	$(CXX) -g  -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib $(LDFLAGS)
@@ -19,7 +19,7 @@ test: $(objs)
 $(BUILD_DIR)/main.o: main.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
-$(BUILD_DIR)/smtp_client.o: ../server/smtp_client.cpp
+$(BUILD_DIR)/smtp_mail.o: ../server/smtp_mail.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
 .PHONY: clean
