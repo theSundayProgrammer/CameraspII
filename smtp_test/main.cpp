@@ -13,7 +13,7 @@
 
 #include <camerasp/smtp_mail.hpp>
 #include <camerasp/logger.hpp>
-
+#include <fstream>
 
 
 #include <iostream>
@@ -44,8 +44,15 @@ int main(int argc, char *argv[])
       c.mail_to = "joseph.mariadassou@outlook.com";
       c.mail_from = "theSundayProgrammer@gmail.com";
       c.mail_subject = "Motion Detected";
-
+      c.mail_message = "This is the body of the message.";
+      c.mail_filename = "mail.txt";
+      std::ostringstream ostr;
+      std::ifstream ifs;
+      ifs.open("mail.txt", std::ios::binary);
+      ostr << ifs.rdbuf();
       c.send(iterator);
+      c.mail_filecontent = ostr.str();
+      ifs.close();
       io_service.run();
     }
   catch (std::exception &e)

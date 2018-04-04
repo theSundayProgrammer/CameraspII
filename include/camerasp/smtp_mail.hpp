@@ -1,6 +1,7 @@
 #include <string>
 #include <asio.hpp>
 #include <asio/ssl.hpp>
+
 class smtp_client
 {
 enum
@@ -30,17 +31,21 @@ public:
   void handle_quit1();
   void handle_quit();
   void handle_finish();
+  void handle_file();
+  void handle_file_open();
   bool verify_certificate(bool preverified,asio::ssl::verify_context &ctx);
 public:
   std::string server;
   std::string uid, pwd;
   std::string mail_from, mail_to;
   std::string mail_subject;
-
+  std::string mail_message, mail_filename;
+  std::string mail_filecontent;
 private:
   asio::ssl::stream<asio::ip::tcp::socket> socket_;
   asio::ip::tcp::resolver::iterator endpoint;
   char request_[max_length];
   char reply_[max_length];
   const char *boundary = "pj+EhsWuSQJxx7ps";
+  size_t file_pos;
 };
