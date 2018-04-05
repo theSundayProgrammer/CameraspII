@@ -11,7 +11,7 @@
 
 #include <string>
 
-#include <camerasp/smtp_mail.hpp>
+#include <camerasp/smtp_client.hpp>
 #include <camerasp/logger.hpp>
 #include <fstream>
 
@@ -41,17 +41,17 @@ int main(int argc, char *argv[])
       c.uid = argv[3];
       c.pwd = argv[4];
       c.server = "norwestcomputing.com.au";
-      c.mail_to = "joseph.mariadassou@outlook.com";
-      c.mail_from = "theSundayProgrammer@gmail.com";
-      c.mail_subject = "Motion Detected";
-      c.mail_message = "This is the body of the message.";
-      c.mail_filename = "mail.txt";
+      c.to = "joseph.mariadassou@outlook.com";
+      c.from = "theSundayProgrammer@gmail.com";
+      c.subject = "Motion Detected";
+      c.message = "This is the body of the message.";
+      c.filename = "mail.txt";
       std::ostringstream ostr;
       std::ifstream ifs;
       ifs.open("mail.txt", std::ios::binary);
       ostr << ifs.rdbuf();
       c.send(iterator);
-      c.mail_filecontent = ostr.str();
+      c.filecontent = ostr.str();
       ifs.close();
       io_service.run();
     }

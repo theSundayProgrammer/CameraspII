@@ -25,6 +25,9 @@ namespace camerasp{
   void setTimer(high_resolution_timer& timer, cam_still&);
   //std::string  get_image(unsigned int k);
 
+std::string current_GMT_time();
+std::string current_date_time();
+std::string EncodeBase64(const std::string &data);
   bool is_integer(const std::string & s, int* k);
   Json::Value & get_root();
   void write_file_content(std::string const& path, std::string const& dat)    ;

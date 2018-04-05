@@ -7,60 +7,14 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
-#include <camerasp/smtp_mail.hpp>
+#include <camerasp/smtp_client.hpp>
 #include <cstdlib>
 #include <sstream>
 #include <string>
-#include <chrono>  // chrono::system_clock
-#include <ctime>   // localtime
-#include <iomanip> // put_time
 #include <functional>
-
+#include <camerasp/utils.hpp>
 #include <camerasp/logger.hpp>
-
-#include <boost/archive/iterators/insert_linebreaks.hpp>
-#include <boost/archive/iterators/transform_width.hpp>
-#include <boost/archive/iterators/ostream_iterator.hpp>
-#include <boost/archive/iterators/base64_from_binary.hpp>
-
-static std::string current_GMT_time()
-{
-  auto now = std::chrono::system_clock::now();                // system time
-  auto in_time_t = std::chrono::system_clock::to_time_t(now); //convert to std::time_t
-
-  std::stringstream ss;
-  ss << std::put_time(std::gmtime(&in_time_t), "%a, %b %d %Y %X GMT");
-  return ss.str();
-}
-
-static std::string current_date_time()
-{
-  auto now = std::chrono::system_clock::now();                // system time
-  auto in_time_t = std::chrono::system_clock::to_time_t(now); //convert to std::time_t
-
-  std::stringstream ss;
-  ss << std::put_time(std::localtime(&in_time_t), "%a, %b %d %Y %X %z");
-  return ss.str();
-}
-static std::string EncodeBase64(const std::string &data)
-{
-  using namespace boost::archive::iterators;
-  std::stringstream os;
-  typedef insert_linebreaks<
-      base64_from_binary<  // convert binary values to base64 characters
-          transform_width< // retrieve 6 bit integers from a sequence of 8 bit bytes
-              const char *, 6, 8>>,
-      72 // insert line breaks every 72 characters
-      >
-      base64_text; // compose all the above operations in to a new iterator
-
-  std::copy(
-      base64_text(data.c_str()),
-      base64_text(data.c_str() + data.size()),
-      ostream_iterator<char>(os));
-
-  return os.str();
-}
+static int busy=0;
 smtp_client::smtp_client(asio::io_service &io_service,
                          asio::ssl::context &context)
     : socket_(io_service, context)
@@ -72,6 +26,8 @@ smtp_client::smtp_client(asio::io_service &io_service,
 void smtp_client::send(asio::ip::tcp::resolver::iterator endpoint_iterator)
 {
   endpoint = endpoint_iterator;
+  if(busy) return;
+  busy = 1;
   send();
 }
 void smtp_client::send()
@@ -125,9 +81,10 @@ void smtp_client::on_read_no_reply(void (smtp_client::*write_handle)(),
                            size_t bytes_transferred) {
         if (!error)
           (this->*write_handle)();
-        else
+        else{
+          handle_finish();
           console->debug("Write failed: {0}", error.message());
-
+          }
       });
 }
 void smtp_client::on_read(void (smtp_client::*write_handle)(),
@@ -140,8 +97,10 @@ void smtp_client::on_read(void (smtp_client::*write_handle)(),
                            size_t bytes_transferred) {
         if (!error)
           this->on_write(write_handle);
-        else
+        else{
+          handle_finish();
           console->debug("Write failed: {0}", error.message());
+          }
 
       });
 }
@@ -161,6 +120,7 @@ void smtp_client::on_write(void (smtp_client::*read_handle)())
         else
         {
           console->debug("Read failed: {0}", error.message());
+          handle_finish();
         }
       });
 }
@@ -168,7 +128,7 @@ void smtp_client::handle_handshake(const asio::error_code &error)
 {
   if (!error)
   {
-    on_read(&smtp_client::handle_HELO, std::string("HELO ") + server + "\r\n");
+    on_read(&smtp_client::handle_HELO, std::string("EHLO ") + server + "\r\n");
   }
   else
   {
@@ -184,21 +144,21 @@ void smtp_client::handle_HELO()
 
 void smtp_client::handle_AUTH()
 {
-  on_read(&smtp_client::handle_UID, EncodeBase64(uid) + "\r\n");
+  on_read(&smtp_client::handle_UID, camerasp::EncodeBase64(uid) + "\r\n");
 }
 
 void smtp_client::handle_UID()
 {
-  on_read(&smtp_client::handle_PWD, EncodeBase64(pwd) + "\r\n");
+  on_read(&smtp_client::handle_PWD, camerasp::EncodeBase64(pwd) + "\r\n");
 }
 
 void smtp_client::handle_PWD()
 {
-  on_read(&smtp_client::handle_from, std::string("MAIL FROM:<") + mail_from + ">" + "\r\n");
+  on_read(&smtp_client::handle_from, std::string("MAIL FROM:<") + from + ">" + "\r\n");
 }
 void smtp_client::handle_from()
 {
-  on_read(&smtp_client::handle_recpt, std::string("RCPT TO:<") + mail_to + ">" + "\r\n");
+  on_read(&smtp_client::handle_recpt, std::string("RCPT TO:<") + to + ">" + "\r\n");
 }
 
 void smtp_client::handle_recpt()
@@ -208,7 +168,7 @@ void smtp_client::handle_recpt()
 void smtp_client::handle_data()
 {
   std::ostringstream ostr;
-  ostr << "SUBJECT: " << mail_subject << "\r\n"
+  ostr << "SUBJECT: " << subject << "\r\n"
        << "MIME-Version: 1.0\r\n"
        << "Content-Type: multipart/mixed; boundary=" << boundary << "\r\n"
        << "\r\n"
@@ -218,7 +178,7 @@ void smtp_client::handle_data()
        << "Content-Type: text/plain"
        << "\r\n"
        << "\r\n"
-       << mail_message
+       << message
        << "\r\n"
        << "--" << boundary << "\r\n";
   on_read_no_reply(&smtp_client::handle_file, ostr.str());
@@ -232,25 +192,23 @@ void smtp_client::handle_file()
   << "Content-Transfer-Encoding: base64"
   << "\r\n"
   << "Content-Disposition: attachment;\r\n"
-  << "  filename=\"" << mail_filename << "\"; size=" << mail_filecontent.size() * 4 / 3 << ";\r\n"
+  << "  filename=\"" << filename << "\"; size=" << filecontent.size() * 4 / 3 << ";\r\n"
   << "  creation-date="
-  << "\"" << current_GMT_time() << "\"\r\n"
+  << "\"" << camerasp::current_GMT_time() << "\"\r\n"
   << "  modification-date="
-  << "\"" << current_GMT_time() << "\"\r\n"
+  << "\"" << camerasp::current_GMT_time() << "\"\r\n"
   << "\r\n";
   file_pos = 0;
   on_read_no_reply(&smtp_client::handle_file_open, ostr.str());
 }
 void smtp_client::handle_file_open()
 {
-  using namespace boost::archive::iterators;
-  typedef base64_from_binary<transform_width<const char *, 6, 8>> it_base64_t;
   std::ostringstream ostr;
-  if (size_t count = mail_filecontent.size() - file_pos)
+  if (size_t count = filecontent.size() - file_pos)
   {
     if (count > 54)
       count = 54;
-    std::string base64 = EncodeBase64(mail_filecontent.substr(file_pos,count));
+    std::string base64 = camerasp::EncodeBase64(filecontent.substr(file_pos,count));
     if (count < 54)
       if (unsigned int writePaddChars = (3 - count % 3) % 3)
         base64.append(writePaddChars, '=');
@@ -282,6 +240,6 @@ void smtp_client::handle_quit()
 }
 void smtp_client::handle_finish()
 {
-  //if(k++ < 5)   send();
   console->debug("done");
+  busy = 1;
 }

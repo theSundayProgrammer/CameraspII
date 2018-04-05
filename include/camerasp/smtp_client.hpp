@@ -1,29 +1,51 @@
-#pragma once
-#include <vector>
-#include <fstream>
-#include <iomanip>
 #include <string>
-#include <curl/curl.h>
+#include <asio.hpp>
+#include <asio/ssl.hpp>
+
 class smtp_client
 {
-  public:
-    std::string user, password;
-    std::string url;
-    std::string from;
-    std::string file_name;
-    std::ifstream ifs;    
-    std::string subject;
-    std::vector<std::string> recipient_ids;
-    smtp_client();
-    CURLcode send();
-    ~smtp_client();
-  private:
-    std::vector<std::string>::iterator start,finish;
-    std::vector<std::string> message;
-    CURL *curl;
-    int call_back_state;
-
-    size_t next_line(void *ptr);
-    static size_t callback(void *ptr, size_t size, size_t nmemb, void *userp);
+enum
+{
+  max_length = 1024
 };
-void handle_motion(const char* fName, smtp_client& smtp);
+public:
+  smtp_client(asio::io_service &io_service,
+         asio::ssl::context &context);
+  
+  void send(asio::ip::tcp::resolver::iterator endpoint_iterator);
+  private: 
+  void send();
+  void handle_connect(const asio::error_code &error);
+  void on_read_no_reply(void (smtp_client::*write_handle)(),std::string const &request_);
+  void on_read(void (smtp_client::*write_handle)(),std::string const &request_);
+  void on_write(void (smtp_client::*read_handle)());
+  void handle_handshake(const asio::error_code &error);
+  void handle_HELO();
+  void handle_AUTH();
+  void handle_UID();
+  void handle_PWD();
+  void handle_from();
+  void handle_recpt();
+  void handle_data();
+  void handle_quit0();
+  void handle_quit1();
+  void handle_quit();
+  void handle_finish();
+  void handle_file();
+  void handle_file_open();
+  bool verify_certificate(bool preverified,asio::ssl::verify_context &ctx);
+public:
+  std::string server;
+  std::string uid, pwd;
+  std::string from, to;
+  std::string subject;
+  std::string message, filename;
+  std::string filecontent;
+private:
+  asio::ssl::stream<asio::ip::tcp::socket> socket_;
+  asio::ip::tcp::resolver::iterator endpoint;
+  char request_[max_length];
+  char reply_[max_length];
+  const char *boundary = "pj+EhsWuSQJxx7ps";
+  size_t file_pos;
+};

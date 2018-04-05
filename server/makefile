@@ -22,7 +22,7 @@ srcs = frame_grabber.cpp \
 	timer.cpp \
 	file_saver.cpp \
         mot_detect.cpp \
-        smtp_client.cpp \
+        smtp_mail.cpp \
 	utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
@@ -31,7 +31,7 @@ camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -L../lib -ljson \
                    -lrt -lboost_filesystem -lboost_system\
-                   -lcurl \
+                   -lssl -lcrypto \
                    -lopencv_features2d \
                    -lopencv_highgui \
                    -lopencv_videoio \

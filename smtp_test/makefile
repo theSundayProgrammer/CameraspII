@@ -2,7 +2,7 @@
 INCLUDES = -I ../include
 CXX_FLAGS = -pthread -g -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
-CXX=g++
+CXX=g++-6
 LDFLAGS=-lcrypto -lssl -lboost_system -lrt -lboost_filesystem
 
 all : test
@@ -10,13 +10,16 @@ all : test
 
 
 
-objs = $(BUILD_DIR)/main.o $(BUILD_DIR)/smtp_mail.o
-deps = $(BUILD_DIR)/main.d $(BUILD_DIR)/smtp_mail.d
+objs = $(BUILD_DIR)/main.o $(BUILD_DIR)/smtp_mail.o $(BUILD_DIR)/utils.o
+deps = $(BUILD_DIR)/main.d $(BUILD_DIR)/smtp_mail.d $(BUILD_DIR)/utils.d
 
 test: $(objs)
 	$(CXX) -g  -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib $(LDFLAGS)
 
 $(BUILD_DIR)/main.o: main.cpp
+	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
+
+$(BUILD_DIR)/utils.o: utils.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
 $(BUILD_DIR)/smtp_mail.o: ../server/smtp_mail.cpp

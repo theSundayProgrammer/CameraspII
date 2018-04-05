@@ -23,6 +23,8 @@
 #include <boost/filesystem.hpp>
 std::shared_ptr<spdlog::logger> console;
 #define ASIO_ERROR_CODE asio::error_code
+extern    asio::io_service frame_grabber_service;
+asio::io_service frame_grabber_service;
 std::string home_path;
 void configure_console(Json::Value& root)
 {
@@ -62,7 +64,6 @@ int main(int argc, char *argv[])
     shared_response_data& response = *static_cast<shared_response_data *>(region_response.get_address());
 
 
-    asio::io_service frame_grabber_service;
     // The signal set is used to register termination notifications
     asio::signal_set signals_(frame_grabber_service);
     signals_.add(SIGINT);
@@ -82,7 +83,9 @@ int main(int argc, char *argv[])
 	  try
 	  {
 	    std::string error(4,'\0');
+            console->debug("OK here {0}", __LINE__); 
 	    auto image= timer.get_image(k);
+            console->debug("OK here {0}", __LINE__); 
 	    response.set(error+image); 
 	  }
 	  catch(std::runtime_error& er)
