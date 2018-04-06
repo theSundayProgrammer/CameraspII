@@ -1,13 +1,22 @@
 // Configuration options
 {
   "home_path" : "/home/pi",
+    "email" : {
+       "uid" : "youremailname@gmail.com",
+       "pwd" : "mypassword",
+       "host" : "smtp.gmail.com",
+        "port": "465",
+       "to" : "joseph.mariadassou@outlook.com",
+       "from" : "theSundayProgrammer@gmail.com",
+       "subject" : "Motion Detected",
+       "server" : "norwestcomputing.com.au"
+     },
   "Camera": {
       "height" : 480,
       "horizontal" : 0,
       "iso" : 360,
       "vertical" : 1,
-      "width" : 640,
-      "min_motion_changes" : 50
+      "width" : 640
    },
     "Logging": {
       "path": "data/log",
