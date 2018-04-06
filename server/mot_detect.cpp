@@ -11,48 +11,57 @@
 #include <camerasp/smtp_client.hpp>
 #include <camerasp/logger.hpp>
 #include <camerasp/utils.hpp>
+#include <camerasp/mot_detect.hpp>
 using namespace std;
 using namespace cv;
-extern    asio::io_service frame_grabber_service;
+extern asio::io_service frame_grabber_service;
 
 // Check if there is motion in the result matrix
 // count the number of changes and return.
-std::tuple<cv::Rect,int>
-detect_motion(const Mat& motion, const Rect& bounding_box )
+std::tuple<cv::Rect, int>
+detect_motion(const Mat &motion, const Rect &bounding_box)
 {
   int number_of_changes = 0;
   int min_x = motion.cols, max_x = 0;
   int min_y = motion.rows, max_y = 0;
   // loop over image and detect changes
-  for(int j = 0 ; j < bounding_box.height; j+=2){ // height
-    for(int i = 0 ; i < bounding_box.width; i+=2){ // height
+  for (int j = 0; j < bounding_box.height; j += 2)
+  { // height
+    for (int i = 0; i < bounding_box.width; i += 2)
+    { // height
       // check if at pixel (j,i) intensity is equal to 255
       // this means that the pixel is different in the sequence
       // of images (prev_frame, current_frame, next_frame)
-      if(static_cast<int>(motion.at<int>(bounding_box.y+j,bounding_box.x+i)) == 255)
+      if (static_cast<int>(motion.at<int>(bounding_box.y + j, bounding_box.x + i)) == 255)
       {
         number_of_changes++;
-        if(min_x>i) min_x = bounding_box.x+i;
-        if(max_x<i) max_x = bounding_box.x+i;
-        if(min_y>j) min_y = bounding_box.y+j;
-        if(max_y<j) max_y = bounding_box.y+j;
+        if (min_x > i)
+          min_x = bounding_box.x + i;
+        if (max_x < i)
+          max_x = bounding_box.x + i;
+        if (min_y > j)
+          min_y = bounding_box.y + j;
+        if (max_y < j)
+          max_y = bounding_box.y + j;
       }
     }
   }
-  if(number_of_changes){
+  if (number_of_changes)
+  {
     // draw rectangle round the changed pixel
-    Point x(min_x,min_y);
-    Point y(max_x,max_y);
-    Rect rect(x,y);
-    return make_tuple(rect,number_of_changes);
+    Point x(min_x, min_y);
+    Point y(max_x, max_y);
+    Rect rect(x, y);
+    return make_tuple(rect, number_of_changes);
   }
-  return make_tuple(cv::Rect(),0);
+  return make_tuple(cv::Rect(), 0);
 }
 
-static void init_smtp(smtp_client& smtp){
+static void init_smtp(smtp_client &smtp)
+{
   auto root = camerasp::get_root();
   auto email = root["email"];
-  
+
   smtp.pwd = email["pwd"].asString();
   smtp.uid = email["uid"].asString();
   smtp.from = email["from"].asString();
@@ -66,111 +75,119 @@ static asio::ip::tcp::resolver::iterator resolve_socket_address()
 {
   auto root = camerasp::get_root();
   auto email = root["email"];
-  console->debug("OK here {0}", __LINE__);
   auto url = email["host"].asString();
-  console->debug("OK here {0}", __LINE__);
   auto port = email["port"].asString();
-  console->debug("OK here {0}", __LINE__);
-      asio::ip::tcp::resolver resolver(frame_grabber_service);
-      asio::ip::tcp::resolver::query query(url,port);
-      asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
-  console->debug("OK here {0}", __LINE__);
-return iterator;
+  asio::ip::tcp::resolver resolver(frame_grabber_service);
+  asio::ip::tcp::resolver::query query(url, port);
+  asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
+  console->debug("Resolved address at line {0}", __LINE__);
+  return iterator;
 }
 // When motion is detected we write the image to disk
 //    - Check if the directory exists where the image will be stored.
 //    - Build the directory and image names.
-void handle_motion(const char* fName)
+namespace camerasp
 {
-  static int current_state=0;
-  static asio::ssl::context ctx(asio::ssl::context::sslv23);
-  static std::once_flag context_flag;
-  std::call_once(context_flag, [&] () {
-  ctx.load_verify_file("/home/pi/bin/cacert.pem");
-  console->debug("OK here {0}", __LINE__);
-  });
-  static   asio::ip::tcp::resolver::iterator socket_address= resolve_socket_address();
-  static    smtp_client smtp(frame_grabber_service, ctx);
-  static  Mat current_frame ;
-  static  Mat next_frame ;
-  int number_of_changes;
-  static int number_of_sequence = 0;
+class motion_detector
+{
+public:
+  motion_detector();
+  void handle_motion(const char *fName);
 
+private:
+  asio::ssl::context ctx;
+  smtp_client smtp;
+  asio::ip::tcp::resolver::iterator socket_address;
+  int current_state = 0;
+  Mat current_frame;
+  Mat next_frame;
+  int number_of_sequence = 0;
+  Mat kernel_ero;
+  // If more than 'there_is_motion' pixels are changed, we say there is motion
+  // and store an image on disk
+  const int there_is_motion = 50;
+};
+
+motion_detector::motion_detector()
+    : ctx(asio::ssl::context::sslv23),
+      smtp(frame_grabber_service, ctx),
+      socket_address(resolve_socket_address())
+{
+  ctx.load_verify_file("/home/pi/bin/cacert.pem");
+  init_smtp(smtp);
+  // Erode kernel -- used in motion detection
+  kernel_ero = getStructuringElement(MORPH_RECT, Size(2, 2));
+}
+motion_detector::void handle_motion(const char *fName)
+{
+
+  int number_of_changes;
   // Detect motion in window
   int x_start = 10;
   int y_start = 10;
-  switch ( current_state)
+  switch (current_state)
   {
-    case 0:
-      current_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR) ;
-      cvtColor(current_frame, current_frame, CV_RGB2GRAY);
-      current_state =1;
-      init_smtp(smtp);    
-  console->debug("OK here {1} : {0}", __LINE__,__FILE__);
+  case 0:
+    current_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
+    cvtColor(current_frame, current_frame, CV_RGB2GRAY);
+    current_state = 1;
+    return;
+  case 1:
+    next_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
+    cvtColor(next_frame, next_frame, CV_RGB2GRAY);
+    current_state = 2;
+    return;
+  case 2:
+  {
+
+    // Take a new image
+    Mat prev_frame;
+    cv::swap(prev_frame, current_frame);
+    cv::swap(current_frame, next_frame);
+    next_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
+    if (!next_frame.data) // Check for invalid input
+    {
       return;
-    case 1:
-      next_frame =  cv::imread(fName, CV_LOAD_IMAGE_COLOR) ;
-      cvtColor(next_frame, next_frame, CV_RGB2GRAY);
-      current_state=2;
-  console->debug("OK here {0}", __LINE__);
-      return;
-    case 2:
+    }
+    cvtColor(next_frame, next_frame, CV_RGB2GRAY);
+
+    // Calc differences between the images and do AND-operation
+    // threshold image, low differences are ignored (ex. contrast change due to sunlight)
+    Mat d1, d2, motion;
+    absdiff(prev_frame, next_frame, d1);
+    absdiff(next_frame, current_frame, d2);
+    bitwise_and(d1, d2, motion);
+    threshold(motion, motion, 35, 255, CV_THRESH_BINARY);
+    erode(motion, motion, kernel_ero);
+    Rect rect;
+    int width = current_frame.cols - 20;
+    int height = current_frame.rows - 20;
+    std::tie(rect, number_of_changes) = detect_motion(motion, cv::Rect(x_start, y_start, width, height));
+
+    //Send image if motion detected
+    if (number_of_changes > 0)
+      console->info("Number of Changes in image = {0}", number_of_changes);
+    // If a lot of changes happened, we assume something changed.
+    if (number_of_changes >= there_is_motion)
+    {
+      smtp.filename = "image.jpg";
+      console->debug("Image Name: {0}", fName);
+      console->debug("Top Left:{0},{1} ", rect.x, rect.y);
+      smtp.message = std::string("Date: ") + camerasp::current_GMT_time();
       {
-
-
-        // If more than 'there_is_motion' pixels are changed, we say there is motion
-        // and store an image on disk
-        int there_is_motion = 50;
-
-
-        // Erode kernel
-        Mat kernel_ero = getStructuringElement(MORPH_RECT, Size(2,2));
-
-        // Take a new image
-        Mat  prev_frame;
-        cv::swap(prev_frame,current_frame);
-        cv::swap(current_frame , next_frame);
-        next_frame =  cv::imread(fName, CV_LOAD_IMAGE_COLOR) ;
-        if(! next_frame .data )                              // Check for invalid input
-        {
-          return;
-        }
-        cvtColor(next_frame, next_frame, CV_RGB2GRAY);
-
-        // Calc differences between the images and do AND-operation
-        // threshold image, low differences are ignored (ex. contrast change due to sunlight)
-        Mat d1, d2, motion;
-        absdiff(prev_frame, next_frame, d1);
-        absdiff(next_frame, current_frame, d2);
-        bitwise_and(d1, d2, motion);
-        threshold(motion, motion, 35, 255, CV_THRESH_BINARY);
-        erode(motion, motion, kernel_ero);
-        Rect rect;
-        int width = current_frame.cols-20;
-        int height = current_frame.rows-20;
-        std::tie(rect,number_of_changes) = detect_motion(motion,  cv::Rect( x_start,  y_start, width,height));
-        if (number_of_changes >0) console->info("Number of Changes in image = {0}", number_of_changes); 
-        // If a lot of changes happened, we assume something changed.
-        if(number_of_changes>=there_is_motion)
-        {
-          smtp.filename = "image.jpg";
-          //if(number_of_sequence>0)
-          { 
-            console->info("Image Name: {0}", fName); 
-            console->info("Top Left:{0},{1} ", rect.x , rect.y );
-	    smtp.message = std::string("Date: ") + camerasp::current_GMT_time();
-            std::ostringstream ostr;
-            std::ifstream ifs(fName, std::ios::binary);
-            ostr << ifs.rdbuf();
-            smtp.filecontent=ostr.str();
-            smtp.send(socket_address);
-          }
-          number_of_sequence++;
-        }
-        else
-          number_of_sequence = 0;
+        std::ostringstream ostr;
+        std::ifstream ifs(fName, std::ios::binary);
+        ostr << ifs.rdbuf();
+        smtp.filecontent = ostr.str();
       }
-      break ;    
+      smtp.send(socket_address);
+      number_of_sequence++;
+    }
+    else
+      number_of_sequence = 0;
+  }
+  break;
   }
   return;
+}
 }
