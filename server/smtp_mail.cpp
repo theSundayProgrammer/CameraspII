@@ -241,5 +241,5 @@ void smtp_client::handle_quit()
 void smtp_client::handle_finish()
 {
   console->debug("done");
-  busy = 1;
+  busy = 0;
 }

@@ -88,25 +88,6 @@ static asio::ip::tcp::resolver::iterator resolve_socket_address()
 //    - Build the directory and image names.
 namespace camerasp
 {
-class motion_detector
-{
-public:
-  motion_detector();
-  void handle_motion(const char *fName);
-
-private:
-  asio::ssl::context ctx;
-  smtp_client smtp;
-  asio::ip::tcp::resolver::iterator socket_address;
-  int current_state = 0;
-  Mat current_frame;
-  Mat next_frame;
-  int number_of_sequence = 0;
-  Mat kernel_ero;
-  // If more than 'there_is_motion' pixels are changed, we say there is motion
-  // and store an image on disk
-  const int there_is_motion = 50;
-};
 
 motion_detector::motion_detector()
     : ctx(asio::ssl::context::sslv23),
@@ -118,7 +99,7 @@ motion_detector::motion_detector()
   // Erode kernel -- used in motion detection
   kernel_ero = getStructuringElement(MORPH_RECT, Size(2, 2));
 }
-motion_detector::void handle_motion(const char *fName)
+void motion_detector::handle_motion(const char *fName)
 {
 
   int number_of_changes;
