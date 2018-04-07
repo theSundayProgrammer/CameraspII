@@ -61,7 +61,7 @@ static void init_smtp(smtp_client &smtp)
 {
   auto root = camerasp::get_root();
   auto email = root["email"];
-
+  smtp.set_uid(email["uid"].asString());
   smtp.set_pwd(email["pwd"].asString());
   smtp.set_from(email["from"].asString());
   smtp.set_to(email["to"].asString());
