@@ -2,8 +2,8 @@
 INCLUDES = -I ../include
 CXX_FLAGS = -pthread -g -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
-CXX=g++-6
-LDFLAGS=-lcrypto -lssl -lboost_system -lrt -lboost_filesystem
+CXX=g++
+LDFLAGS=-lcrypto -lssl -lboost_system  -lboost_filesystem
 
 all : test
 .PHONY : all
