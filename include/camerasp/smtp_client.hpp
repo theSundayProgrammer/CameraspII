@@ -2,7 +2,7 @@
 #include <string>
 #include <asio.hpp>
 #include <asio/ssl.hpp>
-#include <vector>
+#include <stack>
 class smtp_client
 {
 enum
@@ -57,6 +57,5 @@ private:
   char reply_[max_length];
   const char *boundary = "pj+EhsWuSQJxx7ps";
   size_t file_pos;
-  std::vector<attachment> attachments;
-  size_t current_item;
+  std::stack<attachment> attachments;
 };

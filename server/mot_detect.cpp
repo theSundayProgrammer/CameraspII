@@ -151,7 +151,6 @@ void motion_detector::handle_motion(const char *fName)
     // If a lot of changes happened, we assume something changed.
     if (number_of_changes >= there_is_motion)
     {
-      smtp.filename = "image.jpg";
       console->debug("Image Name: {0}", fName);
       console->debug("Top Left:{0},{1} ", rect.x, rect.y);
       smtp.message = std::string("Date: ") + camerasp::current_GMT_time();
@@ -159,7 +158,7 @@ void motion_detector::handle_motion(const char *fName)
         std::ostringstream ostr;
         std::ifstream ifs(fName, std::ios::binary);
         ostr << ifs.rdbuf();
-        smtp.filecontent = ostr.str();
+        smtp.add_attachment("image.jpg", ostr.str());
       }
       smtp.send(socket_address);
       number_of_sequence++;
