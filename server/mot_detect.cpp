@@ -62,12 +62,11 @@ static void init_smtp(smtp_client &smtp)
   auto root = camerasp::get_root();
   auto email = root["email"];
 
-  smtp.pwd = email["pwd"].asString();
-  smtp.uid = email["uid"].asString();
-  smtp.from = email["from"].asString();
-  smtp.to = email["to"].asString();
-  smtp.subject = email["subject"].asString();
-  smtp.server = email["server"].asString();
+  smtp.set_pwd(email["pwd"].asString());
+  smtp.set_from(email["from"].asString());
+  smtp.set_to(email["to"].asString());
+  smtp.set_subject(email["subject"].asString());
+  smtp.set_server(email["server"].asString());
   //smtp.recipient_ids.push_back("joseph.mariadassou@outlook.com");
   //smtp.recipient_ids.push_back("parama_chakra@yahoo.com");
 }
@@ -92,7 +91,8 @@ namespace camerasp
 motion_detector::motion_detector()
     : ctx(asio::ssl::context::sslv23),
       smtp(frame_grabber_service, ctx),
-      socket_address(resolve_socket_address())
+      socket_address(resolve_socket_address()),
+       number_of_sequence (0)
 {
   ctx.load_verify_file("/home/pi/bin/cacert.pem");
   init_smtp(smtp);
@@ -126,7 +126,7 @@ void motion_detector::handle_motion(const char *fName)
     cv::swap(prev_frame, current_frame);
     cv::swap(current_frame, next_frame);
     next_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
-    if (!next_frame.data) // Check for invalid input
+    if (!next_frame.data || smtp.is_busy()) 
     {
       return;
     }
@@ -153,18 +153,26 @@ void motion_detector::handle_motion(const char *fName)
     {
       console->debug("Image Name: {0}", fName);
       console->debug("Top Left:{0},{1} ", rect.x, rect.y);
-      smtp.message = std::string("Date: ") + camerasp::current_GMT_time();
-      {
+if (number_of_sequence==0)
+      smtp.set_message ( std::string("Date: ") + camerasp::current_GMT_time());
         std::ostringstream ostr;
         std::ifstream ifs(fName, std::ios::binary);
         ostr << ifs.rdbuf();
         smtp.add_attachment("image.jpg", ostr.str());
-      }
-      smtp.send(socket_address);
       number_of_sequence++;
-    }
-    else
+    if (number_of_sequence>4)
+{
+
+      smtp.send(socket_address);
       number_of_sequence = 0;
+}
+    }
+    else if (number_of_sequence)
+{
+
+      smtp.send(socket_address);
+      number_of_sequence = 0;
+}
   }
   break;
   }

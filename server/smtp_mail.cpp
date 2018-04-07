@@ -14,10 +14,9 @@
 #include <functional>
 #include <camerasp/utils.hpp>
 #include <camerasp/logger.hpp>
-static int busy = 0;
 smtp_client::smtp_client(asio::io_service &io_service,
                          asio::ssl::context &context)
-    : socket_(io_service, context)
+    : socket_(io_service, context),busy(0)
 {
   socket_.set_verify_mode(asio::ssl::verify_peer);
   socket_.set_verify_callback(
