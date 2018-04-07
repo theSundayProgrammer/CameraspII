@@ -1,14 +1,3 @@
-//
-// client.cpp
-// ~~~~~~~~~~
-//
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
-
 #include <string>
 
 #include <camerasp/smtp_client.hpp>
@@ -45,13 +34,15 @@ int main(int argc, char *argv[])
       c.from = "theSundayProgrammer@gmail.com";
       c.subject = "Motion Detected";
       c.message = "This is the body of the message.";
-      c.filename = "mail.txt";
       std::ostringstream ostr;
       std::ifstream ifs;
       ifs.open("mail.txt", std::ios::binary);
       ostr << ifs.rdbuf();
+      for (int idx=0; idx< 3; ++idx)
+      {
+        c.add_attachment(std::string("mail") + std::to_string(idx) + ".txt", ostr.str());
+      }
       c.send(iterator);
-      c.filecontent = ostr.str();
       ifs.close();
       io_service.run();
     }
@@ -63,21 +54,3 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-/*
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary=frontier
-
-This is a message with multiple parts in MIME format.
---frontier
-Content-Type: text/plain
-
-This is the body of the message.
---frontier
-Content-Type: application/octet-stream
-Content-Transfer-Encoding: base64
-content-Descriptiom: test.bin
-
-PGh0bWw+CiAgPGhlYWQ+CiAgPC9oZWFkPgogIDxib2R5PgogICAgPHA+VGhpcyBpcyB0aGUg
-Ym9keSBvZiB0aGUgbWVzc2FnZS48L3A+CiAgPC9ib2R5Pgo8L2h0bWw+Cg==
---frontier--
-*/

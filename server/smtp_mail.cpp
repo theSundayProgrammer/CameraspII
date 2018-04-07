@@ -14,7 +14,7 @@
 #include <functional>
 #include <camerasp/utils.hpp>
 #include <camerasp/logger.hpp>
-static int busy=0;
+static int busy = 0;
 smtp_client::smtp_client(asio::io_service &io_service,
                          asio::ssl::context &context)
     : socket_(io_service, context)
@@ -26,13 +26,20 @@ smtp_client::smtp_client(asio::io_service &io_service,
 void smtp_client::send(asio::ip::tcp::resolver::iterator endpoint_iterator)
 {
   endpoint = endpoint_iterator;
-  if(busy) return;
+  if (busy)
+    return;
   busy = 1;
   send();
 }
+
+void smtp_client::add_attachment(std::string const& name, std::string const& attachment)
+{
+  attachments.emplace_back(name, attachment);
+}
+
 void smtp_client::send()
 {
-
+  current_item = 0;
   asio::async_connect(
       socket_.lowest_layer(),
       endpoint,
@@ -81,10 +88,11 @@ void smtp_client::on_read_no_reply(void (smtp_client::*write_handle)(),
                            size_t bytes_transferred) {
         if (!error)
           (this->*write_handle)();
-        else{
+        else
+        {
           handle_finish();
           console->debug("Write failed: {0}", error.message());
-          }
+        }
       });
 }
 void smtp_client::on_read(void (smtp_client::*write_handle)(),
@@ -97,10 +105,11 @@ void smtp_client::on_read(void (smtp_client::*write_handle)(),
                            size_t bytes_transferred) {
         if (!error)
           this->on_write(write_handle);
-        else{
+        else
+        {
           handle_finish();
           console->debug("Write failed: {0}", error.message());
-          }
+        }
 
       });
 }
@@ -185,30 +194,38 @@ void smtp_client::handle_data()
 }
 void smtp_client::handle_file()
 {
-  std::ostringstream ostr;
-  ostr
-  << "Content-Type: application/octet-stream"
-  << "\r\n"
-  << "Content-Transfer-Encoding: base64"
-  << "\r\n"
-  << "Content-Disposition: attachment;\r\n"
-  << "  filename=\"" << filename << "\"; size=" << filecontent.size() * 4 / 3 << ";\r\n"
-  << "  creation-date="
-  << "\"" << camerasp::current_GMT_time() << "\"\r\n"
-  << "  modification-date="
-  << "\"" << camerasp::current_GMT_time() << "\"\r\n"
-  << "\r\n";
-  file_pos = 0;
-  on_read_no_reply(&smtp_client::handle_file_open, ostr.str());
+  if (current_item == attachments.size())
+    handle_quit0();
+  else
+  {
+    std::string &filecontent = attachments[current_item].content;
+    std::string &filename = attachments[current_item].filename;
+    std::ostringstream ostr;
+    ostr
+        << "Content-Type: application/octet-stream"
+        << "\r\n"
+        << "Content-Transfer-Encoding: base64"
+        << "\r\n"
+        << "Content-Disposition: attachment;\r\n"
+        << "  filename=\"" << filename << "\"; size=" << filecontent.size() * 4 / 3 << ";\r\n"
+        << "  creation-date="
+        << "\"" << camerasp::current_GMT_time() << "\"\r\n"
+        << "  modification-date="
+        << "\"" << camerasp::current_GMT_time() << "\"\r\n"
+        << "\r\n";
+    file_pos = 0;
+    on_read_no_reply(&smtp_client::handle_file_open, ostr.str());
+  }
 }
 void smtp_client::handle_file_open()
 {
   std::ostringstream ostr;
+  std::string &filecontent = attachments[current_item].content;
   if (size_t count = filecontent.size() - file_pos)
   {
     if (count > 54)
       count = 54;
-    std::string base64 = camerasp::EncodeBase64(filecontent.substr(file_pos,count));
+    std::string base64 = camerasp::EncodeBase64(filecontent.substr(file_pos, count));
     if (count < 54)
       if (unsigned int writePaddChars = (3 - count % 3) % 3)
         base64.append(writePaddChars, '=');
@@ -220,10 +237,14 @@ void smtp_client::handle_file_open()
   }
   else
   {
+    ++current_item;
     ostr << "\r\n"
-         << "--" << boundary << "--"
-         << "\r\n";
-    on_read_no_reply(&smtp_client::handle_quit0, ostr.str());
+         << "--" << boundary;
+    if(current_item == attachments.size())
+       ostr  << "--";
+    ostr   << "\r\n";
+
+    on_read_no_reply(&smtp_client::handle_file, ostr.str());
   }
 }
 void smtp_client::handle_quit0()
