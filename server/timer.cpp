@@ -16,8 +16,11 @@ namespace camerasp
 {
 periodic_frame_grabber::periodic_frame_grabber(
     asio::io_context &io_service,
-    Json::Value const &root)
-    : timer_(io_service), cur_img(0), current_count(0), file_saver_(root["Data"], root["home_path"].asString())
+    Json::Value const &root) :
+	timer_(io_service),
+	cur_img(0), 
+	current_count(0), 
+	file_saver_(root["Data"], root["home_path"].asString())
 {
   auto backup = root["Data"];
   auto secs = backup["sample_period"].asInt();
@@ -50,13 +53,8 @@ buffer_t periodic_frame_grabber::grab_picture()
     if (info.image_height > 0 && info.image_width > 0)
     {
       info.quality = 100;
-#ifndef RASPICAM_MOCK
       info.xformbgr2rgb();
       return write_JPEG_dat(info);
-#else
-      info.buffer.resize(siz);
-      return info.buffer;
-#endif // !RASPICAM_MOCK
     }
   }
   return buffer_t();
@@ -117,9 +115,7 @@ buffer_t periodic_frame_grabber::get_image(unsigned int k)
     std::lock_guard<std::mutex> lock(image_buffers[next].m);
     auto imagebuffer = image_buffers[next].buffer;
     return buffer_t(imagebuffer.begin(), imagebuffer.end());
-  }
-  else
-  {
+  } else {
     return file_saver_.get_image(k);
   }
 }
