@@ -92,29 +92,31 @@ namespace camerasp
     unsigned int flags = buffer->flags;
     {
       auto _ = gsl::finally([buffer] () {
-	  mmal_buffer_header_mem_unlock(buffer);
-	  mmal_buffer_header_release(buffer);
-	  });
+        mmal_buffer_header_mem_unlock(buffer);
+        mmal_buffer_header_release(buffer);
+        });
       mmal_buffer_header_mem_lock(buffer);
       if (userdata == NULL) {
-	return;
+        	return;
       } else if (buffer->length  + userdata->offset > userdata->length) {
-	console->error(API_NAME
-	    ": Buffer provided {0} was too small offset={1}! Failed to copy data into buffer.", userdata->offset , userdata->length);
-	return;
+	      console->error(API_NAME
+              ": Buffer provided {0} was too small offset={1}!"
+              " Failed to copy data into buffer.", 
+            userdata->offset , 
+            userdata->length);
+      	return;
       } else {
-	for (unsigned int i = 0; i < buffer->length; ++i ) 
-	  userdata->data[userdata->offset++] = buffer->data[i];
-
-      }
+        for (unsigned int i = 0; i < buffer->length; ++i ) 
+          userdata->data[userdata->offset++] = buffer->data[i];
+        }
     }
     if (END_FLAG & flags) {
       sem_post(userdata->mutex);
     } else if (port->is_enabled) {
       MMAL_BUFFER_HEADER_T *new_buffer =
-	mmal_queue_get(userdata->encoderPool->queue);
+      	mmal_queue_get(userdata->encoderPool->queue);
       if (new_buffer)
-	mmal_port_send_buffer(port, new_buffer);
+	      mmal_port_send_buffer(port, new_buffer);
     }
   }
 
@@ -260,18 +262,18 @@ namespace camerasp
     }
 
     MMAL_PARAMETER_CAMERA_CONFIG_T camConfig = {
-      {MMAL_PARAMETER_CAMERA_CONFIG, sizeof(camConfig)}
-      ,
-	width,			// max_stills_w
-	height,			// max_stills_h
-	0,			// stills_yuv422
-	1,			// one_shot_stills
-	width,			// max_preview_video_w
-	height,			// max_preview_video_h
-	3,			// num_preview_video_frames
-	0,			// stills_capture_circular_buffer_height
-	0,			// fast_preview_resume
-	MMAL_PARAM_TIMESTAMP_MODE_RESET_STC	// use_stc_timestamp
+      {MMAL_PARAMETER_CAMERA_CONFIG,
+       sizeof(camConfig)}     ,
+      width,			// max_stills_w
+      height,			// max_stills_h
+      0,			// stills_yuv422
+      1,			// one_shot_stills
+      width,			// max_preview_video_w
+      height,			// max_preview_video_h
+      3,			// num_preview_video_frames
+      0,			// stills_capture_circular_buffer_height
+      0,			// fast_preview_resume
+      MMAL_PARAM_TIMESTAMP_MODE_RESET_STC	// use_stc_timestamp
     };
     if (mmal_port_parameter_set(camera->control, &camConfig.hdr) !=
 	MMAL_SUCCESS)
@@ -329,8 +331,7 @@ namespace camerasp
       return -1;
     }
     if (!encoder->input_num || !encoder->output_num) {
-      console->
-	error(API_NAME ": Encoder does not have input/output ports.");
+      console->error(API_NAME ": Encoder does not have input/output ports.");
       destroy_encoder();
       return -1;
     }
@@ -362,8 +363,7 @@ namespace camerasp
       destroy_encoder();
       return -1;
     }
-    if (!
-	(encoder_pool =
+    if (!	(encoder_pool =
 	 mmal_port_pool_create(encoder_output_port,
 	   encoder_output_port->buffer_num,
 	   encoder_output_port->buffer_size))) {
@@ -420,64 +420,65 @@ namespace camerasp
       camera_still_port = camera->output[MMAL_CAMERA_CAPTURE_PORT];
       encoder_input_port = encoder->input[0];
       encoder_output_port = encoder->output[0];
-      if (connectPorts
-	  (camera_still_port, encoder_input_port,
-	   &encoder_connection) != MMAL_SUCCESS) {
-	console->error("ERROR: Could not connect encoder ports!");
-	return -1;
+      if (connectPorts(
+           camera_still_port,
+           encoder_input_port,
+           &encoder_connection
+        ) != MMAL_SUCCESS) {
+	      console->error("ERROR: Could not connect encoder ports!");
+	      return -1;
       }
     }
     _isInitialized = true;
     return 0;
   }
 
-  int cam_still::take_picture(unsigned char *preallocated_data, size_t *length)
-        {
-            initialize();
-            int ret = 0;
-            sem_t mutex;
-            timespec ts={0,0};
-            sem_init ( &mutex, 0, 0 );
-            RASPICAM_USERDATA  userdata;
-            userdata.encoderPool = encoder_pool;
-            userdata.mutex = &mutex;
-            userdata.data = preallocated_data;
-            userdata.offset = 0;
-            userdata.length = *length;
-            encoder_output_port->userdata = ( struct MMAL_PORT_USERDATA_T * ) &userdata;
-            if ( ( ret = start_capture() ) != 0 ) {
-                sem_destroy ( &mutex );
-                return -1;
-            }
-          if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
-          {
-               console->error("clock_gettime");
-               sem_destroy(&mutex);
-               return -1;
-           }
-           ts.tv_sec += 1;
-           
-           while ((ret  = sem_timedwait(&mutex, &ts)) == -1 && errno == EINTR)
-               continue;       /* Restart if interrupted by handler */
+  int cam_still::take_picture(unsigned char *preallocated_data, size_t *length) {
+    initialize();
+    int ret = 0;
+    sem_t mutex;
+    timespec ts={0,0};
+    sem_init ( &mutex, 0, 0 );
+    RASPICAM_USERDATA  userdata;
+    userdata.encoderPool = encoder_pool;
+    userdata.mutex = &mutex;
+    userdata.data = preallocated_data;
+    userdata.offset = 0;
+    userdata.length = *length;
+    encoder_output_port->userdata = ( struct MMAL_PORT_USERDATA_T * ) &userdata;
+    if ( ( ret = start_capture() ) != 0 ) {
+        sem_destroy ( &mutex );
+        return -1;
+    }
+    if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
+    {
+          console->error("clock_gettime");
+          sem_destroy(&mutex);
+          return -1;
+    }
+    ts.tv_sec += 1;
+    
+    while ((ret  = sem_timedwait(&mutex, &ts)) == -1 && errno == EINTR)
+        continue;       /* Restart if interrupted by handler */
 
-           if (ret == -1)
-           {
-               if (errno == ETIMEDOUT)
-                   console->error("sem_timedwait() timed out\n");
-               else
-                   console->error("sem_timedwait");
-               stop_capture();
-               sem_destroy(&mutex);
-               return -1;
-           } else {
+    if (ret == -1)
+    {
+      if (errno == ETIMEDOUT)
+          console->error("sem_timedwait() timed out\n");
+      else
+          console->error("sem_timedwait");
+      stop_capture();
+      sem_destroy(&mutex);
+      return -1;
+    } else {
 
-            *length = userdata.offset;
+      *length = userdata.offset;
 
-            stop_capture();
-            sem_destroy ( &mutex );
-            return 0;
-           }
-        }
+      stop_capture();
+      sem_destroy ( &mutex );
+      return 0;
+    }
+  }
   int cam_still::start_capture() {
     // If the parameters were changed and this function wasn't called, it will be called here
     // However if the parameters weren't changed, the function won't do anything - it will return right away
@@ -485,11 +486,11 @@ namespace camerasp
 
     if (encoder_output_port->is_enabled) {
       console->error(API_NAME
-	  ": Could not enable encoder output port. Try waiting longer before attempting to take another picture.");
+      	  ": Could not enable encoder output port."
+          " Try waiting longer before attempting to take another picture.");
       return -1;
     }
-    if (mmal_port_enable(encoder_output_port, buffer_callback) !=
-	MMAL_SUCCESS) {
+    if (mmal_port_enable(encoder_output_port, buffer_callback) !=	MMAL_SUCCESS){
       console->error(API_NAME ": Could not enable encoder output port.");
       return -1;
     }
@@ -498,18 +499,18 @@ namespace camerasp
       MMAL_BUFFER_HEADER_T *buffer = mmal_queue_get(encoder_pool->queue);
 
       if (!buffer)
-	console->error(API_NAME
-	    ": Could not get buffer (# {0}) from pool queue.",
-	    b);
+        console->error(
+          API_NAME  ": Could not get buffer (# {0}) from pool queue.",
+          b);
 
-      if (mmal_port_send_buffer(encoder_output_port, buffer) !=
-	  MMAL_SUCCESS)
-	console->error(API_NAME
-	    ": Could not send a buffer (# {0}) to encoder output port.",
-	    b);
+      if (mmal_port_send_buffer(encoder_output_port, buffer) != MMAL_SUCCESS)
+        console->error(API_NAME  ": Could not send a buffer (# {0}) to encoder output port.",
+          b);
     }
-    if (mmal_port_parameter_set_boolean
-	(camera_still_port, MMAL_PARAMETER_CAPTURE, 1) != MMAL_SUCCESS) {
+    if (mmal_port_parameter_set_boolean	(
+         camera_still_port, 
+         MMAL_PARAMETER_CAPTURE, 
+         1) != MMAL_SUCCESS) {
       console->error(API_NAME ": Failed to start capture.");
       return -1;
     }
@@ -525,18 +526,18 @@ namespace camerasp
 
   void cam_still::commitBrightness()  {
     mmal_port_parameter_set_rational(
-	camera->control,
-	MMAL_PARAMETER_BRIGHTNESS,
-	(MMAL_RATIONAL_T) {(int32_t)brightness, 100}
-	);
+      camera->control,
+      MMAL_PARAMETER_BRIGHTNESS,
+      (MMAL_RATIONAL_T) {(int32_t)brightness, 100}
+      );
   }
 
   void cam_still::commitQuality()  {
     if (encoder_output_port != NULL)
       mmal_port_parameter_set_uint32(
-	  encoder_output_port,
-	  MMAL_PARAMETER_JPEG_Q_FACTOR, 
-	  quality);
+        encoder_output_port,
+        MMAL_PARAMETER_JPEG_Q_FACTOR, 
+        quality);
   }
 
   void cam_still::commitRotation()  {
@@ -548,38 +549,38 @@ namespace camerasp
 
   void cam_still::commitISO()  {
     if (mmal_port_parameter_set_uint32 (
-	  camera->control, 
-	  MMAL_PARAMETER_ISO, 
-	  iso) 
-	!= MMAL_SUCCESS)
+          camera->control, 
+          MMAL_PARAMETER_ISO, 
+          iso)
+        != MMAL_SUCCESS)
       console->error(API_NAME ": Failed to set ISO parameter.");
   }
 
   void cam_still::commitSharpness()  {
     if (mmal_port_parameter_set_rational(
-	  camera->control, 
-	  MMAL_PARAMETER_SHARPNESS, 
-	  (MMAL_RATIONAL_T) {sharpness, 100})
-	!= MMAL_SUCCESS)
+        camera->control, 
+        MMAL_PARAMETER_SHARPNESS, 
+        (MMAL_RATIONAL_T) {sharpness, 100})
+    	!= MMAL_SUCCESS)
       console->error(API_NAME ": Failed to set sharpness parameter.");
   }
 
   void cam_still::commitContrast()
   {
     if (mmal_port_parameter_set_rational(
-	  camera->control,
-	  MMAL_PARAMETER_CONTRAST, 
-	  (MMAL_RATIONAL_T) {contrast, 100})
-	!= MMAL_SUCCESS)
+          camera->control,
+          MMAL_PARAMETER_CONTRAST, 
+          (MMAL_RATIONAL_T) {contrast, 100})
+      	!= MMAL_SUCCESS)
       console->error(API_NAME ": Failed to set contrast parameter.");
   }
 
   void cam_still::commitSaturation()  {
     if (mmal_port_parameter_set_rational (
-	  camera->control, 
-	  MMAL_PARAMETER_SATURATION, 
-	  (MMAL_RATIONAL_T){saturation, 100 })
-	!= MMAL_SUCCESS)
+          camera->control, 
+          MMAL_PARAMETER_SATURATION, 
+          (MMAL_RATIONAL_T){saturation, 100 })
+      	!= MMAL_SUCCESS)
       console->error(API_NAME ": Failed to set saturation parameter.");
   }
 
@@ -588,8 +589,8 @@ namespace camerasp
       {MMAL_PARAMETER_EXPOSURE_MODE, sizeof(exp_mode)} ,
       (exposure)
     };
-    if (mmal_port_parameter_set(camera->control, &exp_mode.hdr) !=
-	MMAL_SUCCESS)
+    if (mmal_port_parameter_set(camera->control, &exp_mode.hdr)
+      !=MMAL_SUCCESS)
       console->error(API_NAME ": Failed to set exposure parameter.");
   }
 
@@ -616,8 +617,8 @@ namespace camerasp
       {MMAL_PARAMETER_EXP_METERING_MODE, sizeof(meter_mode)},
       (metering)
     };
-    if (mmal_port_parameter_set(camera->control, &meter_mode.hdr) !=
-	MMAL_SUCCESS)
+    if (mmal_port_parameter_set(camera->control, &meter_mode.hdr) 
+          !=	MMAL_SUCCESS)
       console->error(API_NAME ": Failed to set metering parameter.");
   }
 
@@ -633,14 +634,14 @@ namespace camerasp
     else if (verticalFlip)
       mirror.value = MMAL_PARAM_MIRROR_VERTICAL;
     if (mmal_port_parameter_set(camera->output[0], &mirror.hdr) != MMAL_SUCCESS ||
-	mmal_port_parameter_set(camera->output[1], &mirror.hdr) != MMAL_SUCCESS || 
-	mmal_port_parameter_set(camera->output[2], &mirror.hdr) != MMAL_SUCCESS)
+        mmal_port_parameter_set(camera->output[1], &mirror.hdr) != MMAL_SUCCESS || 
+        mmal_port_parameter_set(camera->output[2], &mirror.hdr) != MMAL_SUCCESS)
       console->error(API_NAME ": Failed to set horizontal/vertical flip parameter.");
   }
 
 
-  //Returns an id of the camera. We assume the camera id is the one of the raspberry
-  //the id is obtained using raspberry serial number obtained in /proc/cpuinfo
+  //Returns an id of the camera. We assume the camera 
+  // id is obtained using raspberry serial number obtained in /proc/cpuinfo
   string cam_still::getId(){
     char serial[1024];
     serial[0] = '\0';
@@ -649,18 +650,16 @@ namespace camerasp
       //read lines until find serial
       bool found = false;
       while (!file.eof() && !found) {
-	string str;
-	std::getline(file, str);
+        string str;
+        std::getline(file, str);
 
-	if (str.find("Serial") != string::npos) {
-	  char aux[100];
-	  if (sscanf(str.c_str(), "%s : %s", aux, serial) != 2) {
-	    console->error("Error parsing /proc/cpuinfo");
-	  }
-	  else {
-	    found = true;
-	  }
-	}
+        if (str.find("Serial") != string::npos) {
+          char aux[100];
+          if (sscanf(str.c_str(), "%s : %s", aux, serial) != 2) 
+            console->error("Error parsing /proc/cpuinfo");
+          else 
+            found = true;
+        }
       }
     }  else {
       console->error("Could not read /proc/cpuinfo");
