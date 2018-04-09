@@ -49,7 +49,7 @@ img_info periodic_frame_grabber::grab_picture()
 
     info.height = camera_.get_height();
     info.width = camera_.get_width();
-    info.row_stride = info.width * 3;
+//    info.row_stride = info.width * 3;
 
     if (info.height > 0 && info.width > 0)
     {

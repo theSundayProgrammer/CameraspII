@@ -19,7 +19,7 @@ namespace camerasp
       buffer_t  buffer ;
       unsigned int height;
       unsigned int width;
-      unsigned int row_stride;
+      //unsigned int row_stride;
       unsigned int quality;
 #ifndef RASPICAM_MOCK
       JSAMPROW get_scan_line(int scan_line,  int row_stride) const;
