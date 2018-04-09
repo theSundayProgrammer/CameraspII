@@ -15,6 +15,7 @@
 using namespace std;
 using namespace cv;
 extern asio::io_service frame_grabber_service;
+const int BMP_HEADER_SIZE=54;
 
 // Check if there is motion in the result matrix
 // count the number of changes and return.
@@ -109,21 +110,21 @@ void motion_detector::handle_motion(const char *fName, img_info const& img)
   switch (current_state)
   {
   case 0:
-    current_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()));
-    cvtColor(current_frame,current_frame, CV_RGB2GRAY);
+    current_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
+    cvtColor(current_frame,current_frame, CV_BGR2GRAY);
     current_state = 1;
     return;
   case 1:
-    next_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()));
-    cvtColor(next_frame, next_frame, CV_RGB2GRAY);
+    next_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
+    cvtColor(next_frame, next_frame, CV_BGR2GRAY);
     current_state = 2;
     return;
   case 2:
   {
 
     // Take a new image
-    Mat prev_frame(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()));
-    cvtColor(prev_frame, prev_frame, CV_RGB2GRAY);
+    Mat prev_frame(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
+    cvtColor(prev_frame, prev_frame, CV_BGR2GRAY);
     cv::swap(prev_frame, current_frame);
     cv::swap(current_frame, next_frame);
     if (!next_frame.data || smtp.is_busy()) 

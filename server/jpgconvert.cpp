@@ -68,7 +68,7 @@ namespace camerasp
       cinfo.image_width = img.width; 	
       cinfo.image_height = img.height;
       cinfo.input_components = 3;		
-      cinfo.in_color_space = JCS_RGB; 	
+      cinfo.in_color_space = JCS_EXT_BGR; 	
       jpeg_set_defaults(&cinfo);
       /* Now you can set any non-default parameters you wish to.
        * Here we just illustrate the use of quality (quantization table) scaling:

@@ -12,6 +12,8 @@
 #include <sstream>
 #include <camerasp/mot_detect.hpp>
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 namespace camerasp
 {
 periodic_frame_grabber::periodic_frame_grabber(
@@ -47,13 +49,12 @@ img_info periodic_frame_grabber::grab_picture()
 
     info.height = camera_.get_height();
     info.width = camera_.get_width();
-    info.quality = 100;
     info.row_stride = info.width * 3;
 
     if (info.height > 0 && info.width > 0)
     {
       info.quality = 100;
-      info.xformbgr2rgb();
+      //info.xformbgr2rgb();
       return info;
     }
   }
