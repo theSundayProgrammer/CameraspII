@@ -14,7 +14,7 @@ void camerasp::img_info::put_scan_line(JSAMPLE *data, int row_stride)
 void camerasp::img_info::xformbgr2rgb()
 {
   auto retval = &buffer[BMP_HEADER_SIZE];
-  for (unsigned int scan_line = 0; scan_line < this->image_height; ++scan_line)
+  for (unsigned int scan_line = 0; scan_line < this->height; ++scan_line)
   {
     for (unsigned int i = 0; i < row_stride; i += 3)
     {
