@@ -4,6 +4,7 @@
 
 #include <camerasp/smtp_client.hpp>
 #include <camerasp/utils.hpp>
+#include <jpeg/jpgconvert.hpp>
 namespace camerasp
 {
   
@@ -14,7 +15,7 @@ class motion_detector
 {
 public:
   motion_detector();
-  void handle_motion(const char *fName);
+  void handle_motion(const char *fName, img_info const&);
 
 private:
   asio::ssl::context ctx;

@@ -34,7 +34,7 @@ periodic_frame_grabber::periodic_frame_grabber(
   camera_.set_horizontal_flip(camera["horizontal"].asInt());
 }
 
-buffer_t periodic_frame_grabber::grab_picture()
+img_info periodic_frame_grabber::grab_picture()
 {
 
   //  At any point in time only one instance of this function will be running
@@ -45,19 +45,19 @@ buffer_t periodic_frame_grabber::grab_picture()
   if (camera_.take_picture((unsigned char *)(&info.buffer[0]), &siz) == 0)
   {
 
-    info.image_height = camera_.get_height();
-    info.image_width = camera_.get_width();
+    info.height = camera_.get_height();
+    info.width = camera_.get_width();
     info.quality = 100;
-    info.row_stride = info.image_width * 3;
+    info.row_stride = info.width * 3;
 
-    if (info.image_height > 0 && info.image_width > 0)
+    if (info.height > 0 && info.width > 0)
     {
       info.quality = 100;
       info.xformbgr2rgb();
-      return write_JPEG_dat(info);
+      return info;
     }
   }
-  return buffer_t();
+  return img_info();
 }
 void periodic_frame_grabber::handle_timeout(const asio::error_code &)
 {
@@ -68,13 +68,14 @@ void periodic_frame_grabber::handle_timeout(const asio::error_code &)
   {
     auto current = high_resolution_timer::clock_type::now();
     auto next = cur_img;
-    auto buffer = grab_picture();
-    if (!buffer.empty())
+    auto img= grab_picture();
+    if (!img.empty())
     {
+      auto buffer = write_JPEG_dat(img);
       auto fName = file_saver_.save_image(buffer);
       std::lock_guard<std::mutex> lock(image_buffers[next].m);
       image_buffers[next].buffer.swap(buffer);
-      detector.handle_motion(fName.c_str());
+      detector.handle_motion(fName.c_str(),img);
     }
     if (current_count < max_size)
       ++current_count;

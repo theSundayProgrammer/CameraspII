@@ -17,8 +17,8 @@ namespace camerasp
     struct img_info
     {
       buffer_t  buffer ;
-      unsigned int image_height;
-      unsigned int image_width;
+      unsigned int height;
+      unsigned int width;
       unsigned int row_stride;
       unsigned int quality;
 #ifndef RASPICAM_MOCK
@@ -26,6 +26,7 @@ namespace camerasp
 #endif
       void put_scan_line(JSAMPLE *,  int row_stride) ;
       void xformbgr2rgb();
+      bool empty() { return buffer.empty(); }
     };
     img_info  read_JPEG_file (std::string const& filename);
     buffer_t write_JPEG_dat (img_info const& img);

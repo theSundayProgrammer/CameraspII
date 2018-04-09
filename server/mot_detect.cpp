@@ -2,7 +2,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
+//#include <opencv2/highgui/highgui.hpp>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <mutex>
@@ -99,7 +99,7 @@ motion_detector::motion_detector()
   // Erode kernel -- used in motion detection
   kernel_ero = getStructuringElement(MORPH_RECT, Size(2, 2));
 }
-void motion_detector::handle_motion(const char *fName)
+void motion_detector::handle_motion(const char *fName, img_info const& img)
 {
 
   int number_of_changes;
@@ -109,12 +109,12 @@ void motion_detector::handle_motion(const char *fName)
   switch (current_state)
   {
   case 0:
-    current_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
-    cvtColor(current_frame, current_frame, CV_RGB2GRAY);
+    current_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()));
+    cvtColor(current_frame,current_frame, CV_RGB2GRAY);
     current_state = 1;
     return;
   case 1:
-    next_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
+    next_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()));
     cvtColor(next_frame, next_frame, CV_RGB2GRAY);
     current_state = 2;
     return;
@@ -122,15 +122,14 @@ void motion_detector::handle_motion(const char *fName)
   {
 
     // Take a new image
-    Mat prev_frame;
+    Mat prev_frame(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()));
+    cvtColor(prev_frame, prev_frame, CV_RGB2GRAY);
     cv::swap(prev_frame, current_frame);
     cv::swap(current_frame, next_frame);
-    next_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
     if (!next_frame.data || smtp.is_busy()) 
     {
       return;
     }
-    cvtColor(next_frame, next_frame, CV_RGB2GRAY);
 
     // Calc differences between the images and do AND-operation
     // threshold image, low differences are ignored (ex. contrast change due to sunlight)
@@ -153,29 +152,28 @@ void motion_detector::handle_motion(const char *fName)
     {
       console->debug("Image Name: {0}", fName);
       console->debug("Top Left:{0},{1} ", rect.x, rect.y);
-if (number_of_sequence==0)
-      smtp.set_message ( std::string("Date: ") + camerasp::current_GMT_time());
-        std::ostringstream ostr;
-        std::ifstream ifs(fName, std::ios::binary);
-        ostr << ifs.rdbuf();
-        smtp.add_attachment("image.jpg", ostr.str());
+      if (number_of_sequence==0)
+        smtp.set_message ( std::string("Date: ") + camerasp::current_GMT_time());
+      std::ostringstream ostr;
+      std::ifstream ifs(fName, std::ios::binary);
+      ostr << ifs.rdbuf();
+      smtp.add_attachment(std::string("image") + std::to_string(number_of_sequence) + ".jpg", ostr.str());
       number_of_sequence++;
-    if (number_of_sequence>4)
-{
+      if (number_of_sequence>4)
+      {
 
-      smtp.send(socket_address);
-      number_of_sequence = 0;
-}
+        smtp.send(socket_address);
+        number_of_sequence = 0;
+      }
     }
-    else if (number_of_sequence)
-{
+    else if (number_of_sequence) {
 
       smtp.send(socket_address);
       number_of_sequence = 0;
-}
+    }
   }
   break;
   }
-  return;
+return;
 }
 }
