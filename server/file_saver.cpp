@@ -30,7 +30,7 @@ namespace camerasp
   {
     std::ostringstream ostr;
     unsigned next = current_count < max_files && k >= current_count ? 
-                    0 : 
+                    0 : //oldest image
                     (cur + max_files - k) % max_files;
     ostr << image_path << next << std::ends;
 
