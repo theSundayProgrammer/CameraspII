@@ -215,7 +215,10 @@ void cam_still::commit_parameters()
     console->error(API_NAME ": Failed to set color effects parameter.");
   // Set ROI
   MMAL_PARAMETER_INPUT_CROP_T crop =
-      {{MMAL_PARAMETER_INPUT_CROP, sizeof(MMAL_PARAMETER_INPUT_CROP_T)}, {0, 0, 0, 0}};
+      {
+        {MMAL_PARAMETER_INPUT_CROP, sizeof(MMAL_PARAMETER_INPUT_CROP_T)}, 
+        {0, 0, 0, 0}
+      };
   crop.rect.x = (65536 * 0);
   crop.rect.y = (65536 * 0);
   crop.rect.width = (65536 * 1);
@@ -352,7 +355,7 @@ int cam_still::create_encoder()
     destroy_encoder();
     return -1;
   }
-  if (!encoder->input_num || !encoder->output_num)
+  if (0==encoder->input_num || 0==encoder->output_num)
   {
     console->error(API_NAME ": Encoder does not have input/output ports.");
     destroy_encoder();
@@ -416,6 +419,7 @@ void cam_still::destroy_encoder()
   if (encoder_pool)
   {
     mmal_port_pool_destroy(encoder->output[0], encoder_pool);
+    encoder_pool = NULL;
   }
   if (encoder)
   {
