@@ -1,8 +1,5 @@
 #pragma once
-<<<<<<< HEAD
-=======
 #include <camerasp/utils.hpp>
->>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
 #include <boost/scope_exit.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/shared_memory_object.hpp>
@@ -42,10 +39,7 @@ struct shared_data{
       }
       if(k<10)
       {
-<<<<<<< HEAD
-=======
 	console->debug("Response received");
->>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
 	ipc::sharable_lock<upgradable_mutex_type> lock(mutex);
 	return std::string(response,data_length);
       }
@@ -56,10 +50,7 @@ struct shared_data{
     }
     camerasp::buffer_t get() const {
       task.wait();
-<<<<<<< HEAD
-=======
       console->debug("Response received");
->>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
       ipc::sharable_lock<upgradable_mutex_type> lock(mutex);
       return std::string(response,data_length);
     }
@@ -72,10 +63,7 @@ struct shared_data{
 	std::copy(std::begin(str),std::end(str),std::begin(response));
 	data_length=str.length();
 	task.post();
-<<<<<<< HEAD
-=======
 	console->debug("Response sent");
->>>>>>> 2aa781bcb33fb2912fa2890bf243152a6235ffd3
       }
     }
   public:
