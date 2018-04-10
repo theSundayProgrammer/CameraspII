@@ -26,7 +26,7 @@ std::shared_ptr<spdlog::logger> console;
 extern asio::io_service frame_grabber_service;
 asio::io_service frame_grabber_service;
 std::string home_path;
-void configure_console(Json::Value &root)
+void configure_logger(Json::Value &root)
 {
   namespace spd = spdlog;
   boost::filesystem::path root_path(home_path);
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
   try
   {
-    configure_console(root);
+    configure_logger(root);
     // Construct the :shared_request_data.
     shared_memory_object shm(open_only, REQUEST_MEMORY_NAME, read_write);
     mapped_region region(shm, read_write);
