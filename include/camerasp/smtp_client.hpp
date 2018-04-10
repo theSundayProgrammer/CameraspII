@@ -2,7 +2,7 @@
 #include <string>
 #include <asio.hpp>
 #include <asio/ssl.hpp>
-#include <vector>
+#include <stack>
 class smtp_client
 {
 enum
@@ -15,6 +15,30 @@ public:
   void send(asio::ip::tcp::resolver::iterator endpoint_iterator);
   void add_attachment(std::string const& name, std::string const& content);
 
+  void set_server(std::string const& val){
+   if(!busy)  server = val;
+   }
+  void set_message(std::string const& val){
+   if(!busy)  message = val;
+   }
+  void set_subject(std::string const& val){
+   if(!busy)  subject = val;
+   }
+  void set_to(std::string const& val){
+   if(!busy)  to = val;
+   }
+  void set_from(std::string const& val){
+   if(!busy)  from = val;
+   }
+  void set_pwd(std::string const& val){
+   if(!busy)  pwd = val;
+   }
+  void set_uid(std::string const& val){
+   if(!busy)  uid= val;
+   }
+  bool is_busy(){
+   return busy;
+}
   private: 
   void send();
   void handle_connect(const asio::error_code &error);
@@ -37,15 +61,13 @@ public:
   void handle_file_open();
   bool verify_certificate(bool preverified,asio::ssl::verify_context &ctx);
   
-public:
+ 
   std::string server;
   std::string uid, pwd;
   std::string from, to;
   std::string subject;
   std::string message;
 
- 
-private:
   struct attachment { 
     attachment(std::string const& n, std::string const& c):
     filename(n), content(c){}
@@ -57,6 +79,6 @@ private:
   char reply_[max_length];
   const char *boundary = "pj+EhsWuSQJxx7ps";
   size_t file_pos;
-  std::vector<attachment> attachments;
-  size_t current_item;
+  int busy;
+  std::stack<attachment> attachments;
 };

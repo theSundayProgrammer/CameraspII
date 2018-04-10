@@ -9,6 +9,7 @@
 #if !defined(RASPICAM_MOCK)
 #include <stdio.h>
 #include <jpeg/jpgconvert.hpp>
+#include <jpeglib.h>
 #include <setjmp.h>
 #include <vector>
 #define BLOCK_SIZE 16384
@@ -64,10 +65,10 @@ namespace camerasp
         dest.term_destination = &my_term_destination;
     
     
-      cinfo.image_width = img.image_width; 	
-      cinfo.image_height = img.image_height;
+      cinfo.image_width = img.width; 	
+      cinfo.image_height = img.height;
       cinfo.input_components = 3;		
-      cinfo.in_color_space = JCS_RGB; 	
+      cinfo.in_color_space = JCS_EXT_BGR; 	
       jpeg_set_defaults(&cinfo);
       /* Now you can set any non-default parameters you wish to.
        * Here we just illustrate the use of quality (quantization table) scaling:
@@ -82,7 +83,7 @@ namespace camerasp
       jpeg_start_compress(&cinfo, TRUE);
     
     
-      row_stride = img.image_width * 3;	/* JSAMPLEs per row in image_buffer */
+      row_stride = img.width * 3;	/* JSAMPLEs per row in image buffer */
     
       while (cinfo.next_scanline < cinfo.image_height) {
         /* jpeg_write_scanlines expects an array of pointers to scanlines.

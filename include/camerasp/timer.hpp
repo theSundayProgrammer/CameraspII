@@ -6,6 +6,7 @@
 #include <camerasp/types.hpp>
 #include <memory>
 #include <camerasp/file_saver.hpp>
+#include <jpeg/jpgconvert.hpp>
 namespace camerasp
 {
 
@@ -28,7 +29,7 @@ namespace camerasp
 
     private:
 
-    buffer_t grab_picture();
+    img_info grab_picture();
     void handle_timeout(const asio::error_code&);
     void set_timer();
 

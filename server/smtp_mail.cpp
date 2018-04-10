@@ -14,10 +14,9 @@
 #include <functional>
 #include <camerasp/utils.hpp>
 #include <camerasp/logger.hpp>
-static int busy = 0;
 smtp_client::smtp_client(asio::io_service &io_service,
                          asio::ssl::context &context)
-    : socket_(io_service, context)
+    : socket_(io_service, context),busy(0)
 {
   socket_.set_verify_mode(asio::ssl::verify_peer);
   socket_.set_verify_callback(
@@ -34,12 +33,11 @@ void smtp_client::send(asio::ip::tcp::resolver::iterator endpoint_iterator)
 
 void smtp_client::add_attachment(std::string const& name, std::string const& attachment)
 {
-  attachments.emplace_back(name, attachment);
+  attachments.emplace(name, attachment);
 }
 
 void smtp_client::send()
 {
-  current_item = 0;
   asio::async_connect(
       socket_.lowest_layer(),
       endpoint,
@@ -194,12 +192,12 @@ void smtp_client::handle_data()
 }
 void smtp_client::handle_file()
 {
-  if (current_item == attachments.size())
+  if (attachments.empty())
     handle_quit0();
   else
   {
-    std::string &filecontent = attachments[current_item].content;
-    std::string &filename = attachments[current_item].filename;
+    std::string &filecontent = attachments.top().content;
+    std::string &filename = attachments.top().filename;
     std::ostringstream ostr;
     ostr
         << "Content-Type: application/octet-stream"
@@ -220,7 +218,7 @@ void smtp_client::handle_file()
 void smtp_client::handle_file_open()
 {
   std::ostringstream ostr;
-  std::string &filecontent = attachments[current_item].content;
+  std::string &filecontent = attachments.top().content;
   if (size_t count = filecontent.size() - file_pos)
   {
     if (count > 54)
@@ -240,7 +238,8 @@ void smtp_client::handle_file_open()
     ++current_item;
     ostr << "\r\n"
          << "--" << boundary;
-    if(current_item == attachments.size())
+    attachments.pop();
+    if(attachments.empty())
        ostr  << "--";
     ostr   << "\r\n";
 

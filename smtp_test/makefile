@@ -2,7 +2,7 @@
 INCLUDES = -I ../include
 CXX_FLAGS = -pthread -g -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
-CXX=g++
+CXX=g++-6
 LDFLAGS=-lcrypto -lssl -lboost_system  -lboost_filesystem
 
 all : test

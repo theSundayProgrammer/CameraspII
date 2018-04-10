@@ -2,7 +2,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
+//#include <opencv2/highgui/highgui.hpp>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <mutex>
@@ -15,6 +15,7 @@
 using namespace std;
 using namespace cv;
 extern asio::io_service frame_grabber_service;
+const int BMP_HEADER_SIZE=54;
 
 // Check if there is motion in the result matrix
 // count the number of changes and return.
@@ -61,13 +62,12 @@ static void init_smtp(smtp_client &smtp)
 {
   auto root = camerasp::get_root();
   auto email = root["email"];
-
-  smtp.pwd = email["pwd"].asString();
-  smtp.uid = email["uid"].asString();
-  smtp.from = email["from"].asString();
-  smtp.to = email["to"].asString();
-  smtp.subject = email["subject"].asString();
-  smtp.server = email["server"].asString();
+  smtp.set_uid(email["uid"].asString());
+  smtp.set_pwd(email["pwd"].asString());
+  smtp.set_from(email["from"].asString());
+  smtp.set_to(email["to"].asString());
+  smtp.set_subject(email["subject"].asString());
+  smtp.set_server(email["server"].asString());
   //smtp.recipient_ids.push_back("joseph.mariadassou@outlook.com");
   //smtp.recipient_ids.push_back("parama_chakra@yahoo.com");
 }
@@ -92,14 +92,15 @@ namespace camerasp
 motion_detector::motion_detector()
     : ctx(asio::ssl::context::sslv23),
       smtp(frame_grabber_service, ctx),
-      socket_address(resolve_socket_address())
+      socket_address(resolve_socket_address()),
+       number_of_sequence (0)
 {
   ctx.load_verify_file("/home/pi/bin/cacert.pem");
   init_smtp(smtp);
   // Erode kernel -- used in motion detection
   kernel_ero = getStructuringElement(MORPH_RECT, Size(2, 2));
 }
-void motion_detector::handle_motion(const char *fName)
+void motion_detector::handle_motion(const char *fName, img_info const& img)
 {
 
   int number_of_changes;
@@ -109,28 +110,27 @@ void motion_detector::handle_motion(const char *fName)
   switch (current_state)
   {
   case 0:
-    current_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
-    cvtColor(current_frame, current_frame, CV_RGB2GRAY);
+    current_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
+    cvtColor(current_frame,current_frame, CV_BGR2GRAY);
     current_state = 1;
     return;
   case 1:
-    next_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
-    cvtColor(next_frame, next_frame, CV_RGB2GRAY);
+    next_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
+    cvtColor(next_frame, next_frame, CV_BGR2GRAY);
     current_state = 2;
     return;
   case 2:
   {
 
     // Take a new image
-    Mat prev_frame;
+    Mat prev_frame(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
+    cvtColor(prev_frame, prev_frame, CV_BGR2GRAY);
     cv::swap(prev_frame, current_frame);
     cv::swap(current_frame, next_frame);
-    next_frame = cv::imread(fName, CV_LOAD_IMAGE_COLOR);
-    if (!next_frame.data) // Check for invalid input
+    if (!next_frame.data || smtp.is_busy()) 
     {
       return;
     }
-    cvtColor(next_frame, next_frame, CV_RGB2GRAY);
 
     // Calc differences between the images and do AND-operation
     // threshold image, low differences are ignored (ex. contrast change due to sunlight)
@@ -151,24 +151,30 @@ void motion_detector::handle_motion(const char *fName)
     // If a lot of changes happened, we assume something changed.
     if (number_of_changes >= there_is_motion)
     {
-      smtp.filename = "image.jpg";
       console->debug("Image Name: {0}", fName);
       console->debug("Top Left:{0},{1} ", rect.x, rect.y);
-      smtp.message = std::string("Date: ") + camerasp::current_GMT_time();
-      {
-        std::ostringstream ostr;
-        std::ifstream ifs(fName, std::ios::binary);
-        ostr << ifs.rdbuf();
-        smtp.filecontent = ostr.str();
-      }
-      smtp.send(socket_address);
+      if (number_of_sequence==0)
+        smtp.set_message ( std::string("Date: ") + camerasp::current_GMT_time());
+      std::ostringstream ostr;
+      std::ifstream ifs(fName, std::ios::binary);
+      ostr << ifs.rdbuf();
+      smtp.add_attachment(std::string("image") + std::to_string(number_of_sequence) + ".jpg", ostr.str());
       number_of_sequence++;
+      if (number_of_sequence>4)
+      {
+
+        smtp.send(socket_address);
+        number_of_sequence = 0;
+      }
     }
-    else
+    else if (number_of_sequence) {
+
+      smtp.send(socket_address);
       number_of_sequence = 0;
+    }
   }
   break;
   }
-  return;
+return;
 }
 }
