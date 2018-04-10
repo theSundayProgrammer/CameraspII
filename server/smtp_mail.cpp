@@ -235,7 +235,6 @@ void smtp_client::handle_file_open()
   }
   else
   {
-    ++current_item;
     ostr << "\r\n"
          << "--" << boundary;
     attachments.pop();
