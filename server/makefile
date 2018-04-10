@@ -22,7 +22,7 @@ srcs = frame_grabber.cpp \
 	timer.cpp \
 	file_saver.cpp \
         mot_detect.cpp \
-        smtp_mail.cpp \
+        smtp_client.cpp \
 	utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
