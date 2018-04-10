@@ -10,11 +10,8 @@
 #include <string>
 #include <vector>
 #include <json/reader.h>
-#include <spdlog/spdlog.h>
 #include <camerasp/raspicamtypes.h>
-extern std::shared_ptr<spdlog::logger> console;
-#include <mmal/mmal_types.h>
-#include <mmal/mmal_parameters_camera.h>
+#include <camerasp/logger.hpp>
 #ifdef __GNUC__
 typedef int errno_t;
 errno_t fopen_s(FILE** fp, const char* name, const char* mode);
@@ -28,9 +25,10 @@ namespace camerasp{
   void setTimer(high_resolution_timer& timer, cam_still&);
   //std::string  get_image(unsigned int k);
 
+std::string current_GMT_time();
+std::string current_date_time();
+std::string EncodeBase64(const std::string &data);
   bool is_integer(const std::string & s, int* k);
-  MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) ;
-  MMAL_PARAM_AWBMODE_T get_awb_from_string ( const std::string& str ) ;
-
+  Json::Value & get_root();
   void write_file_content(std::string const& path, std::string const& dat)    ;
 }

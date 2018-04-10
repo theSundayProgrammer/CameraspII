@@ -1,0 +1,14 @@
+
+ writeLine("EHLO "+mServer);
+   writeLine("AUTH LOGIN");
+   writeLine(encodeBase64(mUserName));
+   writeLine(encodeBase64(mPassword));
+   writeLine( "MAIL FROM:<"+mFrom+">");
+   writeLine( "RCPT TO:<"+mTo+">");
+   writeLine( "DATA");
+   writeLine( "SUBJECT:"+mSubject);
+   writeLine( "From:"+mFrom);
+   writeLine( "To:"+mTo);
+   writeLine( "");
+   writeLine( mMessage );
+   writeLine( ".\r\n");

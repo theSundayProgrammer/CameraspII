@@ -1,5 +1,16 @@
 // Configuration options
 {
+  "home_path" : "/home/pi",
+    "email" : {
+       "uid" : "youremailname@gmail.com",
+       "pwd" : "mypassword",
+       "host" : "smtp.gmail.com",
+        "port": "465",
+       "to" : "joseph.mariadassou@outlook.com",
+       "from" : "theSundayProgrammer@gmail.com",
+       "subject" : "Motion Detected",
+       "server" : "norwestcomputing.com.au"
+     },
   "Camera": {
       "height" : 480,
       "horizontal" : 0,
@@ -8,13 +19,14 @@
       "width" : 640
    },
     "Logging": {
-      "path": "/home/pi/data/log",
+      "path": "data/log",
       "count": 5,
       "size": 2,
-      "type": "debug"
+      "type": "debug",
+      "weblog": "data/web/log"
     },
     "Data": {
-      "path_prefix": "/home/pi/data/backup",
+      "path_prefix": "data/backup",
       "sample_period": 1,
       "count": 1000
     },

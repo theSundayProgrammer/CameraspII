@@ -1,26 +1,15 @@
 #pragma once
 #include <camerasp/utils.hpp>
 #include <mutex>
-//#include <jpeg/jpgconvert.h>
 #include <camerasp/cam_still.hpp>
 #include <json/json.h>
 #include <camerasp/types.hpp>
 #include <memory>
+#include <camerasp/file_saver.hpp>
+#include <jpeg/jpgconvert.hpp>
 namespace camerasp
 {
 
-  class file_saver
-  {
-    public:
-      file_saver(Json::Value const&);
-      camerasp::buffer_t get_image(unsigned int k);
-      void save_image(camerasp::buffer_t const& image);
-    private:
-      unsigned int cur;
-      unsigned int max_files;
-    std::atomic<unsigned>  current_count;
-      std::string image_path;
-  };
   class periodic_frame_grabber
   {
     struct image_buffer
@@ -40,7 +29,7 @@ namespace camerasp
 
     private:
 
-    buffer_t grab_picture();
+    img_info grab_picture();
     void handle_timeout(const asio::error_code&);
     void set_timer();
 

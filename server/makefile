@@ -4,7 +4,7 @@ CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++-6
 
-all : camerasp webserver pinger
+all : camerasp webserver
 .PHONY : all
 
 websrcs = controller.cpp\
@@ -20,20 +20,26 @@ srcs = frame_grabber.cpp \
 	jpgconvert.cpp \
 	raspicam_mock.cpp \
 	timer.cpp \
+	file_saver.cpp \
+        mot_detect.cpp \
+        smtp_client.cpp \
 	utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
-cli_srcs = pinger.cpp 
-cli_objs = $(cli_srcs:%.cpp=$(BUILD_DIR)/%.o)
-cli_deps = $(cli_srcs:.cpp=$(BUILD_DIR)/.d)
-
-pinger: $(cli_objs)
-	$(CXX)   -o $@ $^ -pthread -O3 -Wunused 
 camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
+                   -L../lib -ljson \
                    -lrt -lboost_filesystem -lboost_system\
-                   -L../lib -ljson -ljpeg -lmmal -lmmal_core -lmmal_util
+                   -lssl -lcrypto \
+                   -lopencv_features2d \
+                   -lopencv_highgui \
+                   -lopencv_videoio \
+                   -lopencv_imgcodecs \
+                   -lopencv_objdetect \
+                   -lopencv_imgproc \
+                   -lopencv_core\
+                   -ljpeg -lmmal -lmmal_core -lmmal_util
 	cp $@ /home/pi/bin
 webserver: $(webobjs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
@@ -47,8 +53,7 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # $(RM) is rm -f by default
 clean:
-	$(RM) $(objs) $(cli_objs) $(webobjs) $(deps) $(webdeps) $(cli_deps) camerasp webserver pinger
+	$(RM) $(objs) $(webobjs) $(deps) $(webdeps)  camerasp webserver
 
 -include $(webdeps)
 -include $(deps)
--include $(cli_deps)
