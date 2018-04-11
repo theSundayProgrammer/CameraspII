@@ -1,8 +1,15 @@
 
+//////////////////////////////////////////////////////////////////////////////
+// Copyright (c) Joseph Mariadassou
+// theSundayProgrammer@gmail.com
+// 
+// Distributed under the Boost Software License, Version 1.0.
+//
+//////////////////////////////////////////////////////////////////////////////
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-//#include <opencv2/highgui/highgui.hpp>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <mutex>

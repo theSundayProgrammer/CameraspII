@@ -10,12 +10,18 @@ The application  consists of
 
  The frame grabber has two threads. The first one is solely for IPC with controller (web server) and the second thread is used for periodic image capture. The captured images are analysed for motion detection (need to cite original source/inspiration for this) and a mail is sent if motion is detected.
 
+ The project use C++ (GCC 6). 
+
 ## Acknowledgements
 TheSundayProgrammer acknowledges with thanks the use of the following projects in [CameraspII](http://github.com/theSundayProgrammer/CameraspII)
  * the userland library code for capturing images from [James Hughes](https://github.com/JamesH65/userland)
- * The web server was adapted from [Ole Christian Eidheim](https://github.com/eidheim/Simple-Web-Server)
- * The asynchronous model is driven using Chris Kohloff's [asio](https://github.com/chriskohlhoff/asio)
- * [Boost](www.boost.org)  "ipc" as well as other Boost projects
+ * The asynchronous model is driven using Chris Kohloff's [Asio](https://github.com/chriskohlhoff/asio)
+ * The web server was adapted from [Ole Christian Eidheim](https://github.com/eidheim/Simple-Web-Server) which uses Asio
+ * [Boost](www.boost.org): IPC, Base64, Filesystem etc.
  * The [json parser](https://github.com/open-source-parsers/jsoncpp)
  * [GSL](https://github.com/Microsoft/GSL) from Microsoft
- 
+ * [OpenCV](https://opencv.org/) for motion detection
+
+ Above all thanks to Linus Travold for Linux/Git and the GNU Foundation for all the tools used in the development. Thanks also
+ to Microsoft and Github for hosting the repo. 
+

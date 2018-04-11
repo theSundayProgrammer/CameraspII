@@ -1,6 +1,9 @@
 //
 // client.cpp
 // ~~~~~~~~~~
+// Copyright (c) 2018 Joe Mariadassou (joe.mariadassou at gmail).
+//This module was inspired by a Boost sample. Original 
+// copyright statement follows
 //
 // Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
