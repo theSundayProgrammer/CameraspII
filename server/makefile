@@ -3,9 +3,12 @@ INCLUDES = -I ../include
 CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++-6
+MKDIR_P = mkdir -p
 
-all : camerasp webserver
+all : directories camerasp webserver
 .PHONY : all
+
+directories: ${BUILD_DIR} 
 
 websrcs = controller.cpp\
 	utils.cpp
@@ -27,6 +30,9 @@ srcs = frame_grabber.cpp \
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
+${BUILD_DIR}:
+	${MKDIR_P} ${BUILD_DIR}
+
 camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -L../lib -ljson \
@@ -41,6 +47,7 @@ camerasp: $(objs)
                    -lopencv_core\
                    -ljpeg -lmmal -lmmal_core -lmmal_util
 	cp $@ /home/pi/bin
+
 webserver: $(webobjs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
