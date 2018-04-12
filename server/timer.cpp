@@ -127,8 +127,8 @@ bool periodic_frame_grabber::resume()
   if (quit_flag)
   {
     quit_flag = 0;
-    camera_.open();
-    set_timer();
+    if(retval = camera_.open())
+        set_timer();
   }
   return retval;
 }
