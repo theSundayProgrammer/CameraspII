@@ -1,8 +1,0 @@
--h 480 
--w 640 
--t 0 
--o img_%04d.jpg 
--tl 1000
--x none
--v
-
