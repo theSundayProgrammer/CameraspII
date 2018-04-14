@@ -3,7 +3,7 @@
 ## HTTP
 The project started of with using [Ken Baker](https://github.com/kenba/via-http)'s via-http library.
 But the web server was hanging after a few hours of running. Unable to locate the issue and not finding 
-the time to come up with a minimum reproducible project, I tried Ole Eidheim's web server which has so been pretty stable.
+the time to come up with a minimum reproducible project, I tried Ole Eidheim's web server which has so far been pretty stable.
 
 
 ## Raspicam
