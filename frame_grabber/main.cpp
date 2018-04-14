@@ -72,7 +72,11 @@ int main(int argc, char *argv[])
 
     //configure frame grabber
     camerasp::periodic_frame_grabber frame_grabber(frame_grabber_service, root);
-    frame_grabber.resume();
+    bool retval = frame_grabber.resume();
+    if (!retval) {
+      console->error("Unable to open Camera");
+      return 1;
+}
     auto capture_frame = [&](int k) {
       try
       {
