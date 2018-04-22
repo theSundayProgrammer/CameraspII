@@ -21,7 +21,7 @@ srcs = main.cpp \
 	file_saver.cpp \
         mot_detect.cpp \
         smtp_client.cpp \
-	../utils/utils.cpp
+	utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
