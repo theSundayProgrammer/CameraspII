@@ -1,21 +1,16 @@
 
-INCLUDES = -I ../include
+INCLUDES = -I ../../include
 CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++-6
 MKDIR_P = mkdir -p
 
-all : directories camerasp webserver
+all : directories camerasp 
 .PHONY : all
 
 directories: ${BUILD_DIR} 
 
-websrcs = controller.cpp\
-	utils.cpp
-webobjs = $(websrcs:%.cpp=$(BUILD_DIR)/%.o)
-webdeps = $(websrcs:.cpp=$(BUILD_DIR)/.d)
-
-srcs = frame_grabber.cpp \
+srcs = main.cpp \
 	cam_still_base.cpp \
 	cam_still.cpp \
 	fopen.cpp \
@@ -35,7 +30,7 @@ ${BUILD_DIR}:
 
 camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
-                   -L../lib -ljson \
+                   -L../../lib -ljson \
                    -lrt -lboost_filesystem -lboost_system\
                    -lssl -lcrypto \
                    -lopencv_features2d \
@@ -47,12 +42,8 @@ camerasp: $(objs)
                    -lopencv_core\
                    -ljpeg -lmmal -lmmal_core -lmmal_util
 	cp $@ /home/pi/bin
+	cp cacert.pem /home/pi/bin
 
-webserver: $(webobjs)
-	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
-                   -lrt -lboost_filesystem -lboost_system\
-                   -L../lib -ljson -ljpeg 
-	cp $@ /home/pi/bin
 $(BUILD_DIR)/%.o: %.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
@@ -60,7 +51,6 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # $(RM) is rm -f by default
 clean:
-	$(RM) $(objs) $(webobjs) $(deps) $(webdeps)  camerasp webserver
+	$(RM) $(objs) $(deps) camerasp 
 
--include $(webdeps)
 -include $(deps)
