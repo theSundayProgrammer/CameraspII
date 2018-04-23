@@ -196,18 +196,16 @@ public:
         if (err ==0)
         {
           *http_response << "HTTP/1.1 200 OK\r\n"
-                         << "Content-Length: " << data.size() - 4 << "\r\n"
+                         << "Content-Length: " << data.size() << "\r\n"
                          << "Content-type: "
                          << "image/jpeg"
                          << "\r\n"
                          << "Cache-Control: no-cache, must-revalidate"
                          << "\r\n"
                          << "\r\n"
-                         << std::string(data.begin() + 4, data.end());
+                         << std::string(data.begin() , data.end());
 
           console->error("sending image");
-          //ofstream ofs("/home/pi/data/testingsend.jpg");
-          //ofs.write(data.begin()+4, data.size()-4);
         }
         else
         {
