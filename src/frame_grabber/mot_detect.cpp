@@ -2,7 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Copyright (c) Joseph Mariadassou
 // theSundayProgrammer@gmail.com
-// 
+//
 // Distributed under the Boost Software License, Version 1.0.
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -15,15 +15,29 @@
 #include <mutex>
 #include <fstream>
 #include <sstream>
-#include <camerasp/smtp_client.hpp>
+#include <iomanip>
 #include <camerasp/logger.hpp>
 #include <camerasp/utils.hpp>
 #include <camerasp/mot_detect.hpp>
+#include <leveldb/db.h>
+#include <leveldb/slice.h>
+#include <leveldb/comparator.h>
+#include <jpeg/jpgconvert.hpp>
+#include <gsl/gsl_util>
 using namespace std;
 using namespace cv;
 extern asio::io_service frame_grabber_service;
-const int BMP_HEADER_SIZE=54;
+const int BMP_HEADER_SIZE = 54;
 
+string get_gmt_time(){
+  auto now = std::chrono::system_clock::now();                // system time
+  auto in_time_t = std::chrono::system_clock::to_time_t(now); //convert to std::time_t
+
+  std::stringstream ss;
+  ss << std::put_time(std::gmtime(&in_time_t), "%Y%m%d%H%M%S");
+  console->debug("time={0}",ss.str());
+  return ss.str();
+}
 // Check if there is motion in the result matrix
 // count the number of changes and return.
 std::tuple<cv::Rect, int>
@@ -65,49 +79,24 @@ detect_motion(const Mat &motion, const Rect &bounding_box)
   return make_tuple(cv::Rect(), 0);
 }
 
-static void init_smtp(smtp_client &smtp)
-{
-  auto root = camerasp::get_root();
-  auto email = root["email"];
-  smtp.set_uid(email["uid"].asString());
-  smtp.set_pwd(email["pwd"].asString());
-  smtp.set_from(email["from"].asString());
-  smtp.set_to(email["to"].asString());
-  smtp.set_subject(email["subject"].asString());
-  smtp.set_server(email["server"].asString());
-  //smtp.recipient_ids.push_back("joseph.mariadassou@outlook.com");
-  //smtp.recipient_ids.push_back("parama_chakra@yahoo.com");
-}
-static asio::ip::tcp::resolver::iterator resolve_socket_address()
-{
-  auto root = camerasp::get_root();
-  auto email = root["email"];
-  auto url = email["host"].asString();
-  auto port = email["port"].asString();
-  asio::ip::tcp::resolver resolver(frame_grabber_service);
-  asio::ip::tcp::resolver::query query(url, port);
-  asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
-  console->debug("Resolved address at line {0}", __LINE__);
-  return iterator;
-}
-// When motion is detected we write the image to disk
-//    - Check if the directory exists where the image will be stored.
-//    - Build the directory and image names.
 namespace camerasp
 {
 
+motion_detector::~motion_detector(){
+  delete db;
+}
 motion_detector::motion_detector()
-    : ctx(asio::ssl::context::sslv23),
-      smtp(frame_grabber_service, ctx),
-      socket_address(resolve_socket_address()),
-       number_of_sequence (0)
+       :number_of_sequence (0)
 {
-  ctx.load_verify_file("/home/pi/bin/cacert.pem");
-  init_smtp(smtp);
   // Erode kernel -- used in motion detection
+  leveldb::Options options;
+  options.create_if_missing = true;
+  leveldb::Status status = leveldb::DB::Open(options, "/home/pi/data/image.db", &db);
+  db_ok = (bool)status.ok();
+  console->debug("Level Db opn db status = {0}", db_ok);
   kernel_ero = getStructuringElement(MORPH_RECT, Size(2, 2));
 }
-void motion_detector::handle_motion(const char *fName, img_info const& img)
+void motion_detector::handle_motion(img_info const& img)
 {
 
   int number_of_changes;
@@ -116,72 +105,98 @@ void motion_detector::handle_motion(const char *fName, img_info const& img)
   int y_start = 10;
   switch (current_state)
   {
-  case 0:
-    current_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
-    cvtColor(current_frame,current_frame, CV_BGR2GRAY);
-    current_state = 1;
-    return;
-  case 1:
-    next_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
-    cvtColor(next_frame, next_frame, CV_BGR2GRAY);
-    current_state = 2;
-    return;
-  case 2:
-  {
-
-    // Take a new image
-    Mat prev_frame(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
-    cvtColor(prev_frame, prev_frame, CV_BGR2GRAY);
-    cv::swap(prev_frame, current_frame);
-    cv::swap(current_frame, next_frame);
-    if (!next_frame.data || smtp.is_busy()) 
-    {
+    case 0:
+      current_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
+      cvtColor(current_frame,current_frame, CV_BGR2GRAY);
+      current_state = 1;
       return;
-    }
-
-    // Calc differences between the images and do AND-operation
-    // threshold image, low differences are ignored (ex. contrast change due to sunlight)
-    Mat d1, d2, motion;
-    absdiff(prev_frame, next_frame, d1);
-    absdiff(next_frame, current_frame, d2);
-    bitwise_and(d1, d2, motion);
-    threshold(motion, motion, 35, 255, CV_THRESH_BINARY);
-    erode(motion, motion, kernel_ero);
-    Rect rect;
-    int width = current_frame.cols - 20;
-    int height = current_frame.rows - 20;
-    std::tie(rect, number_of_changes) = detect_motion(motion, cv::Rect(x_start, y_start, width, height));
-
-    //Send image if motion detected
-    if (number_of_changes > 0)
-      console->info("Number of Changes in image = {0}", number_of_changes);
-    // If a lot of changes happened, we assume something changed.
-    if (number_of_changes >= there_is_motion)
-    {
-      console->debug("Image Name: {0}", fName);
-      console->debug("Top Left:{0},{1} ", rect.x, rect.y);
-      if (number_of_sequence==0)
-        smtp.set_message ( std::string("Date: ") + camerasp::current_GMT_time());
-      std::ostringstream ostr;
-      std::ifstream ifs(fName, std::ios::binary);
-      ostr << ifs.rdbuf();
-      smtp.add_attachment(std::string("image") + std::to_string(number_of_sequence) + ".jpg", ostr.str());
-      number_of_sequence++;
-      if (number_of_sequence>4)
+    case 1:
+      next_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
+      cvtColor(next_frame, next_frame, CV_BGR2GRAY);
+      current_state = 2;
+      return;
+    case 2:
       {
 
-        smtp.send(socket_address);
-        number_of_sequence = 0;
-      }
-    }
-    else if (number_of_sequence) {
+        // Take a new image
+        Mat prev_frame(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
+        cvtColor(prev_frame, prev_frame, CV_BGR2GRAY);
+        cv::swap(prev_frame, current_frame);
+        cv::swap(current_frame, next_frame);
+        if (!next_frame.data ) 
+        {
+          return;
+        }
 
-      smtp.send(socket_address);
-      number_of_sequence = 0;
-    }
+        // Calc differences between the images and do AND-operation
+        // threshold image, low differences are ignored (ex. contrast change due to sunlight)
+        Mat d1, d2, motion;
+        absdiff(prev_frame, next_frame, d1);
+        absdiff(next_frame, current_frame, d2);
+        bitwise_and(d1, d2, motion);
+        threshold(motion, motion, 35, 255, CV_THRESH_BINARY);
+        erode(motion, motion, kernel_ero);
+        Rect rect;
+        int width = current_frame.cols - 20;
+        int height = current_frame.rows - 20;
+        std::tie(rect, number_of_changes) = detect_motion(motion, cv::Rect(x_start, y_start, width, height));
+
+        //Send image if motion detected
+        if (number_of_changes > 0)
+          console->info("Number of Changes in image = {0}", number_of_changes);
+        // If a lot of changes happened, we assume something changed.
+        if (number_of_changes >= there_is_motion && db_ok)
+        {
+          console->debug("Top Left:{0},{1} ", rect.x, rect.y);
+	  auto buffer = write_JPEG_dat(img);
+          auto status = db->Put(leveldb::WriteOptions(),get_gmt_time(),buffer);
+          db_ok = status.ok();
+        }
+        else if (number_of_sequence) {
+
+          //To Do: remove this variable
+          number_of_sequence = 0;
+        }
+      }
+      break;
   }
-  break;
+  return;
+}
+std::tuple<int,std::string> motion_detector::get_key(string const& start)
+{
+  leveldb::Iterator *it = db->NewIterator(leveldb::ReadOptions());
+  auto on_end = gsl::finally([it]() { delete it; });
+  it->Seek(start);
+  if (it->Valid())
+  {
+    auto str = it->key().ToString();
+    console->debug("dat size = {0}", str.size());
+    return std::make_tuple(0,str);
   }
-return;
+  it->SeekToLast();
+  if (it->Valid())
+  {
+    auto str = it->key().ToString();
+    console->debug("dat size = {0}", str.size());
+    return std::make_tuple(0,str);
+  }
+  return std::make_tuple(-1,"End of Database");
+}
+std::tuple<int,std::string> motion_detector::get_image(string const& start)
+{
+  leveldb::Iterator *it = db->NewIterator(leveldb::ReadOptions());
+  auto on_end = gsl::finally([it]() { delete it; });
+  it->Seek(start);
+  if (it->Valid())
+  {
+    return std::make_tuple(0,it->value().ToString());
+  }
+  it->SeekToLast();
+  if (it->Valid())
+  {
+    return std::make_tuple(0,it->value().ToString());
+  }
+  return std::make_tuple(-1,"End of Database");
 }
 }
+

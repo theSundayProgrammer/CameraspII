@@ -1,5 +1,5 @@
 /**********************************************************
-Copyright Joseph Mariadassou (theSundayProgrammer@gmail.com). 
+Copyright (c) 2015-2018 Joseph Mariadassou (theSundayProgrammer@gmail.com). 
 
 ****************************************************************/
 #include <camerasp/cam_still_base.hpp>

@@ -8,7 +8,6 @@
 
 #include <camerasp/timer.hpp>
 #include <jpeg/jpgconvert.hpp>
-#include <fstream>
 #include <sstream>
 #include <camerasp/mot_detect.hpp>
 
@@ -16,13 +15,13 @@
 #include <opencv2/imgproc/imgproc.hpp>
 namespace camerasp
 {
+using std::string;
 periodic_frame_grabber::periodic_frame_grabber(
     asio::io_context &io_service,
     Json::Value const &root) :
 	timer_(io_service),
 	cur_img(0), 
-	current_count(0), 
-	file_saver_(root["Data"], root["home_path"].asString())
+	current_count(0)
 {
   auto backup = root["Data"];
   auto secs = backup["sample_period"].asInt();
@@ -64,7 +63,6 @@ void periodic_frame_grabber::handle_timeout(const asio::error_code &)
 {
   //At any point in time only one instance of this function will be running
   using namespace std::placeholders;
-  static motion_detector detector;
   if (!quit_flag)
   {
     auto current = high_resolution_timer::clock_type::now();
@@ -72,11 +70,12 @@ void periodic_frame_grabber::handle_timeout(const asio::error_code &)
     auto img= grab_picture();
     if (!img.empty())
     {
+      {
       auto buffer = write_JPEG_dat(img);
-      auto fName = file_saver_.save_image(buffer);
       std::lock_guard<std::mutex> lock(image_buffers[next].m);
       image_buffers[next].buffer.swap(buffer);
-      detector.handle_motion(fName.c_str(),img);
+      }
+      detector.handle_motion(img);
     }
     if (current_count < max_size)
       ++current_count;
@@ -104,22 +103,24 @@ void periodic_frame_grabber::set_timer()
     console->error("Error: {}..", e.what());
   }
 }
+std::tuple<int,buffer_t> periodic_frame_grabber::get_key(string const& start){
+  return detector.get_key(start);
+}
+std::tuple<int,buffer_t> periodic_frame_grabber::get_image(string const& start){
+  return detector.get_image(start);
+}
+
 buffer_t periodic_frame_grabber::get_image(unsigned int k)
 {
   //precondition there is at least one image in the buffer
   //Tha is, current_count>0
   if (current_count == 0)
     throw std::runtime_error("No image captured");
-  if (k < max_size)
-  {
     auto next = (k > current_count && current_count < max_size) ? 0 : (cur_img + max_size - 1 - k) % max_size;
     console->info("Image number = {0}", next);
     std::lock_guard<std::mutex> lock(image_buffers[next].m);
     auto imagebuffer = image_buffers[next].buffer;
     return buffer_t(imagebuffer.begin(), imagebuffer.end());
-  } else {
-    return file_saver_.get_image(k);
-  }
 }
 bool periodic_frame_grabber::resume()
 {

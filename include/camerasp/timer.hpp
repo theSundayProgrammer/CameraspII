@@ -7,6 +7,8 @@
 #include <memory>
 #include <camerasp/file_saver.hpp>
 #include <jpeg/jpgconvert.hpp>
+#include <tuple>
+#include <camerasp/mot_detect.hpp>
 namespace camerasp
 {
 
@@ -22,6 +24,8 @@ namespace camerasp
     periodic_frame_grabber(asio::io_context& io_service, Json::Value const&);
     ~periodic_frame_grabber(){}
     buffer_t  get_image(unsigned int k);
+    std::tuple<int,buffer_t>  get_key(std::string const&);
+    std::tuple<int,buffer_t>  get_image(std::string const&);
     bool resume();
     bool pause();
     errno_t set_vertical_flip(bool on);
@@ -42,6 +46,6 @@ namespace camerasp
     std::atomic<unsigned>  current_count;
     std::atomic<bool> quit_flag;
     unsigned cur_img;
-    file_saver file_saver_;
+    motion_detector detector;
   };
 }

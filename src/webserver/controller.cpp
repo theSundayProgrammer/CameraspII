@@ -1,5 +1,5 @@
-﻿
-////////////////////////////////////////////////////////////////////////////// // Copyright 2016-2017 (c) Joseph Mariadassou
+////////////////////////////////////////////////////////////////////////////// 
+// Copyright 2016-2018 (c) Joseph Mariadassou
 // theSundayProgrammer@gmail.com
 // Distributed under the Boost Software License, Version 1.0.
 //
@@ -108,12 +108,38 @@ stop_pending | start| stop_pending
 ******************************************/
 
 namespace ipc = boost::interprocess;
+using namespace camerasp;
+using std::string;
+auto send_success(
+    std::shared_ptr<http_server::Response> http_response,
+    std::string const &message)
+{
+  *http_response << "HTTP/1.1 200 OK\r\n"
+                 << "Content-Length: " << message.size() << "\r\n"
+                 << "Content-type: "
+                 << "application/text"
+                 << "\r\n"
+                 << "\r\n"
+                 << message;
+}
 
+auto send_failure(
+    std::shared_ptr<http_server::Response> http_response,
+    std::string const &message)
+{
+  *http_response << "HTTP/1.1 400 Bad Request\r\n"
+                 << "Content-Length: " << message.size() << "\r\n"
+                 << "Content-type: "
+                 << "application/text"
+                 << "\r\n"
+                 << "\r\n"
+                 << message;
+}
 class web_server
 {
 public:
-  web_server(Json::Value &root)
-      : response(RESPONSE_MEMORY_NAME), request(REQUEST_MEMORY_NAME), root_(root)
+  web_server(Json::Value &root_)
+      : response(RESPONSE_MEMORY_NAME), request(REQUEST_MEMORY_NAME), root(root_)
   {
 
     // server config
@@ -123,30 +149,6 @@ public:
       port_number = server_config["port"].asInt();
     server.config.port = port_number;
     server.config.thread_pool_size = 2;
-  }
-  auto send_failure(
-      std::shared_ptr<http_server::Response> http_response,
-      std::string const &message)
-  {
-    *http_response << "HTTP/1.1 400 Bad Request\r\n"
-                   << "Content-Length: " << message.size() << "\r\n"
-                   << "Content-type: "
-                   << "application/text"
-                   << "\r\n"
-                   << "\r\n"
-                   << message;
-  }
-  auto send_success(
-      std::shared_ptr<http_server::Response> http_response,
-      std::string const &message)
-  {
-    *http_response << "HTTP/1.1 200 OK\r\n"
-                   << "Content-Length: " << message.size() << "\r\n"
-                   << "Content-type: "
-                   << "application/text"
-                   << "\r\n"
-                   << "\r\n"
-                   << message;
   }
 
   void exec_cmd(
@@ -240,7 +242,7 @@ public:
       std::ostringstream ostr;
       ostr << http_request->content.rdbuf();
       std::string istr = ostr.str();
-      auto camera = root_["Camera"];
+      auto camera = root["Camera"];
       std::regex pat("(\\w+)=(\\d+)");
       for (std::sregex_iterator p(std::begin(istr), std::end(istr), pat);
            p != std::sregex_iterator{};
@@ -250,8 +252,8 @@ public:
       }
 
       Json::StyledWriter writer;
-      root_["Camera"] = camera;
-      auto update = writer.write(root_);
+      root["Camera"] = camera;
+      auto update = writer.write(root);
       camerasp::write_file_content(config_path + "options.json", update);
       std::string data{"Config file updated. Restart camera"};
       *http_response << "HTTP/1.1 200 OK\r\n"
@@ -288,12 +290,13 @@ public:
         console->info("stop executed");
         int status = 0;
         unsigned n = 0;
-        while (n < 20 && 0 <= waitpid(child_pid, &status, WNOHANG))
+        const int max_wait_count=200;
+        while (n < max_wait_count && 0 <= waitpid(child_pid, &status, WNOHANG))
         {
           usleep(100 * 1000);
           ++n;
         }
-        if (n == 20)
+        if (n == max_wait_count)
           kill(child_pid, SIGKILL);
         fg_state = process_state::stopped;
         send_success(http_response, success);
@@ -377,7 +380,7 @@ public:
       std::ostringstream ostr;
       ostr << http_request->content.rdbuf();
       std::string istr = ostr.str();
-      auto camera = root_["Camera"];
+      auto camera = root["Camera"];
       std::regex pat("(\\w+)=(0|1)");
       for (std::sregex_iterator p(std::begin(istr), std::end(istr), pat);
            p != std::sregex_iterator{};
@@ -392,8 +395,8 @@ public:
       }
 
       Json::StyledWriter writer;
-      root_["Camera"] = camera;
-      auto update = writer.write(root_);
+      root["Camera"] = camera;
+      auto update = writer.write(root);
       camerasp::write_file_content(config_path + "options.json", update);
       *http_response << "HTTP/1.1 200 OK\r\n"
                      << "Content-Length: " << data.size() << "\r\n"
@@ -420,43 +423,9 @@ private:
   shared_mem_ptr<shared_request_data> request;
   pid_t child_pid;
   posix_spawn_file_actions_t child_fd_actions;
-  Json::Value &root_;
+  Json::Value &root;
   http_server server;
 };
-
-int main(int argc, char *argv[], char *env[])
-{
-  try
-  {
-
-    Json::Value root = camerasp::get_DOM(config_path + "options.json");
-    //configure console
-
-    auto home_path = root["home_path"].asString();
-    boost::filesystem::path root_path(home_path);
-    auto log_config = root["Logging"];
-    auto json_path = log_config["weblog"];
-    auto logpath = root_path / (json_path.asString());
-    auto size_mega_bytes = log_config["size"].asInt();
-    auto count_files = log_config["count"].asInt();
-    console = spdlog::rotating_logger_mt("console", logpath.string(), 1024 * 1024 * size_mega_bytes, count_files);
-    console->set_level(spdlog::level::debug);
-    console->debug("Starting");
-    auto io_service = std::make_shared<asio::io_context>();
-
-    address_broadcasting_server broadcaster(*io_service, 52153);
-    broadcaster.receive();
-    //run web server
-    web_server server(root);
-    server.run(io_service, argv, env);
-  }
-  catch (std::exception &e)
-  {
-    console->error("Exception: {0}", e.what());
-  }
-
-  return 0;
-}
 
 void default_resource_send(const http_server &server,
                            const std::shared_ptr<http_server::Response> &response,
@@ -484,7 +453,7 @@ void default_resource_send(const http_server &server,
 void web_server::run(std::shared_ptr<asio::io_context> io_service, char *argv[], char *env[])
 {
   using namespace camerasp;
-
+  server.io_service = io_service;
   //Child process
   //Important: the working directory of the child process
   // is the same as that of the parent process.
@@ -498,7 +467,7 @@ void web_server::run(std::shared_ptr<asio::io_context> io_service, char *argv[],
   if (ret = posix_spawn_file_actions_adddup2(&child_fd_actions, 1, 2))
     console->error("posix_spawn_file_actions_adddup2"), exit(ret);
   //
-  server.io_service = io_service;
+
   // The signal set is used to register termination notifications
   asio::signal_set signals_(*io_service);
   signals_.add(SIGINT);
@@ -675,4 +644,37 @@ void web_server::run(std::shared_ptr<asio::io_context> io_service, char *argv[],
     {
     }
   }
+}
+int main(int argc, char *argv[], char *env[])
+{
+  try
+  {
+
+    Json::Value root = camerasp::get_DOM(config_path + "options.json");
+    //configure console
+
+    auto home_path = root["home_path"].asString();
+    boost::filesystem::path root_path(home_path);
+    auto log_config = root["Logging"];
+    auto json_path = log_config["weblog"];
+    auto logpath = root_path / (json_path.asString());
+    auto size_mega_bytes = log_config["size"].asInt();
+    auto count_files = log_config["count"].asInt();
+    console = spdlog::rotating_logger_mt("console", logpath.string(), 1024 * 1024 * size_mega_bytes, count_files);
+    console->set_level(spdlog::level::debug);
+    console->debug("Starting");
+    auto io_service = std::make_shared<asio::io_context>();
+
+    address_broadcasting_server broadcaster(*io_service, 52153);
+    broadcaster.receive();
+    //run web server
+    web_server server(root);
+    server.run(io_service, argv, env);
+  }
+  catch (std::exception &e)
+  {
+    console->error("Exception: {0}", e.what());
+  }
+
+  return 0;
 }
