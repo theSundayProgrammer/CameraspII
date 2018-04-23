@@ -19,7 +19,7 @@
 #include <atomic>
 #include <camerasp/utils.hpp>
 #include <camerasp/timer.hpp>
-#include <camerasp/ipc.hpp>
+#include <camerasp/msgq.hpp>
 #include <boost/filesystem.hpp>
 std::shared_ptr<spdlog::logger> console;
 #define ASIO_ERROR_CODE 
@@ -45,20 +45,11 @@ int main(int argc, char *argv[])
   auto &root = camerasp::get_root();
   //configure console
   home_path = root["home_path"].asString();
-
+  const int no_error=0;
   try
   {
     configure_logger(root);
-    // Construct the :shared_request_data.
-    shared_memory_object shm(open_only, REQUEST_MEMORY_NAME, read_write);
-    mapped_region region(shm, read_write);
-    shared_request_data &request = *static_cast<shared_request_data *>(region.get_address());
-
-    // Construct the :shared_response data.
-    shared_memory_object shm_response(open_only, RESPONSE_MEMORY_NAME, read_write);
-    mapped_region region_response(shm_response, read_write);
-    shared_response_data &response = *static_cast<shared_response_data *>(region_response.get_address());
-
+    camerasp::client_msg_queues queue(128);
     // The signal set is used to register termination notifications
     asio::signal_set signals_(frame_grabber_service);
     signals_.add(SIGINT);
@@ -66,7 +57,7 @@ int main(int argc, char *argv[])
 
     // register the handle_stop callback
     signals_.async_wait([&](asio::error_code const &error, int signal_number) {
-      request.set("exit");
+      frame_grabber_service.stop();
       console->debug("SIGTERM received");
     });
 
@@ -76,60 +67,82 @@ int main(int argc, char *argv[])
     if (!retval) {
       console->error("Unable to open Camera");
       return 1;
-}
+  }
     auto capture_frame = [&](int k) {
       try
       {
-        std::string error(4, '\0');
+  
         auto image = frame_grabber.get_image(k);
-        response.set(error + image);
+        queue.send_response(no_error,image);
       }
       catch (std::runtime_error &er)
       {
-        response.set("EMPT");
-        console->debug("Error=EMPTY");
+        queue.send_response(-1,"Failed");
+        console->debug("Frame Capture Failed");
       }
     };
+   auto get_key = [&] (std::string const& key){
+        std::string error(4, '\0');
+        auto image = frame_grabber.get_key(key);
+        if(std::get<0>(image) == 0)
+          queue.send_response(0,std::get<1>(image));
+        else
+          queue.send_response(std::get<0>(image),"Failed");
+    };
+   auto get_frame = [&] (std::string const& key){
+        std::string error(4, '\0');
+        auto image = frame_grabber.get_image(key);
+        if(std::get<0>(image) == 0)
+          queue.send_response(0,std::get<1>(image));
+        else
+          queue.send_response(std::get<0>(image),"Failed");
+    };
+
     // Start worker threads
     std::thread thread1{[&]() {
       for (;;)
       {
-        std::string uri = request.get();
+        std::string uri = queue.get_request();
         std::smatch m;
         if (std::regex_search(uri, m, std::regex("image\\?prev=([0-9]+)$")))
         {
           int k = atoi(m[1].str().c_str());
           capture_frame(k);
         }
+        else if (std::regex_search(uri, m, std::regex("image\\?date=([0-9]+)$")))
+        {
+          auto key = m[1].str();
+          get_frame(key);
+        }
         else if (std::regex_search(uri, m, std::regex("flip\\?vertical=(0|1)$")))
         {
           int k = atoi(m[1].str().c_str());
           if (0 == frame_grabber.set_vertical_flip(k != 0))
-            response.set("Success");
+            queue.send_response(0,"Success");
           else
-            response.set("Error Flip failed");
+            queue.send_response(-1,"Failed");
         }
         else if (std::regex_search(uri, m, std::regex("flip\\?horizontal=(0|1)$")))
         {
           int k = atoi(m[1].str().c_str());
           if (0 == frame_grabber.set_horizontal_flip(k != 0))
-            response.set("Success");
+            queue.send_response(0,"Success");
           else
-            response.set("Error Flip failed");
+            queue.send_response(-1,"Failed");
         }
         else if (std::regex_search(uri, m, std::regex("resume")))
         {
           if (frame_grabber.resume())
-            response.set("Success");
+            queue.send_response(0,"Success");
           else
-            response.set("Running already");
+            queue.send_response(-1,"Failed");
         }
         else if (std::regex_search(uri, m, std::regex("pause")))
         {
           if (frame_grabber.pause())
-            response.set("Success");
+            queue.send_response(0,"Success");
           else
-            response.set("Stopped already");
+            queue.send_response(-1,"Failed");
         }
         else if (std::regex_search(uri, m, std::regex("image")))
         {
@@ -140,7 +153,7 @@ int main(int argc, char *argv[])
         {
           frame_grabber.pause();
           frame_grabber_service.stop();
-          response.set(std::string("stopping"));
+          queue.send_response(no_error,"Stopping");
           console->debug("SIGTERM handled");
           return;
         }

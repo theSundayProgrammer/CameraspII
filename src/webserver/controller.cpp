@@ -16,7 +16,7 @@
 #include <cstdarg>
 #include <fstream>
 #include <camerasp/utils.hpp>
-#include <camerasp/ipc.hpp>
+#include <camerasp/msgq.hpp>
 #include <boost/filesystem.hpp>
 #include <sys/wait.h>
 #include <sstream>
@@ -138,8 +138,10 @@ auto send_failure(
 class web_server
 {
 public:
-  web_server(Json::Value &root_)
-      : response(RESPONSE_MEMORY_NAME), request(REQUEST_MEMORY_NAME), root(root_)
+  web_server(Json::Value &root_,
+             server_msg_queues &queue_)
+      : queue(queue_),
+        root(root_)
   {
 
     // server config
@@ -157,27 +159,23 @@ public:
 
   {
     if (fg_state == process_state::started)
-      try
-      {
-        std::string str = http_request->path_match[0];
-        request->set(str);
-        camerasp::buffer_t data = response->try_get();
-        *http_response << "HTTP/1.1 200 OK\r\n"
-                       << "Content-Length: " << data.size() << "\r\n"
-                       << "Content-type: "
-                       << "application/text"
-                       << "\r\n"
-                       << "Cache-Control: no-cache, must-revalidate"
-                       << "\r\n"
-                       << "\r\n"
-                       << data;
-      }
-      catch (std::runtime_error &e)
-      {
 
-        std::string success("Frame Grabber hung. Issue start command");
-        send_failure(http_response, success);
-      }
+    {
+      std::string str = http_request->path_match[0];
+
+      queue.send_message(str, [http_response](string const &data, int error) {
+        *http_response
+            << "HTTP/1.1 200 OK\r\n"
+            << "Content-Length: " << data.size() << "\r\n"
+            << "Content-type: "
+            << "application/text"
+            << "\r\n"
+            << "Cache-Control: no-cache, must-revalidate"
+            << "\r\n"
+            << "\r\n"
+            << data;
+      });
+    }
     else
     {
       std::string success("Frame Grabber not running. Issue start command");
@@ -190,15 +188,12 @@ public:
 
   {
     if (fg_state == process_state::started)
-      try
-      {
-        std::string str = http_request->path_match[0];
-        request->set(str);
-        camerasp::buffer_t data = response->try_get();
-        std::string err(data, 0, 4);
+    {
+      std::string str = http_request->path_match[0];
+      queue.send_message(str, [http_response](std::string const &data,int err) {
+        
 
-        console->error("Getting image");
-        if (err == std::string(4, '\0'))
+        if (err ==0)
         {
           *http_response << "HTTP/1.1 200 OK\r\n"
                          << "Content-Length: " << data.size() - 4 << "\r\n"
@@ -217,15 +212,10 @@ public:
         else
         {
           console->error("Not sending image");
-          send_failure(http_response, err + "No image Available");
+          send_failure(http_response, "No image Available");
         }
-      }
-      catch (std::runtime_error &e)
-      {
-
-        std::string success("Frame Grabber hung. Issue start command");
-        send_failure(http_response, success);
-      }
+      });
+    }
     else
     {
       std::string success("Frame Grabber not running. Issue start command");
@@ -285,9 +275,9 @@ public:
     if (fg_state == process_state::started)
       try
       {
-        request->set("exit");
-        camerasp::buffer_t data = response->try_get();
+        queue.send_message("exit", [](string const& str, int err) {
         console->info("stop executed");
+        });
         int status = 0;
         unsigned n = 0;
         const int max_wait_count=200;
@@ -376,7 +366,7 @@ public:
   {
     try
     {
-      camerasp::buffer_t data("Success");
+      camerasp::buffer_t data("Failed");
       std::ostringstream ostr;
       ostr << http_request->content.rdbuf();
       std::string istr = ostr.str();
@@ -387,26 +377,27 @@ public:
            ++p)
       {
         camera[(*p)[1].str()] = atoi((*p)[2].str().c_str());
+        Json::StyledWriter writer;
+        root["Camera"] = camera;
+        auto update = writer.write(root);
+        camerasp::write_file_content(config_path + "options.json", update);
         if (fg_state == process_state::started)
         {
-          request->set(std::string("/flip?") + (*p)[0].str().c_str());
-          data = data + response->try_get() + "\r\n";
+          queue.send_message(std::string("/flip?") + (*p)[0].str().c_str(),
+                             [this, http_response](std::string const &str, int error) {
+                               *http_response << "HTTP/1.1 200 OK\r\n"
+                                              << "Content-Length: " << str.size() << "\r\n"
+                                              << "Content-type: "
+                                              << "application/text"
+                                              << "\r\n"
+                                              << "Cache-Control: no-cache, must-revalidate"
+                                              << "\r\n"
+                                              << "\r\n"
+                                              << str
+                                              << "\r\n";
+                             });
         }
       }
-
-      Json::StyledWriter writer;
-      root["Camera"] = camera;
-      auto update = writer.write(root);
-      camerasp::write_file_content(config_path + "options.json", update);
-      *http_response << "HTTP/1.1 200 OK\r\n"
-                     << "Content-Length: " << data.size() << "\r\n"
-                     << "Content-type: "
-                     << "application/text"
-                     << "\r\n"
-                     << "Cache-Control: no-cache, must-revalidate"
-                     << "\r\n"
-                     << "\r\n"
-                     << data;
     }
     catch (std::runtime_error &e)
     {
@@ -419,8 +410,7 @@ public:
 
 private:
   process_state fg_state = process_state::stopped;
-  shared_mem_ptr<shared_response_data> response;
-  shared_mem_ptr<shared_request_data> request;
+  server_msg_queues &queue;
   pid_t child_pid;
   posix_spawn_file_actions_t child_fd_actions;
   Json::Value &root;
@@ -635,16 +625,10 @@ void web_server::run(std::shared_ptr<asio::io_context> io_service, char *argv[],
   server.start();
   if (fg_state == process_state::started)
   {
-    try
-    {
-      request->set("exit");
-      camerasp::buffer_t data = response->try_get();
-    }
-    catch (std::runtime_error &e)
-    {
-    }
+    queue.send_message("exit", [](std::string const &str, int) {});
   }
 }
+
 int main(int argc, char *argv[], char *env[])
 {
   try
@@ -667,9 +651,20 @@ int main(int argc, char *argv[], char *env[])
 
     address_broadcasting_server broadcaster(*io_service, 52153);
     broadcaster.receive();
+
+    boost::interprocess::message_queue::remove(camerasp::sender_name);
+    boost::interprocess::message_queue::remove(camerasp::recvr_name);
+    server_msg_queues queue(*io_service, size_t(128), size_t(10), size_t(1024 * 1024), size_t(10));
+    std::thread thread(
+        [&queue]() {
+          queue.recv_message();
+        });
     //run web server
-    web_server server(root);
+
+    web_server server(root, queue);
     server.run(io_service, argv, env);
+    queue.stop_recv();
+    thread.join();
   }
   catch (std::exception &e)
   {
