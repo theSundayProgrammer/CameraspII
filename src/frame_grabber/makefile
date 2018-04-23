@@ -18,8 +18,8 @@ srcs = main.cpp \
 	jpgconvert.cpp \
 	raspicam_mock.cpp \
 	timer.cpp \
-	file_saver.cpp \
-        mot_detect.cpp \
+	client_msg_queues.cpp\
+	mot_detect.cpp \
 	utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
