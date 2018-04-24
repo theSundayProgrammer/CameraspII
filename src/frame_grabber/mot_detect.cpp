@@ -141,13 +141,11 @@ void motion_detector::handle_motion(img_info const& img)
         int height = current_frame.rows - 20;
         std::tie(rect, number_of_changes) = detect_motion(motion, cv::Rect(x_start, y_start, width, height));
 
-        //Send image if motion detected
-        if (number_of_changes > 0)
-          console->info("Number of Changes in image = {0}", number_of_changes);
         // If a lot of changes happened, we assume something changed.
         if (number_of_changes >= there_is_motion && db_ok)
         {
           console->debug("Top Left:{0},{1} ", rect.x, rect.y);
+          console->info("Number of Changes in image = {0}", number_of_changes);
 	  auto buffer = write_JPEG_dat(img);
           auto status = db->Put(leveldb::WriteOptions(),get_gmt_time(),buffer);
           db_ok = status.ok();
