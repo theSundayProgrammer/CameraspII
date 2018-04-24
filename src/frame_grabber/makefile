@@ -13,6 +13,7 @@ directories: ${BUILD_DIR}
 srcs = main.cpp \
 	cam_still_base.cpp \
 	cam_still.cpp \
+	file_saver.cpp \
 	fopen.cpp \
 	img_info.cpp \
 	jpgconvert.cpp \
@@ -20,7 +21,7 @@ srcs = main.cpp \
 	timer.cpp \
 	client_msg_queues.cpp\
 	mot_detect.cpp \
-	archiver.cpp \
+	smtp_client.cpp \
 	utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)

@@ -81,22 +81,6 @@ int main(int argc, char *argv[])
         console->debug("Frame Capture Failed");
       }
     };
-   auto get_key = [&] (std::string const& key){
-        std::string error(4, '\0');
-        auto image = frame_grabber.get_key(key);
-        if(std::get<0>(image) == 0)
-          queue.send_response(0,std::get<1>(image));
-        else
-          queue.send_response(std::get<0>(image),"Failed");
-    };
-   auto get_frame = [&] (std::string const& key){
-        std::string error(4, '\0');
-        auto image = frame_grabber.get_image(key);
-        if(std::get<0>(image) == 0)
-          queue.send_response(0,std::get<1>(image));
-        else
-          queue.send_response(std::get<0>(image),"Failed");
-    };
 
     // Start worker threads
     std::thread thread1{[&]() {
@@ -108,16 +92,6 @@ int main(int argc, char *argv[])
         {
           int k = atoi(m[1].str().c_str());
           capture_frame(k);
-        }
-        else if (std::regex_search(uri, m, std::regex("image\\?key=([0-9]+)$")))
-        {
-          auto key = m[1].str();
-          get_key(key);
-        }
-        else if (std::regex_search(uri, m, std::regex("image\\?date=([0-9]+)$")))
-        {
-          auto key = m[1].str();
-          get_frame(key);
         }
         else if (std::regex_search(uri, m, std::regex("flip\\?vertical=(0|1)$")))
         {
