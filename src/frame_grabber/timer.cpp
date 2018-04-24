@@ -21,7 +21,8 @@ periodic_frame_grabber::periodic_frame_grabber(
     Json::Value const &root) :
 	timer_(io_service),
 	cur_img(0), 
-	current_count(0)
+	current_count(0),
+        detector(std::bind(&Archiver::write,&archiver,std::placeholders::_1))
 {
   auto backup = root["Data"];
   auto secs = backup["sample_period"].asInt();
@@ -104,10 +105,10 @@ void periodic_frame_grabber::set_timer()
   }
 }
 std::tuple<int,buffer_t> periodic_frame_grabber::get_key(string const& start){
-  return detector.get_key(start);
+  return archiver.get_key(start);
 }
 std::tuple<int,buffer_t> periodic_frame_grabber::get_image(string const& start){
-  return detector.get_image(start);
+  return archiver.get_image(start);
 }
 
 buffer_t periodic_frame_grabber::get_image(unsigned int k)

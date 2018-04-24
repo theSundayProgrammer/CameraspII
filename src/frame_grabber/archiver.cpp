@@ -28,6 +28,7 @@ leveldb::Options options;
   {
     throw std::runtime_error("Cannot open database");
   }
+  console->debug("Level Db opn db status = {0}", status.ToString());
 }
 
 

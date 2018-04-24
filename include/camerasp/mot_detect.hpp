@@ -5,6 +5,7 @@
 #include <camerasp/utils.hpp>
 #include <jpeg/jpgconvert.hpp>
 #include <tuple>
+#include <functional>
 namespace leveldb{
   class DB;
 }
@@ -14,8 +15,7 @@ namespace camerasp
 class motion_detector
 {
 public:
-  motion_detector();
-  ~motion_detector();
+  motion_detector(std::function<bool(std::string const&)> );
   void handle_motion( img_info const&);
   std::tuple<int,std::string> get_image(std::string const& start);
   std::tuple<int,std::string> get_key(std::string const& start);
@@ -24,7 +24,7 @@ private:
   cv::Mat current_frame;
   cv::Mat next_frame;
   int number_of_sequence = 0;
-  leveldb::DB *db;
+  std::function<bool(std::string const&)> archive;
   bool db_ok;
   cv::Mat kernel_ero;
   // If more than 'there_is_motion' pixels are changed, we say there is motion

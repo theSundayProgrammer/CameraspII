@@ -20,6 +20,7 @@ srcs = main.cpp \
 	timer.cpp \
 	client_msg_queues.cpp\
 	mot_detect.cpp \
+	archiver.cpp \
 	utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)

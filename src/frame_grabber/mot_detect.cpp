@@ -29,15 +29,6 @@ using namespace cv;
 extern asio::io_service frame_grabber_service;
 const int BMP_HEADER_SIZE = 54;
 
-string get_gmt_time(){
-  auto now = std::chrono::system_clock::now();                // system time
-  auto in_time_t = std::chrono::system_clock::to_time_t(now); //convert to std::time_t
-
-  std::stringstream ss;
-  ss << std::put_time(std::gmtime(&in_time_t), "%Y%m%d%H%M%S");
-  console->debug("time={0}",ss.str());
-  return ss.str();
-}
 // Check if there is motion in the result matrix
 // count the number of changes and return.
 std::tuple<cv::Rect, int>
@@ -82,18 +73,14 @@ detect_motion(const Mat &motion, const Rect &bounding_box)
 namespace camerasp
 {
 
-motion_detector::~motion_detector(){
-  delete db;
-}
-motion_detector::motion_detector()
-       :number_of_sequence (0)
+motion_detector::motion_detector(
+  std::function<bool(std::string const&)> archive_)
+       :number_of_sequence (0),
+        archive(archive_)
 {
   // Erode kernel -- used in motion detection
   leveldb::Options options;
   options.create_if_missing = true;
-  leveldb::Status status = leveldb::DB::Open(options, "/home/pi/data/image.db", &db);
-  db_ok = (bool)status.ok();
-  console->debug("Level Db opn db status = {0}", db_ok);
   kernel_ero = getStructuringElement(MORPH_RECT, Size(2, 2));
 }
 void motion_detector::handle_motion(img_info const& img)
@@ -147,8 +134,8 @@ void motion_detector::handle_motion(img_info const& img)
           console->debug("Top Left:{0},{1} ", rect.x, rect.y);
           console->info("Number of Changes in image = {0}", number_of_changes);
 	  auto buffer = write_JPEG_dat(img);
-          auto status = db->Put(leveldb::WriteOptions(),get_gmt_time(),buffer);
-          db_ok = status.ok();
+          auto status = archive(buffer);
+          db_ok =  status;
         }
         else if (number_of_sequence) {
 
@@ -160,41 +147,4 @@ void motion_detector::handle_motion(img_info const& img)
   }
   return;
 }
-std::tuple<int,std::string> motion_detector::get_key(string const& start)
-{
-  leveldb::Iterator *it = db->NewIterator(leveldb::ReadOptions());
-  auto on_end = gsl::finally([it]() { delete it; });
-  it->Seek(start);
-  if (it->Valid())
-  {
-    auto str = it->key().ToString();
-    console->debug("dat size = {0}", str.size());
-    return std::make_tuple(0,str);
-  }
-  it->SeekToLast();
-  if (it->Valid())
-  {
-    auto str = it->key().ToString();
-    console->debug("dat size = {0}", str.size());
-    return std::make_tuple(0,str);
-  }
-  return std::make_tuple(-1,"End of Database");
 }
-std::tuple<int,std::string> motion_detector::get_image(string const& start)
-{
-  leveldb::Iterator *it = db->NewIterator(leveldb::ReadOptions());
-  auto on_end = gsl::finally([it]() { delete it; });
-  it->Seek(start);
-  if (it->Valid())
-  {
-    return std::make_tuple(0,it->value().ToString());
-  }
-  it->SeekToLast();
-  if (it->Valid())
-  {
-    return std::make_tuple(0,it->value().ToString());
-  }
-  return std::make_tuple(-1,"End of Database");
-}
-}
-

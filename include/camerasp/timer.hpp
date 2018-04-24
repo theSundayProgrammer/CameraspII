@@ -9,6 +9,7 @@
 #include <jpeg/jpgconvert.hpp>
 #include <tuple>
 #include <camerasp/mot_detect.hpp>
+#include <camerasp/archiver.hpp>
 namespace camerasp
 {
 
@@ -46,6 +47,8 @@ namespace camerasp
     std::atomic<unsigned>  current_count;
     std::atomic<bool> quit_flag;
     unsigned cur_img;
+    //the order of the following declaraion is important
+    Archiver archiver;
     motion_detector detector;
   };
 }
