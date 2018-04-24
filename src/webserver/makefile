@@ -15,7 +15,7 @@ directories: ${BUILD_DIR}
 ${BUILD_DIR}:
 	${MKDIR_P} ${BUILD_DIR}
 
-webserver: ${BUILD_DIR}/controller.o ${BUILD_DIR}/utils.o
+webserver: ${BUILD_DIR}/controller.o ${BUILD_DIR}/utils.o ${BUILD_DIR}/server_msg_queues.o
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
                    -lrt -lboost_filesystem -lboost_system\
                    -L../../lib -ljson -ljpeg 
@@ -23,6 +23,8 @@ webserver: ${BUILD_DIR}/controller.o ${BUILD_DIR}/utils.o
 
 
 $(BUILD_DIR)/controller.o: controller.cpp
+	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
+$(BUILD_DIR)/server_msg_queues.o: server_msg_queues.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 $(BUILD_DIR)/utils.o: ../frame_grabber/utils.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
