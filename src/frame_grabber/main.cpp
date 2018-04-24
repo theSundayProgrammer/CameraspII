@@ -109,6 +109,11 @@ int main(int argc, char *argv[])
           int k = atoi(m[1].str().c_str());
           capture_frame(k);
         }
+        else if (std::regex_search(uri, m, std::regex("image\\?key=([0-9]+)$")))
+        {
+          auto key = m[1].str();
+          get_key(key);
+        }
         else if (std::regex_search(uri, m, std::regex("image\\?date=([0-9]+)$")))
         {
           auto key = m[1].str();

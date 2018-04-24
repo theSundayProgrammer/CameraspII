@@ -487,6 +487,16 @@ void web_server::run(std::shared_ptr<asio::io_context> io_service, char *argv[],
   fg_state = process_state::started;
 
   // get previous image
+  server.resource[R"(^/image\?key=([0-9]+)$)"]["GET"] = [&](
+                                                             std::shared_ptr<http_server::Response> http_response,
+                                                             std::shared_ptr<http_server::Request> http_request) {
+    exec_cmd(http_response, http_request);
+  };
+  server.resource[R"(^/image\?date=([0-9]+)$)"]["GET"] = [&](
+                                                             std::shared_ptr<http_server::Response> http_response,
+                                                             std::shared_ptr<http_server::Request> http_request) {
+    send_image(http_response, http_request);
+  };
   server.resource[R"(^/image\?prev=([0-9]+)$)"]["GET"] = [&](
                                                              std::shared_ptr<http_server::Response> http_response,
                                                              std::shared_ptr<http_server::Request> http_request) {
