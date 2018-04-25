@@ -54,6 +54,34 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdexcept>
 using namespace std;
 #define API_NAME "raspicam_still"
+#include <mutex>
+#include <condition_variable>
+//https://stackoverflow.com/questions/4792449/c0x-has-no-semaphores-how-to-synchronize-threads
+class Semaphore {
+public:
+    Semaphore (int count_ = 0)
+        : count(count_) {}
+
+    void notify() {
+        std::unique_lock<std::mutex> lock(mtx);
+        count++;
+        cv.notify_one();
+    }
+
+    void wait() {
+        std::unique_lock<std::mutex> lock(mtx);
+
+        while(count == 0){
+            cv.wait(lock);
+        }
+        count--;
+    }
+
+private:
+    std::mutex mtx;
+    std::condition_variable cv;
+    int count;
+};
 namespace camerasp
 {
 /** \brief type used in call back of frame grabber
@@ -84,9 +112,10 @@ static void control_callback(
   
 }
 
-static void buffer_callback(MMAL_PORT_T *port,
-                            MMAL_BUFFER_HEADER_T *buffer)
-{
+static void buffer_callback(
+  MMAL_PORT_T *port,
+  MMAL_BUFFER_HEADER_T *buffer
+  ) {
   const unsigned int END_FLAG =
       MMAL_BUFFER_HEADER_FLAG_FRAME_END |
       MMAL_BUFFER_HEADER_FLAG_TRANSMISSION_FAILED;
@@ -94,11 +123,11 @@ static void buffer_callback(MMAL_PORT_T *port,
   RASPICAM_USERDATA *userdata = (RASPICAM_USERDATA *)port->userdata;
   unsigned int flags = buffer->flags;
   {
+    mmal_buffer_header_mem_lock(buffer);
     auto _ = gsl::finally([buffer]() {
       mmal_buffer_header_mem_unlock(buffer);
       mmal_buffer_header_release(buffer);
     });
-    mmal_buffer_header_mem_lock(buffer);
     if (userdata == NULL)
     {
       return;
@@ -131,17 +160,15 @@ static void buffer_callback(MMAL_PORT_T *port,
   }
 }
 
-cam_still::~cam_still()
-{
+cam_still::~cam_still() {
   release();
 }
-cam_still::cam_still()
-    : encoding(MMAL_ENCODING_BMP),
+cam_still::cam_still() :
+      encoding(MMAL_ENCODING_BMP),
       metering(MMAL_PARAM_EXPOSUREMETERINGMODE_AVERAGE),
       exposure(MMAL_PARAM_EXPOSUREMODE_AUTO),
       awb(MMAL_PARAM_AWBMODE_AUTO),
-      imageEffect(MMAL_PARAM_IMAGEFX_NONE)
-{
+      imageEffect(MMAL_PARAM_IMAGEFX_NONE) {
   camera = NULL;
   encoder = NULL;
   encoder_connection = NULL;
@@ -152,8 +179,7 @@ cam_still::cam_still()
   _isInitialized = false;
   set_defaults();
 }
-void cam_still::set_defaults()
-{
+void cam_still::set_defaults() {
   width = 640;
   height = 480;
   encoder = NULL;
@@ -180,8 +206,7 @@ void cam_still::set_defaults()
   imageEffect = MMAL_PARAM_IMAGEFX_NONE;
 }
 
-void cam_still::commit_parameters()
-{
+void cam_still::commit_parameters() {
   if (!changed_settings)
     return;
   commitSharpness();
@@ -206,8 +231,9 @@ void cam_still::commit_parameters()
     console->error(API_NAME
                    ": Failed to set exposure compensation parameter.");
   // Set Color Efects
-  MMAL_PARAMETER_COLOURFX_T colfx =
-      {{MMAL_PARAMETER_COLOUR_EFFECT, sizeof(colfx)}, 0, 0, 0};
+  MMAL_PARAMETER_COLOURFX_T colfx = {
+     { MMAL_PARAMETER_COLOUR_EFFECT, sizeof(colfx) },
+     0, 0, 0};
   colfx.enable = 0;
   colfx.u = 128;
   colfx.v = 128;
@@ -226,8 +252,7 @@ void cam_still::commit_parameters()
   if (mmal_port_parameter_set(camera->control, &crop.hdr) != MMAL_SUCCESS)
     console->error(API_NAME ": Failed to set ROI parameter.");
   // Set encoder encoding
-  if (encoder_output_port != NULL)
-  {
+  if (encoder_output_port != NULL) {
     encoder_output_port->format->encoding = (encoding);
     mmal_port_format_commit(encoder_output_port);
   }
@@ -238,17 +263,16 @@ MMAL_STATUS_T
 cam_still::connectPorts(
     MMAL_PORT_T *output_port,
     MMAL_PORT_T *input_port,
-    MMAL_CONNECTION_T **connection)
-{
+    MMAL_CONNECTION_T **connection) {
   MMAL_STATUS_T status =
       mmal_connection_create(
           connection,
           output_port,
           input_port,
           MMAL_CONNECTION_FLAG_TUNNELLING |
-              MMAL_CONNECTION_FLAG_ALLOCATION_ON_INPUT);
-  if (status == MMAL_SUCCESS)
-  {
+              MMAL_CONNECTION_FLAG_ALLOCATION_ON_INPUT
+      );
+  if (status == MMAL_SUCCESS) {
     status = mmal_connection_enable(*connection);
     if (status != MMAL_SUCCESS)
       mmal_connection_destroy(*connection);
@@ -257,17 +281,13 @@ cam_still::connectPorts(
   return status;
 }
 
-int cam_still::create_camera()
-{
-  if (mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA, &camera))
-  {
+int cam_still::create_camera() {
+  if (mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA, &camera)) {
     console->error(API_NAME ": Failed to create camera component.");
-    destroy_camera();
     return -1;
   }
 
-  if (!camera->output_num)
-  {
+  if (!camera->output_num) {
     console->error(API_NAME ": Camera does not have output ports!");
     destroy_camera();
     return -1;
@@ -276,16 +296,14 @@ int cam_still::create_camera()
   camera_still_port = camera->output[MMAL_CAMERA_CAPTURE_PORT];
 
   // Enable the camera, and tell it its control callback function
-  if (mmal_port_enable(camera->control, control_callback))
-  {
+  if (mmal_port_enable(camera->control, control_callback)) {
     console->error(API_NAME ": Could not enable control port.");
     destroy_camera();
     return -1;
   }
 
   MMAL_PARAMETER_CAMERA_CONFIG_T camConfig = {
-      {MMAL_PARAMETER_CAMERA_CONFIG,
-       sizeof(camConfig)},
+      {MMAL_PARAMETER_CAMERA_CONFIG, sizeof(camConfig)},
       width,                              // max_stills_w
       height,                             // max_stills_h
       0,                                  // stills_yuv422
@@ -319,27 +337,24 @@ int cam_still::create_camera()
 
   camera_still_port->buffer_num = camera_still_port->buffer_num_recommended;
 
-  if (mmal_port_format_commit(camera_still_port))
-  {
+  if (mmal_port_format_commit(camera_still_port)) {
     console->error(API_NAME ": Camera still format could not be set.");
     destroy_camera();
     return -1;
   }
 
-  if (mmal_component_enable(camera))
-  {
+  if (mmal_component_enable(camera)) {
     console->error(API_NAME ": Camera component could not be enabled.");
     destroy_camera();
     return -1;
   }
 
   if (!(encoder_pool = mmal_port_pool_create(
-            camera_still_port,
-            camera_still_port->buffer_num,
-            camera_still_port->buffer_size)))
-  {
+      camera_still_port,
+      camera_still_port->buffer_num,
+      camera_still_port->buffer_size))) {
     console->error(API_NAME
-                   ": Failed to create buffer header pool for camera.");
+      ": Failed to create buffer header pool for camera.");
     destroy_camera();
     return -1;
   }
@@ -347,16 +362,13 @@ int cam_still::create_camera()
   return 0;
 }
 
-int cam_still::create_encoder()
-{
-  if (mmal_component_create(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER, &encoder))
-  {
+int cam_still::create_encoder() {
+  if (mmal_component_create(MMAL_COMPONENT_DEFAULT_IMAGE_ENCODER, &encoder)) {
     console->error(API_NAME ": Could not create encoder component.");
     destroy_encoder();
     return -1;
   }
-  if (0==encoder->input_num || 0==encoder->output_num)
-  {
+  if (0==encoder->input_num || 0==encoder->output_num) {
     console->error(API_NAME ": Encoder does not have input/output ports.");
     destroy_encoder();
     return -1;
@@ -378,58 +390,50 @@ int cam_still::create_encoder()
   if (encoder_output_port->buffer_num < encoder_output_port->buffer_num_min)
     encoder_output_port->buffer_num = encoder_output_port->buffer_num_min;
 
-  if (mmal_port_format_commit(encoder_output_port))
-  {
+  if (mmal_port_format_commit(encoder_output_port)) {
     console->error(API_NAME
                    ": Could not set format on encoder output port.");
     destroy_encoder();
     return -1;
   }
-  if (mmal_component_enable(encoder))
-  {
+  if (mmal_component_enable(encoder)) {
     console->error(API_NAME ": Could not enable encoder component.");
     destroy_encoder();
     return -1;
   }
   if (!(encoder_pool =
-            mmal_port_pool_create(
-                encoder_output_port,
-                encoder_output_port->buffer_num,
-                encoder_output_port->buffer_size)))
-  {
-    console->error(API_NAME
-                   ": Failed to create buffer header pool for encoder output port.");
+          mmal_port_pool_create(
+            encoder_output_port,
+            encoder_output_port->buffer_num,
+            encoder_output_port->buffer_size))) {
+    console->error(
+      API_NAME
+      ": Failed to create buffer header pool for encoder output port.");
     destroy_encoder();
     return -1;
   }
   return 0;
 }
 
-void cam_still::destroy_camera()
-{
-  if (camera)
-  {
+void cam_still::destroy_camera() {
+  if (camera) {
     mmal_component_destroy(camera);
     camera = NULL;
   }
 }
 
-void cam_still::destroy_encoder()
-{
-  if (encoder_pool)
-  {
+void cam_still::destroy_encoder() {
+  if (encoder_pool) {
     mmal_port_pool_destroy(encoder->output[0], encoder_pool);
     encoder_pool = NULL;
   }
-  if (encoder)
-  {
+  if (encoder) {
     mmal_component_destroy(encoder);
     encoder = NULL;
   }
 }
 
-void cam_still::release()
-{
+void cam_still::release() {
   if (!_isInitialized)
     return;
   mmal_connection_destroy(encoder_connection);
@@ -439,32 +443,25 @@ void cam_still::release()
   _isInitialized = false;
 }
 
-int cam_still::initialize()
-{
+int cam_still::initialize() {
   if (_isInitialized)
     return 0;
-  if (create_camera())
-  {
+  if (create_camera()) {
     console->error(API_NAME ": Failed to create camera component.");
     destroy_camera();
     return -1;
-  }
-  else if (create_encoder())
-  {
+  } else if (create_encoder()) {
     console->error(API_NAME ": Failed to create encoder component.");
     destroy_camera();
     return -1;
-  }
-  else
-  {
+  } else {
     camera_still_port = camera->output[MMAL_CAMERA_CAPTURE_PORT];
     encoder_input_port = encoder->input[0];
     encoder_output_port = encoder->output[0];
     if (connectPorts(
             camera_still_port,
             encoder_input_port,
-            &encoder_connection) != MMAL_SUCCESS)
-    {
+            &encoder_connection) != MMAL_SUCCESS) {
       console->error("ERROR: Could not connect encoder ports!");
       return -1;
     }
@@ -472,9 +469,8 @@ int cam_still::initialize()
   _isInitialized = true;
   return 0;
 }
-
-int cam_still::take_picture(unsigned char *preallocated_data, size_t *length)
-{
+//Todo: no need to create mutex everytime
+int cam_still::take_picture(unsigned char *preallocated_data, size_t *length) {
   initialize();
   int ret = 0;
   sem_t mutex;
@@ -487,13 +483,11 @@ int cam_still::take_picture(unsigned char *preallocated_data, size_t *length)
   userdata.offset = 0;
   userdata.length = *length;
   encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *)&userdata;
-  if ((ret = start_capture()) != 0)
-  {
+  if ((ret = start_capture()) != 0) {
     sem_destroy(&mutex);
     return -1;
   }
-  if (clock_gettime(CLOCK_REALTIME, &ts) == -1)
-  {
+  if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
     console->error("clock_gettime");
     sem_destroy(&mutex);
     return -1;
@@ -503,21 +497,14 @@ int cam_still::take_picture(unsigned char *preallocated_data, size_t *length)
   while ((ret = sem_timedwait(&mutex, &ts)) == -1 && errno == EINTR)
     continue; /* Restart if interrupted by handler */
 
-  if (ret == -1)
-  {
+  if (ret == -1) {
     if (errno == ETIMEDOUT)
       console->error("sem_timedwait() timed out\n");
-    else
-      console->error("sem_timedwait");
     stop_capture();
     sem_destroy(&mutex);
     return -1;
-  }
-  else
-  {
-
+  } else {
     *length = userdata.offset;
-
     stop_capture();
     sem_destroy(&mutex);
     return 0;
@@ -558,8 +545,7 @@ int cam_still::start_capture()
   if (mmal_port_parameter_set_boolean(
           camera_still_port,
           MMAL_PARAMETER_CAPTURE,
-          1) != MMAL_SUCCESS)
-  {
+          1) != MMAL_SUCCESS) {
     console->error(API_NAME ": Failed to start capture.");
     return -1;
   }
@@ -617,8 +603,7 @@ void cam_still::commitSharpness()
     console->error(API_NAME ": Failed to set sharpness parameter.");
 }
 
-void cam_still::commitContrast()
-{
+void cam_still::commitContrast() {
   if (mmal_port_parameter_set_rational(
           camera->control,
           MMAL_PARAMETER_CONTRAST,
@@ -626,8 +611,7 @@ void cam_still::commitContrast()
     console->error(API_NAME ": Failed to set contrast parameter.");
 }
 
-void cam_still::commitSaturation()
-{
+void cam_still::commitSaturation() {
   if (mmal_port_parameter_set_rational(
           camera->control,
           MMAL_PARAMETER_SATURATION,
@@ -635,8 +619,7 @@ void cam_still::commitSaturation()
     console->error(API_NAME ": Failed to set saturation parameter.");
 }
 
-void cam_still::commitExposure()
-{
+void cam_still::commitExposure() {
   MMAL_PARAMETER_EXPOSUREMODE_T exp_mode = {
       {MMAL_PARAMETER_EXPOSURE_MODE, sizeof(exp_mode)},
       (exposure)};
@@ -644,8 +627,7 @@ void cam_still::commitExposure()
     console->error(API_NAME ": Failed to set exposure parameter.");
 }
 
-void cam_still::commitAWB()
-{
+void cam_still::commitAWB() {
   MMAL_PARAMETER_AWBMODE_T param = {
       {MMAL_PARAMETER_AWB_MODE, sizeof(param)},
       (awb)};
@@ -653,8 +635,7 @@ void cam_still::commitAWB()
     console->error(API_NAME ": Failed to set AWB parameter.");
 }
 
-void cam_still::commitImageEffect()
-{
+void cam_still::commitImageEffect() {
   MMAL_PARAMETER_IMAGEFX_T imgFX = {
       {MMAL_PARAMETER_IMAGE_EFFECT, sizeof(imgFX)},
       (imageEffect)};
@@ -662,8 +643,7 @@ void cam_still::commitImageEffect()
     console->error(API_NAME ": Failed to set image effect parameter.");
 }
 
-void cam_still::commitMetering()
-{
+void cam_still::commitMetering() {
   MMAL_PARAMETER_EXPOSUREMETERINGMODE_T meter_mode = {
       {MMAL_PARAMETER_EXP_METERING_MODE, sizeof(meter_mode)},
       (metering)};
@@ -671,8 +651,7 @@ void cam_still::commitMetering()
     console->error(API_NAME ": Failed to set metering parameter.");
 }
 
-void cam_still::commitFlips()
-{
+void cam_still::commitFlips() {
   MMAL_PARAMETER_MIRROR_T mirror = {
       {MMAL_PARAMETER_MIRROR, sizeof(MMAL_PARAMETER_MIRROR_T)},
       MMAL_PARAM_MIRROR_NONE};
@@ -690,32 +669,27 @@ void cam_still::commitFlips()
 
 //Returns an id of the camera. We assume the camera
 // id is obtained using raspberry serial number obtained in /proc/cpuinfo
-string cam_still::getId()
-{
-  char serial[1024];
+string cam_still::getId() {
+  char serial[64];
   serial[0] = '\0';
   ifstream file("/proc/cpuinfo");
-  if (file)
-  {
+  if (file) {
     //read lines until find serial
     bool found = false;
-    while (!file.eof() && !found)
-    {
+    while (!file.eof() && !found) {
       string str;
       std::getline(file, str);
 
-      if (str.find("Serial") != string::npos)
-      {
+      if (str.find("Serial") != string::npos) {
         char aux[100];
-        if (sscanf(str.c_str(), "%s : %s", aux, serial) != 2)
+        if (sscanf(str.c_str(), "%s : %s", aux, serial) != 2){
           console->error("Error parsing /proc/cpuinfo");
-        else
+        }else{
           found = true;
+        }
       }
     }
-  }
-  else
-  {
+  } else {
     console->error("Could not read /proc/cpuinfo");
   }
 
