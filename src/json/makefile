@@ -1,4 +1,4 @@
-INCLUDES = -I ../include
+INCLUDES = -I ../../include
 CXX_FLAGS = -pthread -std=c++14
 BUILD_DIR=./build
 LIB_DIR=../../lib
