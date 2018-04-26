@@ -153,13 +153,20 @@ void smtp_client::handle_HELO()
 }
 
 void smtp_client::handle_AUTH()
-{
-  on_read(&smtp_client::handle_UID, camerasp::EncodeBase64(uid) + "\r\n");
+{ 
+  std::string base64 = EncodeBase64(uid);
+   if (unsigned int writePaddChars = (3 - base64.length() % 3) % 3)
+        base64.append(writePaddChars, '=');
+  
+  on_read(&smtp_client::handle_UID,base64 + "\r\n");
 }
 
 void smtp_client::handle_UID()
 {
-  on_read(&smtp_client::handle_PWD, camerasp::EncodeBase64(pwd) + "\r\n");
+   std::string base64 = EncodeBase64(pwd);
+   if (unsigned int writePaddChars = (3 - base64.length() % 3) % 3)
+        base64.append(writePaddChars, '=');
+  on_read(&smtp_client::handle_PWD, base64 + "\r\n");
 }
 
 void smtp_client::handle_PWD()
