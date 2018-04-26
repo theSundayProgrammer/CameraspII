@@ -1,7 +1,7 @@
 INCLUDES = -I ../include
 CXX_FLAGS = -pthread -std=c++14
 BUILD_DIR=./build
-LIB_DIR=../lib
+LIB_DIR=../../lib
 CXX=g++-6
 
 MKDIR_P = mkdir -p
