@@ -54,34 +54,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdexcept>
 using namespace std;
 #define API_NAME "raspicam_still"
-#include <mutex>
-#include <condition_variable>
-//https://stackoverflow.com/questions/4792449/c0x-has-no-semaphores-how-to-synchronize-threads
-class Semaphore {
-public:
-    Semaphore (int count_ = 0)
-        : count(count_) {}
-
-    void notify() {
-        std::unique_lock<std::mutex> lock(mtx);
-        count++;
-        cv.notify_one();
-    }
-
-    void wait() {
-        std::unique_lock<std::mutex> lock(mtx);
-
-        while(count == 0){
-            cv.wait(lock);
-        }
-        count--;
-    }
-
-private:
-    std::mutex mtx;
-    std::condition_variable cv;
-    int count;
-};
 namespace camerasp
 {
 /** \brief type used in call back of frame grabber
