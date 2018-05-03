@@ -7,7 +7,6 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //////////////////////////////////////////////////////////////////////////////
 #include <json/reader.h>
-#include <asio.hpp>
 
 #include <string>
 #include <vector>
@@ -18,8 +17,8 @@
 #include <iostream>
 #include <atomic>
 #include <cstdlib>
-#include <iostream>
 #include <memory>
+#include <camerasp/network.hpp>
 #include <camerasp/timer.hpp>
 #include <arpa/inet.h>
 #include <asio/signal_set.hpp>
@@ -30,7 +29,6 @@
 std::shared_ptr<spdlog::logger> console;
 #define ASIO_ERROR_CODE 
 std::string home_path;
-struct response_t { uint32_t error; uint32_t length;};
 void configure_logger(Json::Value &root)
 {
   namespace spd = spdlog;
