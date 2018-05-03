@@ -100,31 +100,23 @@ static void buffer_callback(
       mmal_buffer_header_mem_unlock(buffer);
       mmal_buffer_header_release(buffer);
     });
-    if (userdata == NULL)
-    {
+    if (userdata == NULL) {
       return;
-    }
-    else if (buffer->length + userdata->offset > userdata->length)
-    {
+    } else if (buffer->length + userdata->offset > userdata->length) {
       console->error(API_NAME
                      ": Buffer provided {0} was too small offset={1}!"
                      " Failed to copy data into buffer.",
                      userdata->offset,
                      userdata->length);
       return;
-    }
-    else
-    {
+    } else {
       for (unsigned int i = 0; i < buffer->length; ++i)
         userdata->data[userdata->offset++] = buffer->data[i];
     }
   }
-  if (END_FLAG & flags)
-  {
+  if (END_FLAG & flags) {
     sem_post(userdata->mutex);
-  }
-  else if (port->is_enabled)
-  {
+  } else if (port->is_enabled) {
     MMAL_BUFFER_HEADER_T *new_buffer =
         mmal_queue_get(userdata->encoderPool->queue);
     if (new_buffer)
