@@ -1,5 +1,5 @@
 
-INCLUDES = -I ../include
+INCLUDES = -I ../../include
 CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++
