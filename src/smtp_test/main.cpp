@@ -1,11 +1,9 @@
 #include <string>
 
 #include <camerasp/smtp_client.hpp>
-#include <camerasp/logger.hpp>
 #include <fstream>
 
 #include <iostream>
-std::shared_ptr<spdlog::logger> console;
 int main(int argc, char *argv[])
 {
   try
