@@ -1,0 +1,25 @@
+// Configuration options
+{
+  "home_path" : "/home/pi/projects/Netcam",
+  "Camera": {
+      "height" : 480,
+      "horizontal" : 0,
+      "iso" : 360,
+      "vertical" : 1,
+      "width" : 640
+   },
+    "Logging": {
+      "path": "data/log",
+      "count": 5,
+      "size": 2,
+      "type": "debug"
+    },
+    "Data": {
+      "path_prefix": "data/backup",
+      "sample_period": 1,
+      "count": 1000
+    },
+    "Server": {
+      "port" : 5125
+    }
+}
