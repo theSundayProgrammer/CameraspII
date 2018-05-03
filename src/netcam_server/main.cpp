@@ -21,7 +21,6 @@
 #include <iostream>
 #include <memory>
 #include <camerasp/timer.hpp>
-#include <camerasp/msg_struct.hpp>
 #include <arpa/inet.h>
 #include <asio/signal_set.hpp>
 #include <asio/ts/buffer.hpp>
@@ -31,6 +30,7 @@
 std::shared_ptr<spdlog::logger> console;
 #define ASIO_ERROR_CODE 
 std::string home_path;
+struct response_t { uint32_t error; uint32_t length;};
 void configure_logger(Json::Value &root)
 {
   namespace spd = spdlog;
@@ -117,7 +117,7 @@ class session
     }
     void send_response(int err, std::string const& str)
 {
-  network_message_t response;
+  response_t response;
   response.error =htonl((uint32_t) err);
   response.length  =str.length() + sizeof(response.error) + sizeof(response.length);
 
