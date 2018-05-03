@@ -24,8 +24,7 @@ namespace camerasp
 
 
 
-  size_t cam_still_base::image_buffer_size() const
-  {
+  size_t cam_still_base::image_buffer_size() const {
     return width * height * 3 + 54;	//oversize the buffer so to fit BMP images
   }
 
