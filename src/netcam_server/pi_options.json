@@ -1,6 +1,6 @@
 // Configuration options
 {
-  "home_path" : "/home/pi/projects/Netcam",
+  "home_path" : "/home/pi/projects/CameraspII",
   "Camera": {
       "height" : 480,
       "horizontal" : 0,
