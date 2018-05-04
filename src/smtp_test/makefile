@@ -1,5 +1,5 @@
 
-INCLUDES = -I ../include
+INCLUDES = -I ../../include
 CXX_FLAGS = -pthread -g -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++-6
@@ -22,7 +22,7 @@ $(BUILD_DIR)/main.o: main.cpp
 $(BUILD_DIR)/utils.o: utils.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
-$(BUILD_DIR)/smtp_mail.o: ../server/smtp_mail.cpp
+$(BUILD_DIR)/smtp_mail.o: smtp_mail.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
 .PHONY: clean
