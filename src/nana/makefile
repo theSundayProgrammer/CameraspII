@@ -1,4 +1,4 @@
-CXX_FLAGS =  -pthread -O3 -DNANA_ENABLE_JPG -DASIO_STANDALONE -Wtrigraphs
+CXX_FLAGS =  -pthread -g -DNANA_ENABLE_JPG -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++
 MKDIR_P = mkdir -p
@@ -16,7 +16,7 @@ ${BUILD_DIR}:
 	${MKDIR_P} ${BUILD_DIR}
 
 picture : $(objs)
-	$(CXX)   -o $@ $^ -O3 -Wunused \
+	$(CXX)   -o $@ $^ -g -Wunused \
 		-lnana -lboost_filesystem -lboost_system\
 		-lrt -lX11 -pthread -lXft -lfontconfig \
     -ljpeg 

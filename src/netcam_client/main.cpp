@@ -27,12 +27,13 @@ int main(int argc, char* argv[])
     tcp::resolver resolver(io_context);
     asio::connect(s, resolver.resolve(argv[1], argv[2]));
 
-    std::cout << "Enter message: ";
-    char request[max_length];
-    std::cin.getline(request, max_length);
+    //std::cout << "Enter message: ";
+//    char request[max_length];
+//    std::cin.getline(request, max_length);
+      char const* request= "image?prev=0\r\n";
     size_t request_length = std::strlen(request);
-    request[request_length++]='\r';
-    request[request_length++]='\n';
+ //   request[request_length++]='\r';
+  //  request[request_length++]='\n';
     asio::write(s, asio::buffer(request, request_length));
     char reply[max_length];
     response_t  response;
