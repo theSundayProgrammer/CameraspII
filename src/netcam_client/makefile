@@ -3,16 +3,23 @@ INCLUDES = -I ../../include
 CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++
+MKDIR_P = mkdir -p
 
-all : client
+all : directories netcam 
 .PHONY : all
+
+directories: ${BUILD_DIR} 
 
 srcs = main.cpp 
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
-client: $(objs)
-	$(CXX)   -o $@ $^ -pthread -O3 -Wunused 
+${BUILD_DIR}:
+	${MKDIR_P} ${BUILD_DIR}
+
+netcam: $(objs)
+	$(CXX)   -o $@ $^ -lrt -pthread -O3 -Wunused 
+
 $(BUILD_DIR)/%.o: %.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
 
@@ -20,6 +27,6 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # $(RM) is rm -f by default
 clean:
-	$(RM) $(objs) $(deps)  client
+	$(RM) $(objs) $(deps) netcam 
 
 -include $(deps)
