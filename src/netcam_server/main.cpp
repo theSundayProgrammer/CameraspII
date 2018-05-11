@@ -70,20 +70,18 @@ class session
       socket_.async_read_some(
         asio::buffer(data_, max_length),
         [this, self](std::error_code ec, std::size_t length)
+        {
+          if (!ec)
           {
-            if (!ec)
-            {
-
-              in_buf += std::string(data_,length);
-              if (in_buf.length() >=2 && *(in_buf.end()-1) == '\n' && *(in_buf.end()-2)=='\r')
-		{
-		  handle_request(in_buf);
-               }
+        
+            in_buf += std::string(data_,length);
+            if (in_buf.length() >=2 && *(in_buf.end()-1) == '\n' && *(in_buf.end()-2)=='\r')
+              handle_request(in_buf);
             else
               do_read();
           } else 
             std::cout << "error " << ec << std::endl;
-          });
+        });
     }
 
      void handle_request(std::string const& uri)
@@ -116,19 +114,19 @@ class session
           });
     }
     void send_response(int err, std::string const& str)
-{
-  response_t response;
-  response.error =htonl((uint32_t) err);
-  response.length  =str.length() + sizeof(response.error) + sizeof(response.length);
+    {
+      response_t response;
+      response.error =htonl((uint32_t) err);
+      response.length  =str.length() + sizeof(response.error) + sizeof(response.length);
 
-  response.length  =htonl(response.length );
-  out_buf = std::string(reinterpret_cast<char *>(&response), sizeof(response)) + str;
-  do_write(0);
-}
-    void capture_frame (int k) {
+      response.length  =htonl(response.length );
+      out_buf = std::string(reinterpret_cast<char *>(&response), sizeof(response)) + str;
+      do_write(0);
+    }
+    void capture_frame (int k)
+    {
       try
       {
-  
         auto image = frame_grabber.get_image(k);
         send_response(no_error,image);
       }
