@@ -4,14 +4,14 @@ CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++
 
-all : pinger
+all : client
 .PHONY : all
 
-srcs = pinger.cpp 
+srcs = main.cpp 
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
-pinger: $(objs)
+client: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused 
 $(BUILD_DIR)/%.o: %.cpp
 	$(CXX) $(CXX_FLAGS) $(INCLUDES) $(OPTIONS) -MMD -c $< -o $@
@@ -20,6 +20,6 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # $(RM) is rm -f by default
 clean:
-	$(RM) $(objs) $(deps)  pinger
+	$(RM) $(objs) $(deps)  client
 
 -include $(deps)

@@ -1,4 +1,3 @@
-
 //////////////////////////////////////////////////////////////////////////////
 // Copyright 2016-2018 (c) Joseph Mariadassou
 // theSundayProgrammer@gmail.com
@@ -7,7 +6,6 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //////////////////////////////////////////////////////////////////////////////
 #include <json/reader.h>
-#include <asio.hpp>
 
 #include <string>
 #include <vector>
@@ -18,9 +16,9 @@
 #include <iostream>
 #include <atomic>
 #include <cstdlib>
-#include <iostream>
 #include <memory>
-#include <camerasp/timer.hpp>
+#include <camerasp/network.hpp>
+#include <camerasp/basic_frame_grabber.hpp>
 #include <arpa/inet.h>
 #include <asio/signal_set.hpp>
 #include <asio/ts/buffer.hpp>
@@ -30,7 +28,6 @@
 std::shared_ptr<spdlog::logger> console;
 #define ASIO_ERROR_CODE 
 std::string home_path;
-struct response_t { uint32_t error; uint32_t length;};
 void configure_logger(Json::Value &root)
 {
   namespace spd = spdlog;
@@ -51,9 +48,9 @@ class session
 : public std::enable_shared_from_this<session>
 {
   public:
-    session(tcp::socket socket_,
-    camerasp::periodic_frame_grabber& frame_grabber_)
-      : socket(std::move(socket_))
+    session(tcp::socket socket,
+    camerasp::basic_frame_grabber& frame_grabber_)
+      : socket_(std::move(socket))
       ,frame_grabber(frame_grabber_)
       , input_deadline_(socket.get_executor())
     {
@@ -192,9 +189,9 @@ class server
           });
     }
 
-    camerasp::periodic_frame_grabber& frame_grabber;
-    tcp::acceptor acceptor;
-    tcp::socket socket;
+    camerasp::basic_frame_grabber& frame_grabber;
+    tcp::acceptor acceptor_;
+    tcp::socket socket_;
 };
 
 int main(int argc, char *argv[])
@@ -224,7 +221,7 @@ int main(int argc, char *argv[])
     });
 
     //configure frame grabber
-    camerasp::periodic_frame_grabber frame_grabber(frame_grabber_service, root);
+    camerasp::basic_frame_grabber frame_grabber(frame_grabber_service, root);
     bool retval = frame_grabber.resume();
     if (!retval) {
       console->error("Unable to open Camera");

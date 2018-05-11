@@ -48,7 +48,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mmal/util/mmal_default_components.h>
 #include <mmal/util/mmal_util.h>
 #include <mmal/util/mmal_util_params.h>
-#include <semaphore.h>
 #include <camerasp/utils.hpp>
 #include <gsl/gsl_util>
 #include <stdexcept>
@@ -397,7 +396,6 @@ void cam_still::destroy_encoder() {
   }
 }
 
-  sem_t mutex;
 void cam_still::release() {
   if (!_isInitialized)
     return;

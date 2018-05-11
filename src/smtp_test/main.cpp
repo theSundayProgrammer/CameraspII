@@ -13,8 +13,6 @@ int main(int argc, char *argv[])
       std::cerr << "Usage: client <host> <port> <uid> <pwd>\n";
       return 1;
     }
-    console = spdlog::stdout_color_mt("smtp_logger");
-    console->set_level(spdlog::level::debug);
     asio::ssl::context ctx(asio::ssl::context::sslv23);
     ctx.load_verify_file("cacert.pem");
 

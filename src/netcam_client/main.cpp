@@ -1,12 +1,11 @@
- 
-
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include "asio.hpp"
 #include <arpa/inet.h>
 #include <fstream>
-struct response_t { uint32_t error; uint32_t length;};
+#include <camerasp/network.hpp>
+
 using asio::ip::tcp;
 
 enum { max_length = 1024*1024 };
@@ -74,3 +73,4 @@ int main(int argc, char* argv[])
 
   return 0;
 }
+

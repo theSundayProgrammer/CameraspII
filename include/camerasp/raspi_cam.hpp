@@ -1,6 +1,5 @@
 /**********************************************************
- Copyright (c) 2017 Joseph Mariadassou 
- theSundayProgrammer@gmail.com.
+ Copyright (c) 2017 Joseph Mariadassou theSundayProgrammer@gmail.com.
  
 This header was inspired by raspicam 
 http://github.com/cedric/raspicam
@@ -45,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <atomic>
 #include <mmal/mmal.h>
+#include <semaphore.h>
 struct MMAL_COMPONENT_T;
 struct MMAL_CONNECTION_T;
 struct MMAL_POOL_T;
@@ -89,6 +89,7 @@ namespace camerasp {
 
     bool _isInitialized;
 
+  sem_t mutex;
 
   MMAL_FOURCC_T encoding;
   MMAL_PARAM_EXPOSUREMETERINGMODE_T metering;
