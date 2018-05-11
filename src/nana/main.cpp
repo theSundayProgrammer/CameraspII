@@ -20,10 +20,10 @@ class client{
      client(
     char const* host_, 
     char const* port_,
-    nana::form& frm_,
+    nana::place& place_,
     nana::picture& pic_
     ):s(io_context),
-     frm(frm_),
+     place(place_),
      pic(pic_),
      host(host_),
      port(port_)
@@ -60,9 +60,7 @@ class client{
           nana::paint::image img;
           img.open( buf.data(), buf.length());
           pic.load(img);
-          //frm.collocate();
-          nana::API::refresh_window(frm);
-         // probe_data();
+          place.collocate();
         }
       } else  {
         fprintf(stdout,"Error in read %s\n", ec.message().c_str()); 
@@ -70,7 +68,6 @@ class client{
     }
     void probe_data()
     {
-          usleep(100*1000); //100 msec
       asio::write(s, asio::buffer(request, request_length));
         fprintf(stderr,"%s:%d\n",__FILE__, __LINE__);
       size_t reply_length = asio::read(s, asio::buffer((char*)&response,sizeof response));
@@ -101,7 +98,7 @@ class client{
       std::string buf;
       enum {max_length =1024};
       char reply[max_length];
-      nana::form& frm;
+      nana::place& place;
       nana::picture& pic;
 };
 
@@ -119,11 +116,11 @@ int main(int argc ,char* argv[])
     }
     form fm;
     picture pic(fm);
-    place p{fm};
-    p.div("pic"); 
-    p["pic"] << pic ;
+    place place{fm};
+    place.div("pic"); 
+    place["pic"] << pic ;
     fprintf(stderr,"%s:%d\n",__FILE__, __LINE__);
-    client cl(argv[1],argv[2],fm,pic);
+    client cl(argv[1],argv[2],place,pic);
     std::thread thread([&]() {
       cl.run() ;
       });
