@@ -51,34 +51,53 @@ class session
 : public std::enable_shared_from_this<session>
 {
   public:
-    session(tcp::socket socket,
+    session(tcp::socket socket_,
     camerasp::periodic_frame_grabber& frame_grabber_)
-      : socket_(std::move(socket))
+      : socket(std::move(socket_))
       ,frame_grabber(frame_grabber_)
+      , input_deadline_(socket.get_executor())
     {
     }
-
+    ~session()
+    {
+      console->info("Session ended");
+    }
     void start()
     {
+      auto self(shared_from_this());
+      stop_on_=true;
+      input_deadline_.expires_from_now(std::chrono::seconds(10));
+      input_deadline_.async_wait([this,self] () { stop() });
       do_read();
     }
 
   private:
+    std::atomic<bool> stop_on_;
+    void stop()
+    {
+      if(stop_on_)
+      {
+        socket.close();
+        input_deadline_.cancel();
+      }else {
+        stop_on_=true;
+        auto self(shared_from_this());
+        input_deadline_.expires_from_now(std::chrono::seconds(10));
+        input_deadline_.async_wait([this,self] () { stop() });
+      }
+
+    }
     void do_read()
     {
       auto self(shared_from_this());
-      socket_.async_read_some(
-        asio::buffer(data_, max_length),
+      asio::async_read_until(socket, asio::buffer(data_, max_length),'\n',
         [this, self](std::error_code ec, std::size_t length)
         {
           if (!ec)
           {
-        
+            stop_on_ = false;    
             in_buf += std::string(data_,length);
-            if (in_buf.length() >=2 && *(in_buf.end()-1) == '\n' && *(in_buf.end()-2)=='\r')
-              handle_request(in_buf);
-            else
-              do_read();
+            handle_request(in_buf);
           } else 
             std::cout << "error " << ec << std::endl;
         });
@@ -101,7 +120,7 @@ class session
     void do_write (int sent)
     {
       auto self(shared_from_this());
-      socket_.async_write_some(
+      socket.async_write_some(
           asio::buffer(out_buf.data()+ sent, out_buf.length()-sent),
           [this, self, sent](std::error_code ec, std::size_t length)
           {
@@ -110,6 +129,8 @@ class session
               int sent_ = sent + length;
               if (sent_ < out_buf.length())
                 do_write(sent_);
+              else
+                do_read();
             }
           });
     }
@@ -136,20 +157,21 @@ class session
         console->debug("Frame Capture Failed");
       }
     }
-    tcp::socket socket_;
+    tcp::socket socket;
     enum { max_length = 1024 };
     char data_[max_length];
     std::string in_buf;
     std::string out_buf;
     camerasp::periodic_frame_grabber& frame_grabber;
+    asio::deadline_timer input_deadline;
 };
 
 class server
 {
   public:
     server(asio::io_context& io_context,camerasp::periodic_frame_grabber& frame_grabber_, short port)
-      : acceptor_(io_context, tcp::endpoint(tcp::v4(), port)),
-      socket_(io_context),
+      : acceptor(io_context, tcp::endpoint(tcp::v4(), port)),
+      socket(io_context),
       frame_grabber(frame_grabber_)
   {
     do_accept();
@@ -158,12 +180,12 @@ class server
   private:
     void do_accept()
     {
-      acceptor_.async_accept(socket_,
+      acceptor.async_accept(socket,
           [this](std::error_code ec)
           {
           if (!ec)
           {
-          std::make_shared<session>(std::move(socket_),frame_grabber)->start();
+          std::make_shared<session>(std::move(socket),frame_grabber)->start();
           }
 
           do_accept();
@@ -171,8 +193,8 @@ class server
     }
 
     camerasp::periodic_frame_grabber& frame_grabber;
-    tcp::acceptor acceptor_;
-    tcp::socket socket_;
+    tcp::acceptor acceptor;
+    tcp::socket socket;
 };
 
 int main(int argc, char *argv[])
