@@ -453,7 +453,7 @@ int cam_still::take_picture(unsigned char *preallocated_data, size_t *length) {
     console->error("clock_gettime");
     return -1;
   }
-  ts.tv_sec += 1;
+  ts.tv_sec += 2;
 
   while ((ret = sem_timedwait(&mutex, &ts)) == -1 && errno == EINTR)
     continue; /* Restart if interrupted by handler */
