@@ -2,11 +2,11 @@
 {
   "home_path" : "/home/pi/projects/CameraspII",
   "Camera": {
-      "height" : 480,
+      "height" : 960,
       "horizontal" : 0,
       "iso" : 360,
       "vertical" : 1,
-      "width" : 640
+      "width" : 1280
    },
     "Logging": {
       "path": "data/log",
