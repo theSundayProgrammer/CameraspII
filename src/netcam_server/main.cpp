@@ -187,12 +187,12 @@ class server
       acceptor_.async_accept(socket_,
           [this](std::error_code ec)
           {
-          if (!ec)
-          {
-          std::make_shared<session>(std::move(socket_),frame_grabber)->start();
-          }
+            if (!ec)
+            {
+              std::make_shared<session>(std::move(socket_),frame_grabber)->start();
+            }
 
-          do_accept();
+            do_accept();
           });
     }
 
