@@ -134,7 +134,10 @@ class session
               if (sent_ < out_buf.length())
                 do_write(sent_);
               else
+              {
+                in_buf.clear();
                 do_read();
+              }
             }
           });
     }
