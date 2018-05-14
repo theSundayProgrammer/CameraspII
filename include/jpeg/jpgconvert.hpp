@@ -17,10 +17,12 @@ namespace camerasp
     struct img_info
     {
       buffer_t  buffer ;
+      int error;
       unsigned int height;
       unsigned int width;
       //unsigned int row_stride;
       unsigned int quality;
+      img_info():error(0){}
 #ifndef RASPICAM_MOCK
       JSAMPROW get_scan_line(int scan_line,  int row_stride) const;
 #endif

@@ -48,11 +48,40 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mmal/util/mmal_default_components.h>
 #include <mmal/util/mmal_util.h>
 #include <mmal/util/mmal_util_params.h>
+#include <semaphore.h>
 #include <camerasp/utils.hpp>
 #include <gsl/gsl_util>
 #include <stdexcept>
 using namespace std;
 #define API_NAME "raspicam_still"
+#include <mutex>
+#include <condition_variable>
+//https://stackoverflow.com/questions/4792449/c0x-has-no-semaphores-how-to-synchronize-threads
+class Semaphore {
+public:
+    Semaphore (int count_ = 0)
+        : count(count_) {}
+
+    void notify() {
+        std::unique_lock<std::mutex> lock(mtx);
+        count++;
+        cv.notify_one();
+    }
+
+    void wait() {
+        std::unique_lock<std::mutex> lock(mtx);
+
+        while(count == 0){
+            cv.wait(lock);
+        }
+        count--;
+    }
+
+private:
+    std::mutex mtx;
+    std::condition_variable cv;
+    int count;
+};
 namespace camerasp
 {
 /** \brief type used in call back of frame grabber
@@ -99,23 +128,31 @@ static void buffer_callback(
       mmal_buffer_header_mem_unlock(buffer);
       mmal_buffer_header_release(buffer);
     });
-    if (userdata == NULL) {
+    if (userdata == NULL)
+    {
       return;
-    } else if (buffer->length + userdata->offset > userdata->length) {
+    }
+    else if (buffer->length + userdata->offset > userdata->length)
+    {
       console->error(API_NAME
                      ": Buffer provided {0} was too small offset={1}!"
                      " Failed to copy data into buffer.",
                      userdata->offset,
                      userdata->length);
       return;
-    } else {
+    }
+    else
+    {
       for (unsigned int i = 0; i < buffer->length; ++i)
         userdata->data[userdata->offset++] = buffer->data[i];
     }
   }
-  if (END_FLAG & flags) {
+  if (END_FLAG & flags)
+  {
     sem_post(userdata->mutex);
-  } else if (port->is_enabled) {
+  }
+  else if (port->is_enabled)
+  {
     MMAL_BUFFER_HEADER_T *new_buffer =
         mmal_queue_get(userdata->encoderPool->queue);
     if (new_buffer)
@@ -399,7 +436,6 @@ void cam_still::destroy_encoder() {
 void cam_still::release() {
   if (!_isInitialized)
     return;
-    sem_destroy(&mutex);
   mmal_connection_destroy(encoder_connection);
   destroy_encoder();
   destroy_camera();
@@ -410,7 +446,6 @@ void cam_still::release() {
 int cam_still::initialize() {
   if (_isInitialized)
     return 0;
-  sem_init(&mutex, 0, 0);
   if (create_camera()) {
     console->error(API_NAME ": Failed to create camera component.");
     destroy_camera();
@@ -438,7 +473,9 @@ int cam_still::initialize() {
 int cam_still::take_picture(unsigned char *preallocated_data, size_t *length) {
   initialize();
   int ret = 0;
+  sem_t mutex;
   timespec ts = {0, 0};
+  sem_init(&mutex, 0, 0);
   RASPICAM_USERDATA userdata;
   userdata.encoderPool = encoder_pool;
   userdata.mutex = &mutex;
@@ -447,10 +484,12 @@ int cam_still::take_picture(unsigned char *preallocated_data, size_t *length) {
   userdata.length = *length;
   encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *)&userdata;
   if ((ret = start_capture()) != 0) {
+    sem_destroy(&mutex);
     return -1;
   }
   if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
     console->error("clock_gettime");
+    sem_destroy(&mutex);
     return -1;
   }
   ts.tv_sec += 1;
@@ -462,10 +501,12 @@ int cam_still::take_picture(unsigned char *preallocated_data, size_t *length) {
     if (errno == ETIMEDOUT)
       console->error("sem_timedwait() timed out\n");
     stop_capture();
+    sem_destroy(&mutex);
     return -1;
   } else {
     *length = userdata.offset;
     stop_capture();
+    sem_destroy(&mutex);
     return 0;
   }
 }
@@ -515,7 +556,8 @@ void cam_still::stop_capture()
 {
   if (!encoder_output_port->is_enabled)
     return;
-  mmal_port_disable(encoder_output_port);
+  if (mmal_port_disable(encoder_output_port))
+    delete (RASPICAM_USERDATA *)encoder_output_port->userdata;
 }
 
 void cam_still::commitBrightness()

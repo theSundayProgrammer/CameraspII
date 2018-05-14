@@ -54,7 +54,11 @@ img_info basic_frame_grabber::grab_picture()
       return info;
     }
   }
-  return img_info();
+  else
+{
+      info.error=-1;
+}
+  return info;
 }
 void basic_frame_grabber::handle_timeout(const asio::error_code &)
 {
@@ -70,12 +74,12 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
       auto buffer = write_JPEG_dat(img);
       std::lock_guard<std::mutex> lock(image_buffers[next].m);
       image_buffers[next].buffer.swap(buffer);
-    }
     if (current_count < max_size)
       ++current_count;
     cur_img = (cur_img + 1) % max_size;
     timer_.expires_at(current + sampling_period);
     timer_.async_wait(std::bind(&basic_frame_grabber::handle_timeout, this, _1));
+    }
   }
   else
   {
