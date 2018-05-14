@@ -570,8 +570,6 @@ void cam_still::stop_capture()
 {
   if (!encoder_output_port->is_enabled)
     return;
-  if (mmal_port_disable(encoder_output_port))
-    delete (RASPICAM_USERDATA *)encoder_output_port->userdata;
 }
 
 void cam_still::commitBrightness()
