@@ -8,6 +8,7 @@ $(SUBDIRS):
 
 clean:
 	$(MAKE) -C server clean
+	$(MAKE) -C json clean
 
 server: json
 
