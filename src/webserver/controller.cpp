@@ -205,7 +205,7 @@ public:
                          << "\r\n"
                          << std::string(data.begin() , data.end());
 
-          console->error("sending image");
+          console->info("sending image");
         }
         else
         {
