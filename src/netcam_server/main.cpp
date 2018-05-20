@@ -40,7 +40,8 @@ void configure_logger(Json::Value &root)
   auto size_mega_bytes = log_config["size"].asInt();
   auto count_files = log_config["count"].asInt();
 
-  console = spd::rotating_logger_mt("fg", logpath.string(), 1048576 * size_mega_bytes, count_files);
+  console = spd::stdout_color_mt("console");
+//  console = spd::rotating_logger_mt("fg", logpath.string(), 1048576 * size_mega_bytes, count_files);
   console->set_level(spd::level::debug);
 }
 using tcp=asio::ip::tcp;

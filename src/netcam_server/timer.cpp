@@ -84,6 +84,7 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
   else
   {
     camera_.release();
+    throw std::runtime_error("camera not responding");
   }
 }
 
