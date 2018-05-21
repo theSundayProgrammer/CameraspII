@@ -20,7 +20,7 @@
 #include <iostream>
 #include <gsl/gsl_util>
 std::shared_ptr<spdlog::logger> console;
-char const *cmd = "./server";
+char const *slave = "./server";
 
 using asio::ip::udp;
 class address_broadcasting_server
@@ -115,7 +115,7 @@ void run(std::shared_ptr<asio::io_context> io_service, char *argv[], char *env[]
   char cur_path[260];
   int p_len = readlink("/proc/self/exe", cur_path,260);
   boost::filesystem::path p(std::string(cur_path,p_len));
-  auto child_path= p.parent_path()/"server";
+  auto child_path= p.parent_path()/slave;
   std::string path_name=child_path.string();
   const char* cmd= path_name.c_str(); 
   auto kill_child = [&]() {
@@ -135,35 +135,35 @@ void run(std::shared_ptr<asio::io_context> io_service, char *argv[], char *env[]
   };
   auto launch = [&]() { 
     if (int ret = posix_spawnp(&child_pid, cmd, &child_fd_actions,
-                             NULL, argv, env))
-    console->error("posix_spawn"), exit(ret);
-  console->info("Child pid: {0}\n", child_pid);
-  fg_state = process_state::started;
+          NULL, argv, env))
+      console->error("posix_spawn"), exit(ret);
+    console->info("Child pid: {0}\n", child_pid);
+    fg_state = process_state::started;
   };
   // signal handler for SIGCHLD must be set before the process is forked
   // In a service 'spawn' forks a child process
   std::function<void(ASIO_ERROR_CODE, int)> signal_handler =
-      [&](ASIO_ERROR_CODE const &error, int signal_number) {
-        if (signal_number == SIGCHLD)
-        {
-          fg_state = process_state::stopped;
-          console->debug("Process stopped");
-          waitpid(child_pid, NULL, 0);
-          signals_.async_wait(signal_handler);
-          launch();
-        }
-        else
-        {
-          console->debug("SIGTERM received");
-          io_service->stop();
-        }
-      };
+    [&](ASIO_ERROR_CODE const &error, int signal_number) {
+      if (signal_number == SIGCHLD)
+      {
+        fg_state = process_state::stopped;
+        console->debug("Process stopped");
+        waitpid(child_pid, NULL, 0);
+        signals_.async_wait(signal_handler);
+        launch();
+      }
+      else
+      {
+        console->debug("SIGTERM received");
+        io_service->stop();
+      }
+    };
 
 
   auto _1 = gsl::finally([=]() { kill_child(); });
 
   signals_.async_wait(signal_handler);
- launch();
+  launch();
   io_service->run();
 }
 
@@ -179,7 +179,7 @@ int main(int argc, char *argv[], char *env[])
       std::cerr << "Usage: netcam <path/to/options>\n";
       return 1;
     }
-  auto &root = camerasp::get_root(argv[1]);
+    auto &root = camerasp::get_root(argv[1]);
     auto home_path = root["home_path"].asString();
     boost::filesystem::path root_path(home_path);
     auto log_config = root["Logging"];
