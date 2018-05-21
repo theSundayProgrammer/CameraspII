@@ -61,6 +61,9 @@ class client{
           img.open( buf.data(), buf.length());
           pic.load(img);
           place.collocate();
+          //usleep(1000*1000); //mu-sec
+          buf.clear();
+          probe_data();
         }
       } else  {
         fprintf(stdout,"Error in read %s\n", ec.message().c_str()); 
@@ -69,9 +72,7 @@ class client{
     void probe_data()
     {
       asio::write(s, asio::buffer(request, request_length));
-        fprintf(stderr,"%s:%d\n",__FILE__, __LINE__);
       size_t reply_length = asio::read(s, asio::buffer((char*)&response,sizeof response));
-      fprintf(stderr,"%s:%d\n",__FILE__, __LINE__);
       response.error = ntohl(response.error);
       if(response.error == 0) {
         response.length = ntohl(response.length);
@@ -121,6 +122,7 @@ int main(int argc ,char* argv[])
     place["pic"] << pic ;
     fprintf(stderr,"%s:%d\n",__FILE__, __LINE__);
     client cl(argv[1],argv[2],place,pic);
+    fm.events().unload([&](){cl.stop();});
     std::thread thread([&]() {
       cl.run() ;
       });
