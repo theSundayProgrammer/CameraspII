@@ -2,7 +2,7 @@
 INCLUDES = -I ../../include
 CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
-CXX=g++-6
+CXX=g++
 MKDIR_P = mkdir -p
 
 all : directories netcam server 
