@@ -39,3 +39,4 @@ asio/
 include/mmal
 include/vcos
 lib/
+.vscode/
