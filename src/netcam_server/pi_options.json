@@ -20,6 +20,7 @@
       "count": 1000
     },
     "Server": {
-      "port" : 5125
+      "port" : 5125,
+      "broadcast" : 51253
     }
 }

@@ -26,8 +26,9 @@ using asio::ip::udp;
 class address_broadcasting_server
 {
 public:
-  address_broadcasting_server(asio::io_context &io_context, unsigned short port)
-      : socket_(io_context, udp::endpoint(udp::v4(), port))
+  address_broadcasting_server(asio::io_context &io_context, int  broadcast_port, int server_port)
+      : socket_(io_context, udp::endpoint(udp::v4(), broadcast_port))
+      , recv_message(std::string("ee7f7fc7-9d54-480b-868d-fde1f5a67ab6-Camerasp-") + std::to_string(server_port))
   {
   }
 
@@ -66,7 +67,7 @@ private:
   };
   char data_[max_length];
   const std::string send_message{"12068c99-18de-48e1-87b4-3e09bbbd8b15-Camerasp"};
-  const std::string recv_message{"ee7f7fc7-9d54-480b-868d-fde1f5a67ab6-Camerasp"};
+  std::string recv_message; ;
 };
 
 #define ASIO_ERROR_CODE asio::error_code
@@ -181,16 +182,14 @@ int main(int argc, char *argv[], char *env[])
     }
     auto &root = camerasp::get_root(argv[1]);
     auto home_path = root["home_path"].asString();
-    boost::filesystem::path root_path(home_path);
-    auto log_config = root["Logging"];
-    auto json_path = log_config["weblog"];
-    auto logpath = root_path / (json_path.asString());
-      console = spdlog::stdout_color_mt("console");
+    auto server_port = root["Server"]["port"].asInt();
+    auto broadcast_port = root["Server"]["broadcast"].asInt();
+    console = spdlog::stdout_color_mt("console");
     console->set_level(spdlog::level::debug);
     console->debug("Starting");
     auto io_service = std::make_shared<asio::io_context>();
 
-    address_broadcasting_server broadcaster(*io_service, 52153);
+    address_broadcasting_server broadcaster(*io_service, broadcast_port, server_port);
     broadcaster.receive();
     run(io_service,argv,env);
   }
