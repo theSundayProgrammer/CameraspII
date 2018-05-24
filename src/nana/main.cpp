@@ -7,6 +7,7 @@
 #include <cstring>
 #include <asio.hpp>
 #include <functional>
+#include <regex>
 #include <thread>
 #include <arpa/inet.h>
 #include <iostream>
@@ -14,14 +15,14 @@ struct response_t { uint32_t error; uint32_t length;};
 using high_resolution_timer = asio::basic_waitable_timer<std::chrono::steady_clock>;
 using asio::ip::tcp;
 using asio::ip::udp;
-
-std::vector<udp::endpoint> get_endpoints()
+struct tcp_src { asio::ip::address address; std::string port;};
+std::vector<tcp_src> get_endpoints()
 {
   enum
   {
     max_length = 1024
   };
-  std::vector<udp::endpoint> endpoints;
+  std::vector<tcp_src> endpoints;
   const std::string send_message{"12068c99-18de-48e1-87b4-3e09bbbd8b15-Camerasp"};
   const std::string recv_message{"ee7f7fc7-9d54-480b-868d-fde1f5a67ab6-Camerasp"};
 
@@ -29,7 +30,7 @@ std::vector<udp::endpoint> get_endpoints()
 
   udp::resolver resolver(io_context);
 
-  udp::resolver::query query(udp::v4(), "255.255.255.255", "52153");
+  udp::resolver::query query(udp::v4(), "255.255.255.255", "51253");
   udp::endpoint receiver_endpoint = *resolver.resolve(query);
   udp::socket s(io_context);
   s.open(udp::v4());
@@ -42,12 +43,16 @@ std::vector<udp::endpoint> get_endpoints()
   char reply[max_length];
   std::function<void(std::error_code, std::size_t)> do_receive =
     [&](std::error_code ec, std::size_t reply_length) {
-
-      if (recv_message == std::string(reply, reply_length))
-      {
+      std::regex rex(recv_message + ".(\\d+)" );
         std::cout << "Reply is: ";
         std::cout.write(reply, reply_length);
-        endpoints.push_back(sender_endpoint);
+        std::cout << std::endl;
+        std::smatch sm;
+        std::string response(reply, reply_length);
+      if (std::regex_match(response,sm, rex))
+      { 
+        tcp_src src{sender_endpoint.address(), sm[1].str()};
+        endpoints.push_back(src);
       }
       have_reply = true;
       s.async_receive_from(asio::buffer(reply, max_length), sender_endpoint, do_receive);
@@ -83,8 +88,8 @@ std::vector<udp::endpoint> get_endpoints()
 class client{
   public:
     client(
-        udp::endpoint& host_,
-        char const* port_,
+        asio::ip::address& host_,
+        std::string port_,
         nana::place& place_,
         nana::picture& pic_
         ):s(io_context),
@@ -93,7 +98,6 @@ class client{
     host(host_),
     port(port_)
   {
-    fprintf(stderr,"%s:%d\n",__FILE__, __LINE__);
   }
     void stop()
     {
@@ -102,11 +106,10 @@ class client{
     void run()
     {
       tcp::resolver resolver(io_context);
-      asio::connect(s, resolver.resolve(host.address().to_string(),port));
-      fprintf(stderr,"%s:%s\n",host.address().to_string().c_str(),port);
+      asio::connect(s, resolver.resolve(host.to_string(),port));
+      fprintf(stderr,"%s:%s\n",host.to_string().c_str(),port.c_str());
       request_length = strlen(request);
       probe_data();
-      fprintf(stderr,"%s:%d\n",__FILE__, __LINE__);
       io_context.run();
     }
 
@@ -132,7 +135,7 @@ class client{
           probe_data();
         }
       } else  {
-        fprintf(stdout,"Error in read %s\n", ec.message().c_str()); 
+        fprintf(stderr,"Error in read %s\n", ec.message().c_str()); 
       }
     }
     void probe_data()
@@ -142,14 +145,13 @@ class client{
       response.error = ntohl(response.error);
       if(response.error == 0) {
         response.length = ntohl(response.length);
-        fprintf(stdout,"len: %d\n",response.length);
         response.length = response.length - sizeof response;
         s.async_read_some(asio::buffer(reply, max_length), [this](std::error_code ec, std::size_t length)
             {
             handle_input(ec,length);
             });
       } else {
-        fprintf(stdout,"Error in read %x\n", response.error);
+        fprintf(stderr,"Error in read %x\n", response.error);
       }
     } 
 
@@ -157,8 +159,8 @@ class client{
     asio::io_context io_context;
     tcp::socket s;
 
-    udp::endpoint& host;
-    char const* port;
+    asio::ip::address& host;
+    std::string port;
     char const* request= "image?prev=0\r\n";
     int request_length ;
     response_t  response;
@@ -176,11 +178,6 @@ int main(int argc ,char* argv[])
     using namespace nana;
   try
   {
-    if (argc != 2)
-    {
-      fprintf(stderr,"Usage: client  <port>\n");
-      return 1;
-    }
     form fm;
     picture pic(fm);
     place place{fm};
@@ -189,8 +186,10 @@ int main(int argc ,char* argv[])
     fprintf(stderr,"%s:%d\n",__FILE__, __LINE__);
     auto endpoints = get_endpoints();
     if(!endpoints.empty())
-    {
-        client cl(*endpoints.begin(),argv[1],place,pic);
+    {  
+        auto loc =endpoints.begin();
+        client cl(loc->address,loc->port,place,pic);
+        
         fm.events().unload([&](){cl.stop();});
         std::thread thread([&]() { cl.run() ; });
         fm.show();
