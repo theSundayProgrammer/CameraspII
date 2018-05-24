@@ -37,6 +37,7 @@ public:
     socket_.async_receive_from(
         asio::buffer(data_, max_length), sender_endpoint_,
         [this](std::error_code ec, std::size_t bytes_recvd) {
+          console->info("Request Received");
           if (!ec && bytes_recvd > 0 &&
               send_message == std::string(data_, bytes_recvd))
           {
