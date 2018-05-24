@@ -27,7 +27,6 @@
 #ifdef RASPICAM_MOCK
 const std::string config_path = "./";
 #else
-const std::string config_path = "/srv/camerasp/";
 #endif
 namespace camerasp{
   void write_file_content(std::string const& path, std::string const& dat)    {
@@ -119,14 +118,16 @@ std::string EncodeBase64(const std::string &data)
 
     return true;//(*p == 0);
   }
-static std::once_flag config_flag;
 
+  Json::Value& get_root(std::string const& config_path)
+{
+  static Json::Value  root=get_DOM(config_path);
+  return root;
+}
   Json::Value& get_root()
 {
-  static Json::Value root;
-  std::call_once(config_flag,[&]() {
-     root=get_DOM(config_path+"options.json");
-     });
+  const std::string config_path = "/srv/camerasp/";
+  static Json::Value  root=get_DOM(config_path+"options.json");
   return root;
 }
 MMAL_PARAM_EXPOSUREMODE_T get_exposure_from_string (const  std::string& str ) {
