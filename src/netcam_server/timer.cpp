@@ -69,7 +69,7 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
     auto current = high_resolution_timer::clock_type::now();
     auto next = cur_img;
     auto img= grab_picture();
-    if (!img.empty())
+    if (img.error==0)
     {
       auto buffer = write_JPEG_dat(img);
       std::lock_guard<std::mutex> lock(image_buffers[next].m);
@@ -80,11 +80,11 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
     timer_.expires_at(current + sampling_period);
     timer_.async_wait(std::bind(&basic_frame_grabber::handle_timeout, this, _1));
     }
-  }
   else
   {
     camera_.release();
     throw std::runtime_error("camera not responding");
+  }
   }
 }
 

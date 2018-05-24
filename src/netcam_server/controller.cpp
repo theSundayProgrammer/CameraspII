@@ -136,9 +136,14 @@ void run(std::shared_ptr<asio::io_context> io_service, char *argv[], char *env[]
   auto launch = [&]() { 
     if (int ret = posix_spawnp(&child_pid, cmd, &child_fd_actions,
                              NULL, argv, env))
-    console->error("posix_spawn"), exit(ret);
-  console->info("Child pid: {0}\n", child_pid);
-  fg_state = process_state::started;
+    {
+      console->error("posix_spawn"), exit(ret);
+    }
+    else 
+    {
+      console->info("Child pid: {0}\n", child_pid);
+      fg_state = process_state::started;
+    }
   };
   // signal handler for SIGCHLD must be set before the process is forked
   // In a service 'spawn' forks a child process
