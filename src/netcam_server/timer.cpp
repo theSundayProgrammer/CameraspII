@@ -72,8 +72,11 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
     if (img.error==0)
     {
       auto buffer = write_JPEG_dat(img);
-      std::lock_guard<std::mutex> lock(image_buffers[next].m);
-      image_buffers[next].buffer.swap(buffer);
+      {
+        std::lock_guard<std::mutex> lock(image_buffers[next].m);
+        image_buffers[next].buffer.swap(buffer);
+      }
+      on_image_acquire(img);
       if (current_count < max_size)
         ++current_count;
       cur_img = (cur_img + 1) % max_size;

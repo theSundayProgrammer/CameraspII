@@ -23,9 +23,10 @@ namespace camerasp
     file_saver_(root["Data"], root["home_path"].asString())
   {
   }
-  void periodic_frame_grabber::on_image_capture(img_info& img)
+  void periodic_frame_grabber::on_image_acquire(img_info& img)
   {
     static motion_detector detector;
+    auto buffer = write_JPEG_dat(img);
     auto fName = file_saver_.save_image(buffer);
     detector.handle_motion(fName.c_str(),img);
   }

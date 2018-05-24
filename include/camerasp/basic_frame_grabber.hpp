@@ -9,7 +9,6 @@
 namespace camerasp
 {
 
-  struct img_info;
   class basic_frame_grabber
   {
     struct image_buffer
@@ -32,7 +31,7 @@ namespace camerasp
     img_info grab_picture();
     void handle_timeout(const asio::error_code&);
     void set_timer();
-    virtual void on_image_aquire(img_info&) {}
+    virtual void on_image_acquire(img_info&) {}
 
     private:
     cam_still camera_;

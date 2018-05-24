@@ -2,7 +2,7 @@
 INCLUDES = -I ../../include
 CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
-CXX=g++
+CXX=g++-6
 MKDIR_P = mkdir -p
 
 all : directories netcam server 
@@ -15,7 +15,7 @@ srcs = main.cpp \
 	../frame_grabber/cam_still.cpp \
 	../frame_grabber/img_info.cpp \
 	../frame_grabber/jpgconvert.cpp \
-	timer.cpp \
+	../frame_grabber/basic_frame_grabber.cpp \
 	../frame_grabber/utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
