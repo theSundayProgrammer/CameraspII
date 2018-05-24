@@ -19,6 +19,7 @@ srcs = main.cpp \
 	jpgconvert.cpp \
 	raspicam_mock.cpp \
 	timer.cpp \
+	basic_frame_grabber.cpp \
 	client_msg_queues.cpp\
 	mot_detect.cpp \
 	smtp_client.cpp \
