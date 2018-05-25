@@ -63,7 +63,6 @@ img_info basic_frame_grabber::grab_picture()
 void basic_frame_grabber::handle_timeout(const asio::error_code &)
 {
   //At any point in time only one instance of this function will be running
-  using namespace std::placeholders;
   if (!quit_flag)
   {
     auto current = high_resolution_timer::clock_type::now();
@@ -81,7 +80,7 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
         ++current_count;
       cur_img = (cur_img + 1) % max_size;
       timer_.expires_at(current + sampling_period);
-      timer_.async_wait(std::bind(&basic_frame_grabber::handle_timeout, this, _1));
+      timer_.async_wait(std::bind(&basic_frame_grabber::handle_timeout, this, std::placeholders::_1));
     }
   else
   {
@@ -93,12 +92,11 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
 
 void basic_frame_grabber::set_timer()
 {
-  using namespace std::placeholders;
   try
   {
     auto prev = high_resolution_timer::clock_type::now();
     timer_.expires_at(prev + sampling_period);
-    timer_.async_wait(std::bind(&basic_frame_grabber::handle_timeout, this, _1));
+    timer_.async_wait(std::bind(&basic_frame_grabber::handle_timeout, this, std::placeholders::_1));
   }
   catch (std::exception &e)
   {

@@ -5,7 +5,7 @@
 #include <json/json.h>
 #include <camerasp/types.hpp>
 #include <memory>
-#include <boost/signals2>
+#include <boost/signals2/signal.hpp>
 #include <jpeg/jpgconvert.hpp>
 namespace camerasp
 {
@@ -46,6 +46,6 @@ namespace camerasp
     std::atomic<unsigned>  current_count;
     std::atomic<bool> quit_flag;
     unsigned cur_img;
-    boost::signals2::signals<void(img_info&)> on_image_capture;
+    boost::signals2::signal<void(img_info&)> on_image_capture;
   };
 }
