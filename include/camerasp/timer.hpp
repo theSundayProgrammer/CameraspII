@@ -8,6 +8,7 @@
 #include <jpeg/jpgconvert.hpp>
 #include <camerasp/file_saver.hpp>
 #include <camerasp/basic_frame_grabber.hpp>
+#include <camerasp/smtp_client.hpp>
 namespace camerasp
 {
 
@@ -21,6 +22,9 @@ namespace camerasp
 
     private:
     void on_image_acquire(img_info&);
-    file_saver file_saver_;
+
+  asio::ssl::context ctx;
+  smtp_client smtp;
+  asio::ip::tcp::resolver::iterator socket_address;
   };
 }

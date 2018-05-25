@@ -2,7 +2,6 @@
 
 #include <opencv2/core/core.hpp>
 
-#include <camerasp/smtp_client.hpp>
 #include <camerasp/utils.hpp>
 #include <jpeg/jpgconvert.hpp>
 namespace camerasp
@@ -15,12 +14,9 @@ class motion_detector
 {
 public:
   motion_detector();
-  void handle_motion(const char *fName, img_info const&);
+  bool handle_motion( img_info const&);
 
 private:
-  asio::ssl::context ctx;
-  smtp_client smtp;
-  asio::ip::tcp::resolver::iterator socket_address;
   int current_state = 0;
   cv::Mat current_frame;
   cv::Mat next_frame;
