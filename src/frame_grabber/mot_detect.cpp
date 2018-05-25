@@ -10,17 +10,10 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <mutex>
-#include <fstream>
-#include <sstream>
 #include <camerasp/logger.hpp>
-#include <camerasp/utils.hpp>
 #include <camerasp/mot_detect.hpp>
 using namespace std;
 using namespace cv;
-extern asio::io_service frame_grabber_service;
 const int BMP_HEADER_SIZE=54;
 
 // Check if there is motion in the result matrix
