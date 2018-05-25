@@ -23,8 +23,6 @@
 #include <boost/filesystem.hpp>
 std::shared_ptr<spdlog::logger> console;
 #define ASIO_ERROR_CODE 
-extern asio::io_service frame_grabber_service;
-asio::io_service frame_grabber_service;
 std::string home_path;
 void configure_logger(Json::Value &root)
 {
@@ -49,6 +47,7 @@ int main(int argc, char *argv[])
   try
   {
     configure_logger(root);
+    asio::io_service frame_grabber_service;
     camerasp::client_msg_queues queue(128);
     // The signal set is used to register termination notifications
     asio::signal_set signals_(frame_grabber_service);
