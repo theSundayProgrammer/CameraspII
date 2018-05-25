@@ -10,23 +10,15 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <mutex>
-#include <fstream>
-#include <sstream>
-#include <camerasp/smtp_client.hpp>
 #include <camerasp/logger.hpp>
-#include <camerasp/utils.hpp>
 #include <camerasp/mot_detect.hpp>
 using namespace std;
 using namespace cv;
-extern asio::io_service frame_grabber_service;
 const int BMP_HEADER_SIZE=54;
 
 // Check if there is motion in the result matrix
 // count the number of changes and return.
-std::tuple<cv::Rect, int>
+static std::tuple<cv::Rect, int>
 detect_motion(const Mat &motion, const Rect &bounding_box)
 {
   int number_of_changes = 0;
@@ -65,67 +57,34 @@ detect_motion(const Mat &motion, const Rect &bounding_box)
   return make_tuple(cv::Rect(), 0);
 }
 
-static void init_smtp(smtp_client &smtp)
-{
-  auto root = camerasp::get_root();
-  auto email = root["email"];
-  smtp.set_uid(email["uid"].asString());
-  smtp.set_pwd(email["pwd"].asString());
-  smtp.set_from(email["from"].asString());
-  smtp.set_to(email["to"].asString());
-  smtp.set_subject(email["subject"].asString());
-  smtp.set_server(email["server"].asString());
-  //smtp.recipient_ids.push_back("joseph.mariadassou@outlook.com");
-  //smtp.recipient_ids.push_back("parama_chakra@yahoo.com");
-}
-static asio::ip::tcp::resolver::iterator resolve_socket_address()
-{
-  auto root = camerasp::get_root();
-  auto email = root["email"];
-  auto url = email["host"].asString();
-  auto port = email["port"].asString();
-  asio::ip::tcp::resolver resolver(frame_grabber_service);
-  asio::ip::tcp::resolver::query query(url, port);
-  asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
-  console->debug("Resolved address at line {0}", __LINE__);
-  return iterator;
-}
-// When motion is detected we write the image to disk
-//    - Check if the directory exists where the image will be stored.
-//    - Build the directory and image names.
 namespace camerasp
 {
 
 motion_detector::motion_detector()
-    : ctx(asio::ssl::context::sslv23),
-      smtp(frame_grabber_service, ctx),
-      socket_address(resolve_socket_address()),
-       number_of_sequence (0)
 {
-  ctx.load_verify_file("/home/pi/bin/cacert.pem");
-  init_smtp(smtp);
   // Erode kernel -- used in motion detection
   kernel_ero = getStructuringElement(MORPH_RECT, Size(2, 2));
 }
-void motion_detector::handle_motion(const char *fName, img_info const& img)
+bool motion_detector::handle_motion( img_info const& img)
 {
 
   int number_of_changes;
   // Detect motion in window
   int x_start = 10;
   int y_start = 10;
+  bool motion_detected = false;
   switch (current_state)
   {
   case 0:
     current_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
     cvtColor(current_frame,current_frame, CV_BGR2GRAY);
     current_state = 1;
-    return;
+    return motion_detected ;
   case 1:
     next_frame = Mat(img.height, img.width, CV_8UC3, const_cast<char*>(img.buffer.data()) + BMP_HEADER_SIZE);
     cvtColor(next_frame, next_frame, CV_BGR2GRAY);
     current_state = 2;
-    return;
+    return motion_detected ;
   case 2:
   {
 
@@ -134,9 +93,9 @@ void motion_detector::handle_motion(const char *fName, img_info const& img)
     cvtColor(prev_frame, prev_frame, CV_BGR2GRAY);
     cv::swap(prev_frame, current_frame);
     cv::swap(current_frame, next_frame);
-    if (!next_frame.data || smtp.is_busy()) 
+    if (!next_frame.data ) 
     {
-      return;
+      break;
     }
 
     // Calc differences between the images and do AND-operation
@@ -158,30 +117,12 @@ void motion_detector::handle_motion(const char *fName, img_info const& img)
     // If a lot of changes happened, we assume something changed.
     if (number_of_changes >= there_is_motion)
     {
-      console->debug("Image Name: {0}", fName);
       console->debug("Top Left:{0},{1} ", rect.x, rect.y);
-      if (number_of_sequence==0)
-        smtp.set_message ( std::string("Date: ") + camerasp::current_GMT_time());
-      std::ostringstream ostr;
-      std::ifstream ifs(fName, std::ios::binary);
-      ostr << ifs.rdbuf();
-      smtp.add_attachment(std::string("image") + std::to_string(number_of_sequence) + ".jpg", ostr.str());
-      number_of_sequence++;
-      if (number_of_sequence>4)
-      {
-
-        smtp.send(socket_address);
-        number_of_sequence = 0;
-      }
-    }
-    else if (number_of_sequence) {
-
-      smtp.send(socket_address);
-      number_of_sequence = 0;
-    }
+      motion_detected  = true;
   }
   break;
   }
-return;
+}
+return motion_detected ;
 }
 }

@@ -13,7 +13,6 @@ directories: ${BUILD_DIR}
 srcs = main.cpp \
 	cam_still_base.cpp \
 	cam_still.cpp \
-	file_saver.cpp \
 	fopen.cpp \
 	img_info.cpp \
 	jpgconvert.cpp \
