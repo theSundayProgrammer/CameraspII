@@ -12,16 +12,14 @@
 namespace camerasp
 {
 
-  class periodic_frame_grabber:
-        public basic_frame_grabber
+  class periodic_frame_grabber
   {
 
     public:
     periodic_frame_grabber(asio::io_context& io_service, Json::Value const&);
     ~periodic_frame_grabber(){}
 
-    private:
-    void on_image_acquire(img_info&);
+    void operator()(img_info&);
 
   asio::ssl::context ctx;
   smtp_client smtp;

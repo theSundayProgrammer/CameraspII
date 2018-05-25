@@ -76,7 +76,7 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
         std::lock_guard<std::mutex> lock(image_buffers[next].m);
         image_buffers[next].buffer.swap(buffer);
       }
-      on_image_acquire(img);
+      on_image_capture(img);
       if (current_count < max_size)
         ++current_count;
       cur_img = (cur_img + 1) % max_size;

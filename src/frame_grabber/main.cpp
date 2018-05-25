@@ -62,7 +62,9 @@ int main(int argc, char *argv[])
 
     //configure frame grabber
     camerasp::periodic_frame_grabber frame_grabber(frame_grabber_service, root);
-    bool retval = frame_grabber.resume();
+    camerasp::basic_frame_grabber image_grabber(frame_grabber_service, root);
+    image_grabber.connect(frame_grabber);
+    bool retval = image_grabber.resume();
     if (!retval) {
       console->error("Unable to open Camera");
       return 1;
@@ -71,7 +73,7 @@ int main(int argc, char *argv[])
       try
       {
   
-        auto image = frame_grabber.get_image(k);
+        auto image = image_grabber.get_image(k);
         queue.send_response(no_error,image);
       }
       catch (std::runtime_error &er)
@@ -95,7 +97,7 @@ int main(int argc, char *argv[])
         else if (std::regex_search(uri, m, std::regex("flip\\?vertical=(0|1)$")))
         {
           int k = atoi(m[1].str().c_str());
-          if (0 == frame_grabber.set_vertical_flip(k != 0))
+          if (0 == image_grabber.set_vertical_flip(k != 0))
             queue.send_response(0,"Success");
           else
             queue.send_response(-1,"Failed");
@@ -103,21 +105,21 @@ int main(int argc, char *argv[])
         else if (std::regex_search(uri, m, std::regex("flip\\?horizontal=(0|1)$")))
         {
           int k = atoi(m[1].str().c_str());
-          if (0 == frame_grabber.set_horizontal_flip(k != 0))
+          if (0 == image_grabber.set_horizontal_flip(k != 0))
             queue.send_response(0,"Success");
           else
             queue.send_response(-1,"Failed");
         }
         else if (std::regex_search(uri, m, std::regex("resume")))
         {
-          if (frame_grabber.resume())
+          if (image_grabber.resume())
             queue.send_response(0,"Success");
           else
             queue.send_response(-1,"Failed");
         }
         else if (std::regex_search(uri, m, std::regex("pause")))
         {
-          if (frame_grabber.pause())
+          if (image_grabber.pause())
             queue.send_response(0,"Success");
           else
             queue.send_response(-1,"Failed");
@@ -129,7 +131,7 @@ int main(int argc, char *argv[])
         }
         else if (std::regex_search(uri, m, std::regex("exit")))
         {
-          frame_grabber.pause();
+          image_grabber.pause();
           frame_grabber_service.stop();
           queue.send_response(no_error,"Stopping");
           console->debug("SIGTERM handled");

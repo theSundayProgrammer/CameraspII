@@ -5,6 +5,7 @@
 #include <json/json.h>
 #include <camerasp/types.hpp>
 #include <memory>
+#include <boost/signals2>
 #include <jpeg/jpgconvert.hpp>
 namespace camerasp
 {
@@ -25,13 +26,16 @@ namespace camerasp
     bool pause();
     errno_t set_vertical_flip(bool on);
     errno_t set_horizontal_flip(bool on);
+    void connect(std::function<void(img_info&)> slot)
+    {
+      on_image_capture.connect(slot);
+    }
 
     private:
 
     img_info grab_picture();
     void handle_timeout(const asio::error_code&);
     void set_timer();
-    virtual void on_image_acquire(img_info&) {}
 
     private:
     cam_still camera_;
@@ -42,5 +46,6 @@ namespace camerasp
     std::atomic<unsigned>  current_count;
     std::atomic<bool> quit_flag;
     unsigned cur_img;
+    boost::signals2::signals<void(img_info&)> on_image_capture;
   };
 }

@@ -47,7 +47,6 @@ namespace camerasp
   periodic_frame_grabber::periodic_frame_grabber(
       asio::io_context &io_service,
       Json::Value const &root) :
-      basic_frame_grabber(io_service,root),
       ctx(asio::ssl::context::sslv23),
       smtp(io_service, ctx),
       socket_address(resolve_socket_address(io_service ))
@@ -55,7 +54,7 @@ namespace camerasp
   ctx.load_verify_file("/home/pi/bin/cacert.pem");
   init_smtp(smtp);
   }
-  void periodic_frame_grabber::on_image_acquire(img_info& img)
+  void periodic_frame_grabber::operator()(img_info& img)
   {
     static motion_detector detector;
     static int number_of_sequence=0;
