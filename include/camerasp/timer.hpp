@@ -7,7 +7,7 @@
 #include <memory>
 #include <jpeg/jpgconvert.hpp>
 #include <camerasp/file_saver.hpp>
-#include <camerasp/basic_frame_grabber.hpp>
+#include <camerasp/frame_grabber.hpp>
 #include <camerasp/smtp_client.hpp>
 namespace camerasp
 {

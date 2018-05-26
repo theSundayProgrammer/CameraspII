@@ -15,7 +15,7 @@ srcs = main.cpp \
 	../frame_grabber/cam_still.cpp \
 	../frame_grabber/img_info.cpp \
 	../frame_grabber/jpgconvert.cpp \
-	../frame_grabber/basic_frame_grabber.cpp \
+	../frame_grabber/frame_grabber.cpp \
 	../frame_grabber/utils.cpp
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)

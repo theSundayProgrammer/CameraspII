@@ -10,7 +10,7 @@
 namespace camerasp
 {
 
-  class basic_frame_grabber
+  class frame_grabber
   {
     struct image_buffer
     {
@@ -19,8 +19,8 @@ namespace camerasp
     };
 
     public:
-    basic_frame_grabber(asio::io_context& io_service, Json::Value const&);
-    ~basic_frame_grabber(){}
+    frame_grabber(asio::io_context& io_service, Json::Value const&);
+    ~frame_grabber(){}
     buffer_t  get_image(unsigned int k);
     bool resume();
     bool pause();

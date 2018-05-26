@@ -20,7 +20,7 @@
 #include <cstdlib>
 #include <memory>
 #include <camerasp/network.hpp>
-#include <camerasp/basic_frame_grabber.hpp>
+#include <camerasp/frame_grabber.hpp>
 #include <arpa/inet.h>
 #include <asio/signal_set.hpp>
 #include <asio/ts/buffer.hpp>
@@ -53,7 +53,7 @@ class session
 {
   public:
     session(tcp::socket socket,
-    camerasp::basic_frame_grabber& frame_grabber_)
+    camerasp::frame_grabber& frame_grabber_)
       : socket_(std::move(socket))
       ,frame_grabber(frame_grabber_)
       , input_deadline(socket_.get_io_service())
@@ -170,14 +170,14 @@ class session
     char data_[max_length];
     std::string in_buf;
     std::string out_buf;
-    camerasp::basic_frame_grabber& frame_grabber;
+    camerasp::frame_grabber& frame_grabber;
     high_resolution_timer input_deadline;
 };
 
 class server
 {
   public:
-    server(asio::io_context& io_context,camerasp::basic_frame_grabber& frame_grabber_, short port)
+    server(asio::io_context& io_context,camerasp::frame_grabber& frame_grabber_, short port)
       : acceptor_(io_context, tcp::endpoint(tcp::v4(), port)),
       socket_(io_context),
       frame_grabber(frame_grabber_)
@@ -200,7 +200,7 @@ class server
           });
     }
 
-    camerasp::basic_frame_grabber& frame_grabber;
+    camerasp::frame_grabber& frame_grabber;
     tcp::acceptor acceptor_;
     tcp::socket socket_;
 };
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
     });
 
     //configure frame grabber
-    camerasp::basic_frame_grabber frame_grabber(frame_grabber_service, root);
+    camerasp::frame_grabber frame_grabber(frame_grabber_service, root);
     bool retval = frame_grabber.resume();
     if (!retval) {
       console->error("Unable to open Camera");

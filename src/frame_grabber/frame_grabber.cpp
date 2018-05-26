@@ -6,14 +6,14 @@
 // http://www.boost.org/LICENSE_1_0.txt)
 //////////////////////////////////////////////////////////////////////////////
 
-#include <camerasp/basic_frame_grabber.hpp>
+#include <camerasp/frame_grabber.hpp>
 #include <jpeg/jpgconvert.hpp>
 #include <fstream>
 #include <sstream>
 
 namespace camerasp
 {
-basic_frame_grabber::basic_frame_grabber(
+frame_grabber::frame_grabber(
     asio::io_context &io_service,
     Json::Value const &root) :
 	timer_(io_service),
@@ -32,7 +32,7 @@ basic_frame_grabber::basic_frame_grabber(
   camera_.set_horizontal_flip(camera["horizontal"].asInt());
 }
 
-img_info basic_frame_grabber::grab_picture()
+img_info frame_grabber::grab_picture()
 {
 
   //  At any point in time only one instance of this function will be running
@@ -60,7 +60,7 @@ img_info basic_frame_grabber::grab_picture()
   }
   return info;
 }
-void basic_frame_grabber::handle_timeout(const asio::error_code &)
+void frame_grabber::handle_timeout(const asio::error_code &)
 {
   //At any point in time only one instance of this function will be running
   if (!quit_flag)
@@ -80,7 +80,7 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
         ++current_count;
       cur_img = (cur_img + 1) % max_size;
       timer_.expires_at(current + sampling_period);
-      timer_.async_wait(std::bind(&basic_frame_grabber::handle_timeout, this, std::placeholders::_1));
+      timer_.async_wait(std::bind(&frame_grabber::handle_timeout, this, std::placeholders::_1));
     }
   else
   {
@@ -90,20 +90,20 @@ void basic_frame_grabber::handle_timeout(const asio::error_code &)
   }
 }
 
-void basic_frame_grabber::set_timer()
+void frame_grabber::set_timer()
 {
   try
   {
     auto prev = high_resolution_timer::clock_type::now();
     timer_.expires_at(prev + sampling_period);
-    timer_.async_wait(std::bind(&basic_frame_grabber::handle_timeout, this, std::placeholders::_1));
+    timer_.async_wait(std::bind(&frame_grabber::handle_timeout, this, std::placeholders::_1));
   }
   catch (std::exception &e)
   {
     console->error("Error: {}..", e.what());
   }
 }
-buffer_t basic_frame_grabber::get_image(unsigned int k)
+buffer_t frame_grabber::get_image(unsigned int k)
 {
   //precondition there is at least one image in the buffer
   //That is, current_count>0
@@ -118,7 +118,7 @@ buffer_t basic_frame_grabber::get_image(unsigned int k)
     return buffer_t(imagebuffer.begin(), imagebuffer.end());
   }
 }
-bool basic_frame_grabber::resume()
+bool frame_grabber::resume()
 {
   bool retval = quit_flag;
   if (quit_flag)
@@ -129,7 +129,7 @@ bool basic_frame_grabber::resume()
   }
   return retval;
 }
-bool basic_frame_grabber::pause()
+bool frame_grabber::pause()
 {
   bool retval = 0 == quit_flag;
   if (0 == quit_flag)
@@ -137,13 +137,13 @@ bool basic_frame_grabber::pause()
   return retval;
 }
 
-errno_t basic_frame_grabber::set_vertical_flip(bool val)
+errno_t frame_grabber::set_vertical_flip(bool val)
 {
   console->debug("vertical flip={0}", val);
   camera_.set_vertical_flip(val);
   return 0;
 }
-errno_t basic_frame_grabber::set_horizontal_flip(bool val)
+errno_t frame_grabber::set_horizontal_flip(bool val)
 {
   console->debug("horizontal flip={0}", val);
   camera_.set_horizontal_flip(val);

@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 
     //configure frame grabber
     camerasp::periodic_frame_grabber frame_grabber(frame_grabber_service, root);
-    camerasp::basic_frame_grabber image_grabber(frame_grabber_service, root);
+    camerasp::frame_grabber image_grabber(frame_grabber_service, root);
     image_grabber.connect([&](camerasp::img_info& img){frame_grabber(img);});
     bool retval = image_grabber.resume();
     if (!retval) {
