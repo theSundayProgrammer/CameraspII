@@ -20,15 +20,14 @@ namespace camerasp
       int error;
       unsigned int height;
       unsigned int width;
-      //unsigned int row_stride;
       unsigned int quality;
-      img_info():error(0){}
-#ifndef RASPICAM_MOCK
-      JSAMPROW get_scan_line(int scan_line,  int row_stride) const;
-#endif
-      void put_scan_line(JSAMPLE *,  int row_stride) ;
-      void xformbgr2rgb();
-      bool empty() { return buffer.empty(); }
+
+      public:
+	      img_info():error(0){}
+	      JSAMPROW get_scan_line(int scan_line,  int row_stride) const;
+	      void put_scan_line(JSAMPLE *,  int row_stride) ;
+	      void xformbgr2rgb();
+	      bool empty() { return buffer.empty(); }
     };
     img_info  read_JPEG_file (std::string const& filename);
     buffer_t write_JPEG_dat (img_info const& img);

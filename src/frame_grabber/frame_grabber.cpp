@@ -19,7 +19,8 @@ frame_grabber::frame_grabber(
         camera_(io_service),
 	timer_(io_service),
 	cur_img(0), 
-	current_count(0) 
+	current_count(0) ,
+  running(false)
 {
   auto backup = root["Data"];
   auto secs = backup["sample_period"].asInt();
@@ -31,66 +32,43 @@ frame_grabber::frame_grabber(
   camera_.setISO(camera["iso"].asInt());
   camera_.set_vertical_flip(camera["vertical"].asInt());
   camera_.set_horizontal_flip(camera["horizontal"].asInt());
+  camera.connect([this](img_info& info) { grab_picture(info);});
 }
 
-img_info frame_grabber::grab_picture()
+void frame_grabber::grab_picture(img_info& info)
 {
 
   //  At any point in time only one instance of this function will be running
-  img_info info;
-  //  console->debug("Height = {0}, Width= {1}", camera_.get_height(), camera_.get_width());
-  auto siz = camera_.image_buffer_size();
-  info.buffer.resize(siz);
-  auto current = high_resolution_timer::clock_type::now();
-   auto next = cur_img;
-  if (camera_.take_picture((unsigned char *)(&info.buffer[0]), &siz) == 0)
-  {
+  auto next = cur_img;
 
-    info.height = camera_.get_height();
-    info.width = camera_.get_width();
-    //    info.row_stride = info.width * 3;
-
-    if (info.height > 0 && info.width > 0)
-    {
-      info.quality = 100;
-      //info.xformbgr2rgb();
-      auto buffer = write_JPEG_dat(img);
-      {
-        std::lock_guard<std::mutex> lock(image_buffers[next].m);
-        image_buffers[next].buffer.swap(buffer);
-      }
-      on_image_capture(img);
-      if (current_count < max_size)
-        ++current_count;
-      cur_img = (cur_img + 1) % max_size;
-      timer_.expires_at(current + sampling_period);
-      timer_.async_wait(std::bind(&frame_grabber::handle_timeout, this, std::placeholders::_1));
-    }
-  else
+  running = false;
+  auto buffer = write_JPEG_dat(info);
   {
-    camera_.release();
-    throw std::runtime_error("camera not responding");
+    std::lock_guard<std::mutex> lock(image_buffers[next].m);
+    image_buffers[next].buffer.swap(buffer);
   }
-      return info;
-  }
-  else
-  {
-    info.error=-1;
-  }
-  return info;
+  on_image_capture(info);
+  if (current_count < max_size)
+    ++current_count;
+  cur_img = (cur_img + 1) % max_size;
 }
 void frame_grabber::handle_timeout(const asio::error_code &)
 {
   //At any point in time only one instance of this function will be running
   if (!quit_flag)
-  {
-    auto img= grab_picture();
-    if (img.error!=0)
-  {
-    camera_.release();
-    throw std::runtime_error("camera not responding");
-  }
-  }
+    if(!running)
+    {
+      running = true;
+      auto current = high_resolution_timer::clock_type::now();
+      timer_.expires_at(current + sampling_period);
+      timer_.async_wait(std::bind(&frame_grabber::handle_timeout, this, std::placeholders::_1));
+      camera_.take_picture();
+    }
+    else
+    {
+      camera_.release();
+      throw std::runtime_error("camera not responding");
+    }
 }
 
 void frame_grabber::set_timer()

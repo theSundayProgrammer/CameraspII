@@ -16,7 +16,6 @@ srcs = main.cpp \
 	fopen.cpp \
 	img_info.cpp \
 	jpgconvert.cpp \
-	raspicam_mock.cpp \
 	timer.cpp \
 	frame_grabber.cpp \
 	client_msg_queues.cpp\

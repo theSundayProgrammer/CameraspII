@@ -61,7 +61,7 @@ namespace camerasp
 struct RASPICAM_USERDATA
 {
   MMAL_POOL_T *encoderPool;
-  sem_t *mutex;
+  cam_still *camera;
   unsigned char *data;
   unsigned int offset;
   unsigned int length;
@@ -114,7 +114,7 @@ static void buffer_callback(
     }
   }
   if (END_FLAG & flags) {
-    sem_post(userdata->mutex);
+    post_complete(userdata); 
   } else if (port->is_enabled) {
     MMAL_BUFFER_HEADER_T *new_buffer =
         mmal_queue_get(userdata->encoderPool->queue);
@@ -125,6 +125,22 @@ static void buffer_callback(
 
 cam_still::~cam_still() {
   release();
+}
+void cam_still::post_complete(RASPICAM_USERDATA *userdata)
+{
+  io_service.post([this, userdata](){
+      stop_capture();
+
+      img_info info;
+      auto siz = image_buffer_size();
+      info.buffer = std::string(userdata->data,siz);
+      info.width = get_width();
+      info.height = get_height();
+      info.quality = 100;
+      delete [] userdata->data;
+      delete userdata;
+      on_image_capture(info);
+      });
 }
 cam_still::cam_still(asio::io_context& io_service_) :
       io_service(io_service_),
@@ -137,7 +153,7 @@ cam_still::cam_still(asio::io_context& io_service_) :
   encoder = NULL;
   encoder_connection = NULL;
   encoder_pool = NULL;
-  camera_still_port = NULL;
+ camera_still_port = NULL;
   encoder_input_port = NULL;
   encoder_output_port = NULL;
   _isInitialized = false;
@@ -400,7 +416,6 @@ void cam_still::destroy_encoder() {
 void cam_still::release() {
   if (!_isInitialized)
     return;
-    sem_destroy(&mutex);
   mmal_connection_destroy(encoder_connection);
   destroy_encoder();
   destroy_camera();
@@ -411,7 +426,6 @@ void cam_still::release() {
 int cam_still::initialize() {
   if (_isInitialized)
     return 0;
-  sem_init(&mutex, 0, 0);
   if (create_camera()) {
     console->error(API_NAME ": Failed to create camera component.");
     destroy_camera();
@@ -435,40 +449,18 @@ int cam_still::initialize() {
   _isInitialized = true;
   return 0;
 }
-//Todo: no need to create mutex everytime
-int cam_still::take_picture(unsigned char *preallocated_data, size_t *length) {
+int cam_still::take_picture() {
   initialize();
   int ret = 0;
   timespec ts = {0, 0};
-  RASPICAM_USERDATA userdata;
-  userdata.encoderPool = encoder_pool;
-  userdata.mutex = &mutex;
-  userdata.data = preallocated_data;
-  userdata.offset = 0;
-  userdata.length = *length;
-  encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *)&userdata;
-  if ((ret = start_capture()) != 0) {
-    return -1;
-  }
-  if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
-    console->error("clock_gettime");
-    return -1;
-  }
-  ts.tv_sec += 1;
+  RASPICAM_USERDATA*  userdata = new RASPICAM_USERDATA;
+  userdata->encoderPool = encoder_pool;
+  userdata->data = new char[image_buffer_size()];
+  userdata->offset = 0;
+  userdata->length = *length;
+  encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *)userdata;
 
-  while ((ret = sem_timedwait(&mutex, &ts)) == -1 && errno == EINTR)
-    continue; /* Restart if interrupted by handler */
-
-  if (ret == -1) {
-    if (errno == ETIMEDOUT)
-      console->error("sem_timedwait() timed out\n");
-    stop_capture();
-    return -1;
-  } else {
-    *length = userdata.offset;
-    stop_capture();
-    return 0;
-  }
+  return start_capture();
 }
 int cam_still::start_capture()
 {

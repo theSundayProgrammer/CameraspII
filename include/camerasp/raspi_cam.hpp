@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <atomic>
 #include <mmal/mmal.h>
 #include <semaphore.h>
+#include <boost/signals2/signal.hpp>
 struct MMAL_COMPONENT_T;
 struct MMAL_CONNECTION_T;
 struct MMAL_POOL_T;
@@ -94,7 +95,7 @@ namespace camerasp {
 
     bool _isInitialized;
 
-  sem_t mutex;
+    boost::signals2::signal<void(img_info&)> on_image_capture;
 
   MMAL_FOURCC_T encoding;
   MMAL_PARAM_EXPOSUREMETERINGMODE_T metering;
@@ -115,6 +116,10 @@ namespace camerasp {
     void commit_parameters();
 
 
+    void connect(std::function<void(img_info&)> slot)
+    {
+      on_image_capture.connect(slot);
+    }
     //Returns an id of the camera. We assume the camera id is the one of the raspberry
     //the id is obtained using raspberry serial number obtained in /proc/cpuinfo
     static std::string getId();
