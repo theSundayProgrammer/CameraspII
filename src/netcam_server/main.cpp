@@ -116,10 +116,33 @@ class session
           int k = atoi(m[1].str().c_str());
           capture_frame(k);
         }
+        else if (std::regex_search(uri, m, std::regex("flip\\?vertical=(0|1)$")))
+        {
+          int k = atoi(m[1].str().c_str());
+          if (0 == frame_grabber.set_vertical_flip(k != 0))
+            send_response(0,"Success");
+          else
+            send_response(-1,"Failed");
+        }
+        else if (std::regex_search(uri, m, std::regex("flip\\?horizontal=(0|1)$")))
+        {
+          int k = atoi(m[1].str().c_str());
+          if (0 == frame_grabber.set_horizontal_flip(k != 0))
+            send_response(0,"Success");
+          else
+            send_response(-1,"Failed");
+        }
         else if (std::regex_search(uri, m, std::regex("image")))
         {
           int k = 0;
           capture_frame(k);
+        }
+        else if (std::regex_search(uri, m, std::regex("exit")))
+        {
+          frame_grabber.pause();
+          socket_.get_io_service().stop();
+          send_response(no_error,"Stopping");
+          console->debug("SIGTERM handled");
         }
       }
     void do_write (int sent)
@@ -239,7 +262,6 @@ int main(int argc, char *argv[])
       return 1;
     }
 
-    // Start worker threads
     auto port_no = root["Server"]["port"].asInt();
     server s(frame_grabber_service, frame_grabber, port_no);
     frame_grabber_service.run();
