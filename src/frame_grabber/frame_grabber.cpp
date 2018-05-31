@@ -32,7 +32,7 @@ frame_grabber::frame_grabber(
   camera_.setISO(camera["iso"].asInt());
   camera_.set_vertical_flip(camera["vertical"].asInt());
   camera_.set_horizontal_flip(camera["horizontal"].asInt());
-  camera.connect([this](img_info& info) { grab_picture(info);});
+  camera_.connect([this](img_info& info) { grab_picture(info);});
 }
 
 void frame_grabber::grab_picture(img_info& info)

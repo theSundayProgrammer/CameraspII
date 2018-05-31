@@ -33,7 +33,7 @@ namespace camerasp
 
     private:
 
-    img_info grab_picture();
+    void grab_picture(img_info& );
     void handle_timeout(const asio::error_code&);
     void set_timer();
 
@@ -47,5 +47,6 @@ namespace camerasp
     std::atomic<bool> quit_flag;
     unsigned cur_img;
     boost::signals2::signal<void(img_info&)> on_image_capture;
+    bool running;
   };
 }

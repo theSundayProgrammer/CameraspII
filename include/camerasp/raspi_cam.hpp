@@ -46,6 +46,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mmal/mmal.h>
 #include <semaphore.h>
 #include <boost/signals2/signal.hpp>
+#include <jpeg/jpgconvert.hpp>
 struct MMAL_COMPONENT_T;
 struct MMAL_CONNECTION_T;
 struct MMAL_POOL_T;
@@ -60,6 +61,7 @@ namespace asio
 namespace camerasp {
 
   typedef void(*imageTakenCallback) (unsigned char * data, int error, unsigned int length);
+  struct RASPICAM_USERDATA ;
 
   class cam_still:public cam_still_base {
 
@@ -110,9 +112,10 @@ namespace camerasp {
     int initialize();
     void release();
     bool open();
-    int take_picture(unsigned char * preallocated_data, size_t* length);
+    int take_picture();
     void stop_capture();
 
+    void post_complete(RASPICAM_USERDATA *userdata);
     void commit_parameters();
 
 

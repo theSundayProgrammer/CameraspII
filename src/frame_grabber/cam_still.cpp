@@ -114,7 +114,7 @@ static void buffer_callback(
     }
   }
   if (END_FLAG & flags) {
-    post_complete(userdata); 
+    userdata->camera->post_complete(userdata); 
   } else if (port->is_enabled) {
     MMAL_BUFFER_HEADER_T *new_buffer =
         mmal_queue_get(userdata->encoderPool->queue);
@@ -133,7 +133,7 @@ void cam_still::post_complete(RASPICAM_USERDATA *userdata)
 
       img_info info;
       auto siz = image_buffer_size();
-      info.buffer = std::string(userdata->data,siz);
+      info.buffer = std::string((char*)userdata->data,siz);
       info.width = get_width();
       info.height = get_height();
       info.quality = 100;
@@ -455,9 +455,9 @@ int cam_still::take_picture() {
   timespec ts = {0, 0};
   RASPICAM_USERDATA*  userdata = new RASPICAM_USERDATA;
   userdata->encoderPool = encoder_pool;
-  userdata->data = new char[image_buffer_size()];
+  userdata->length = image_buffer_size();
   userdata->offset = 0;
-  userdata->length = *length;
+  userdata->data = new unsigned char[userdata->length];
   encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *)userdata;
 
   return start_capture();
