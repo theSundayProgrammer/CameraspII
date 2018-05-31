@@ -126,7 +126,8 @@ static void buffer_callback(
 cam_still::~cam_still() {
   release();
 }
-cam_still::cam_still() :
+cam_still::cam_still(asio::io_context& io_service_) :
+      io_service(io_service_),
       encoding(MMAL_ENCODING_BMP),
       metering(MMAL_PARAM_EXPOSUREMETERINGMODE_AVERAGE),
       exposure(MMAL_PARAM_EXPOSUREMODE_AUTO),

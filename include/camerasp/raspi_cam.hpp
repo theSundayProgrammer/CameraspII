@@ -52,7 +52,12 @@ struct MMAL_PORT_T;
 #define MMAL_CAMERA_CAPTURE_PORT 2
 #define STILLS_FRAME_RATE_NUM 3
 #define STILLS_FRAME_RATE_DEN 1
+namespace asio 
+{
+ class io_context;
+}
 namespace camerasp {
+
   typedef void(*imageTakenCallback) (unsigned char * data, int error, unsigned int length);
 
   class cam_still:public cam_still_base {
@@ -96,10 +101,11 @@ namespace camerasp {
   MMAL_PARAM_EXPOSUREMODE_T exposure;
   MMAL_PARAM_AWBMODE_T awb;
   MMAL_PARAM_IMAGEFX_T imageEffect;
+  asio::io_context& io_service;
 
   public:
     ~cam_still();
-    cam_still();
+    cam_still(asio::io_context& );
     int initialize();
     void release();
     bool open();

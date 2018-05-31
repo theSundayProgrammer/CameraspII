@@ -16,6 +16,7 @@ namespace camerasp
 frame_grabber::frame_grabber(
     asio::io_context &io_service,
     Json::Value const &root) :
+        camera_(io_service),
 	timer_(io_service),
 	cur_img(0), 
 	current_count(0) 
@@ -40,6 +41,8 @@ img_info frame_grabber::grab_picture()
   //  console->debug("Height = {0}, Width= {1}", camera_.get_height(), camera_.get_width());
   auto siz = camera_.image_buffer_size();
   info.buffer.resize(siz);
+  auto current = high_resolution_timer::clock_type::now();
+   auto next = cur_img;
   if (camera_.take_picture((unsigned char *)(&info.buffer[0]), &siz) == 0)
   {
 
@@ -51,25 +54,6 @@ img_info frame_grabber::grab_picture()
     {
       info.quality = 100;
       //info.xformbgr2rgb();
-      return info;
-    }
-  }
-  else
-  {
-    info.error=-1;
-  }
-  return info;
-}
-void frame_grabber::handle_timeout(const asio::error_code &)
-{
-  //At any point in time only one instance of this function will be running
-  if (!quit_flag)
-  {
-    auto current = high_resolution_timer::clock_type::now();
-    auto next = cur_img;
-    auto img= grab_picture();
-    if (img.error==0)
-    {
       auto buffer = write_JPEG_dat(img);
       {
         std::lock_guard<std::mutex> lock(image_buffers[next].m);
@@ -83,6 +67,25 @@ void frame_grabber::handle_timeout(const asio::error_code &)
       timer_.async_wait(std::bind(&frame_grabber::handle_timeout, this, std::placeholders::_1));
     }
   else
+  {
+    camera_.release();
+    throw std::runtime_error("camera not responding");
+  }
+      return info;
+  }
+  else
+  {
+    info.error=-1;
+  }
+  return info;
+}
+void frame_grabber::handle_timeout(const asio::error_code &)
+{
+  //At any point in time only one instance of this function will be running
+  if (!quit_flag)
+  {
+    auto img= grab_picture();
+    if (img.error!=0)
   {
     camera_.release();
     throw std::runtime_error("camera not responding");
