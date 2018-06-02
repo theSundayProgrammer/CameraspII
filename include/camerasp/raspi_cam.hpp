@@ -61,11 +61,19 @@ namespace asio
 namespace camerasp {
 
   typedef void(*imageTakenCallback) (unsigned char * data, int error, unsigned int length);
-  struct RASPICAM_USERDATA ;
 
-  class cam_still:public cam_still_base {
+struct RASPICAM_USERDATA
+{
+  MMAL_POOL_T *encoderPool;
+  sem_t* data_ready;
+  unsigned char *data;
+  unsigned int offset;
+  unsigned int length;
+};
+class cam_still:public cam_still_base {
 
   private:
+    sem_t data_ready;
 
     MMAL_COMPONENT_T * camera;	
     MMAL_COMPONENT_T * encoder;
@@ -95,16 +103,16 @@ namespace camerasp {
     void set_defaults();
     MMAL_STATUS_T connectPorts(MMAL_PORT_T *output_port, MMAL_PORT_T *input_port, MMAL_CONNECTION_T **connection);
 
-    bool _isInitialized;
-
+    bool is_initialized;
+    bool stop_capture_flag;
     boost::signals2::signal<void(img_info&)> on_image_capture;
-
-  MMAL_FOURCC_T encoding;
-  MMAL_PARAM_EXPOSUREMETERINGMODE_T metering;
-  MMAL_PARAM_EXPOSUREMODE_T exposure;
-  MMAL_PARAM_AWBMODE_T awb;
-  MMAL_PARAM_IMAGEFX_T imageEffect;
-  asio::io_context& io_service;
+    RASPICAM_USERDATA userdata;
+    MMAL_FOURCC_T encoding;
+    MMAL_PARAM_EXPOSUREMETERINGMODE_T metering;
+    MMAL_PARAM_EXPOSUREMODE_T exposure;
+    MMAL_PARAM_AWBMODE_T awb;
+    MMAL_PARAM_IMAGEFX_T imageEffect;
+    asio::io_context& io_service;
 
   public:
     ~cam_still();
@@ -114,8 +122,7 @@ namespace camerasp {
     bool open();
     int take_picture();
     void stop_capture();
-
-    void post_complete(RASPICAM_USERDATA *userdata);
+    void await_data_ready();
     void commit_parameters();
 
 
@@ -127,7 +134,7 @@ namespace camerasp {
     //the id is obtained using raspberry serial number obtained in /proc/cpuinfo
     static std::string getId();
 
-  };
+};
 
 }
 #endif // RASPICAM_H

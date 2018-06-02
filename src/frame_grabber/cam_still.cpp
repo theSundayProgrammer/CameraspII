@@ -58,14 +58,6 @@ namespace camerasp
 /** \brief type used in call back of frame grabber
    *
    */
-struct RASPICAM_USERDATA
-{
-  MMAL_POOL_T *encoderPool;
-  cam_still *camera;
-  unsigned char *data;
-  unsigned int offset;
-  unsigned int length;
-};
 
 static void control_callback(
     MMAL_PORT_T *port,
@@ -114,7 +106,7 @@ static void buffer_callback(
     }
   }
   if (END_FLAG & flags) {
-    userdata->camera->post_complete(userdata); 
+    sem_post(userdata->data_ready);
   } else if (port->is_enabled) {
     MMAL_BUFFER_HEADER_T *new_buffer =
         mmal_queue_get(userdata->encoderPool->queue);
@@ -124,41 +116,47 @@ static void buffer_callback(
 }
 
 cam_still::~cam_still() {
+  sem_destroy(&data_ready);
   release();
 }
-void cam_still::post_complete(RASPICAM_USERDATA *userdata)
+void cam_still::await_data_ready()
 {
-  io_service.post([this, userdata](){
-      stop_capture();
+  for(;;)
+  {
+    if (stop_capture_flag)
+      break;
+    int ret = sem_wait(&mutex);
+    if(ret == -1 && errno == EINTR)
+      continue;
+    stop_capture();
 
-      img_info info;
-      auto siz = image_buffer_size();
-      info.buffer = std::string((char*)userdata->data,siz);
-      info.width = get_width();
-      info.height = get_height();
-      info.quality = 100;
-      delete [] userdata->data;
-      delete userdata;
-      on_image_capture(info);
-      });
+    img_info info;
+    info.buffer = std::string((char*)userdata.data,userdata.length);
+    info.width = get_width();
+    info.height = get_height();
+    info.quality = 100;
+    on_image_capture(info);
+  }
 }
 cam_still::cam_still(asio::io_context& io_service_) :
+      stop_capture_flag(false),
       io_service(io_service_),
       encoding(MMAL_ENCODING_BMP),
       metering(MMAL_PARAM_EXPOSUREMETERINGMODE_AVERAGE),
       exposure(MMAL_PARAM_EXPOSUREMODE_AUTO),
       awb(MMAL_PARAM_AWBMODE_AUTO),
       imageEffect(MMAL_PARAM_IMAGEFX_NONE) {
-  camera = NULL;
-  encoder = NULL;
-  encoder_connection = NULL;
-  encoder_pool = NULL;
- camera_still_port = NULL;
-  encoder_input_port = NULL;
-  encoder_output_port = NULL;
-  _isInitialized = false;
-  set_defaults();
-}
+        camera = NULL;
+        encoder = NULL;
+        encoder_connection = NULL;
+        encoder_pool = NULL;
+        camera_still_port = NULL;
+        encoder_input_port = NULL;
+        encoder_output_port = NULL;
+        is_initialized = false;
+        sem_init(&data_ready,0,0);
+        set_defaults();
+      }
 void cam_still::set_defaults() {
   width = 640;
   height = 480;
@@ -414,17 +412,18 @@ void cam_still::destroy_encoder() {
 }
 
 void cam_still::release() {
-  if (!_isInitialized)
+  if (!is_initialized)
     return;
   mmal_connection_destroy(encoder_connection);
   destroy_encoder();
   destroy_camera();
   console->info(API_NAME ": release called");
-  _isInitialized = false;
+   delete [] userdata.data;
+  is_initialized = false;
 }
 
 int cam_still::initialize() {
-  if (_isInitialized)
+  if (is_initialized)
     return 0;
   if (create_camera()) {
     console->error(API_NAME ": Failed to create camera component.");
@@ -446,18 +445,17 @@ int cam_still::initialize() {
       return -1;
     }
   }
-  _isInitialized = true;
+  userdata.encoderPool = encoder_pool;
+  userdata.length = image_buffer_size();
+  userdata.offset = 0;
+  userdata.data = new unsigned char[userdata.length];
+  is_initialized = true;
   return 0;
 }
 int cam_still::take_picture() {
   initialize();
   int ret = 0;
   timespec ts = {0, 0};
-  RASPICAM_USERDATA*  userdata = new RASPICAM_USERDATA;
-  userdata->encoderPool = encoder_pool;
-  userdata->length = image_buffer_size();
-  userdata->offset = 0;
-  userdata->data = new unsigned char[userdata->length];
   encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *)userdata;
 
   return start_capture();
