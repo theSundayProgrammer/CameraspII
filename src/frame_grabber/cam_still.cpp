@@ -140,7 +140,8 @@ void cam_still::await_data_ready()
     info.width = get_width();
     info.height = get_height();
     info.quality = 100;
-    on_image_capture(info);
+    asio::post(io_service, [this,info]() {
+    on_image_capture(info);});
   }
 }
 cam_still::cam_still(asio::io_context& io_service_) :
