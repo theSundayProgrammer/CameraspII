@@ -70,7 +70,10 @@ void frame_grabber::handle_timeout(const asio::error_code &)
       throw std::runtime_error("camera not responding");
     }
 }
-
+void frame_grabber::begin_data_wait()
+{
+  camera_.await_data_ready();
+}
 void frame_grabber::set_timer()
 {
   try

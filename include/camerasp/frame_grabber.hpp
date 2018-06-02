@@ -30,6 +30,7 @@ namespace camerasp
     {
       on_image_capture.connect(slot);
     }
+    void begin_data_wait();
 
     private:
 
