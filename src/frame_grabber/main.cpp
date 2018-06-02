@@ -131,6 +131,7 @@ int main(int argc, char *argv[])
         }
         else if (std::regex_search(uri, m, std::regex("exit")))
         {
+          image_grabber.stop_data_wait();
           image_grabber.pause();
           frame_grabber_service.stop();
           queue.send_response(no_error,"Stopping");
@@ -140,9 +141,11 @@ int main(int argc, char *argv[])
       }
 
     }};
+    std::thread thread2([&](){ image_grabber.begin_data_wait();});
     frame_grabber_service.run();
-    thread1.join();
     //std::string uri=request.get();
+    thread2.join();
+    thread1.join();
     console->info("frame_grabber_service.run complete, shutdown successful");
   }
   catch (Json::LogicError &err)

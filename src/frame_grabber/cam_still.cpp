@@ -119,13 +119,18 @@ cam_still::~cam_still() {
   sem_destroy(&data_ready);
   release();
 }
+void cam_still::stop_data_wait()
+{
+  stop_capture_flag = true;
+  sem_post(&data_ready);
+}
 void cam_still::await_data_ready()
 {
   for(;;)
   {
     if (stop_capture_flag)
       break;
-    int ret = sem_wait(&mutex);
+    int ret = sem_wait(&data_ready);
     if(ret == -1 && errno == EINTR)
       continue;
     stop_capture();

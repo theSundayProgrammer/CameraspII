@@ -122,8 +122,9 @@ class cam_still:public cam_still_base {
     bool open();
     int take_picture();
     void stop_capture();
-    void await_data_ready();
     void commit_parameters();
+    void await_data_ready();
+    void stop_data_wait();
 
 
     void connect(std::function<void(img_info&)> slot)
