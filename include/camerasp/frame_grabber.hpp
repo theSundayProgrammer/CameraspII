@@ -39,8 +39,8 @@ namespace camerasp
     void set_timer();
 
     private:
-    cam_still camera_;
-    high_resolution_timer timer_;
+    cam_still camera;
+    high_resolution_timer timer;
     std::chrono::seconds sampling_period;
     enum { max_size = 100 };
     image_buffer image_buffers[max_size];

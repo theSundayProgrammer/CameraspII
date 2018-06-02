@@ -16,8 +16,8 @@ namespace camerasp
 frame_grabber::frame_grabber(
     asio::io_context &io_service,
     Json::Value const &root) :
-        camera_(io_service),
-	timer_(io_service),
+        camera(io_service),
+	timer(io_service),
 	cur_img(0), 
 	current_count(0) ,
   running(false)
@@ -27,12 +27,12 @@ frame_grabber::frame_grabber(
   sampling_period = std::chrono::seconds(secs);
   quit_flag = 1;
   auto camera = root["Camera"];
-  camera_.set_width(camera["width"].asInt());
-  camera_.set_height(camera["height"].asInt());
-  camera_.setISO(camera["iso"].asInt());
-  camera_.set_vertical_flip(camera["vertical"].asInt());
-  camera_.set_horizontal_flip(camera["horizontal"].asInt());
-  camera_.connect([this](img_info& info) { grab_picture(info);});
+  camera.set_width(camera["width"].asInt());
+  camera.set_height(camera["height"].asInt());
+  camera.setISO(camera["iso"].asInt());
+  camera.set_vertical_flip(camera["vertical"].asInt());
+  camera.set_horizontal_flip(camera["horizontal"].asInt());
+  camera.connect([this](img_info& info) { grab_picture(info);});
 }
 
 void frame_grabber::grab_picture(img_info& info)
@@ -60,27 +60,27 @@ void frame_grabber::handle_timeout(const asio::error_code &)
     {
       running = true;
       auto current = high_resolution_timer::clock_type::now();
-      timer_.expires_at(current + sampling_period);
-      timer_.async_wait(std::bind(&frame_grabber::handle_timeout, this, std::placeholders::_1));
-      camera_.take_picture();
+      timer.expires_at(current + sampling_period);
+      timer.async_wait(std::bind(&frame_grabber::handle_timeout, this, std::placeholders::_1));
+      camera.take_picture();
     }
     else
     {
-      camera_.release();
+      camera.release();
       throw std::runtime_error("camera not responding");
     }
 }
 void frame_grabber::begin_data_wait()
 {
-  camera_.await_data_ready();
+  camera.await_data_ready();
 }
 void frame_grabber::set_timer()
 {
   try
   {
     auto prev = high_resolution_timer::clock_type::now();
-    timer_.expires_at(prev + sampling_period);
-    timer_.async_wait(std::bind(&frame_grabber::handle_timeout, this, std::placeholders::_1));
+    timer.expires_at(prev + sampling_period);
+    timer.async_wait(std::bind(&frame_grabber::handle_timeout, this, std::placeholders::_1));
   }
   catch (std::exception &e)
   {
@@ -108,7 +108,7 @@ bool frame_grabber::resume()
   if (quit_flag)
   {
     quit_flag = 0;
-    if(retval = camera_.open())
+    if(retval = camera.open())
         set_timer();
   }
   return retval;
@@ -124,13 +124,13 @@ bool frame_grabber::pause()
 errno_t frame_grabber::set_vertical_flip(bool val)
 {
   console->debug("vertical flip={0}", val);
-  camera_.set_vertical_flip(val);
+  camera.set_vertical_flip(val);
   return 0;
 }
 errno_t frame_grabber::set_horizontal_flip(bool val)
 {
   console->debug("horizontal flip={0}", val);
-  camera_.set_horizontal_flip(val);
+  camera.set_horizontal_flip(val);
   return 0;
 }
 }
