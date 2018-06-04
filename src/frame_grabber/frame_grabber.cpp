@@ -114,7 +114,10 @@ bool frame_grabber::resume()
   {
     quit_flag = 0;
     if(retval = camera.open())
+    {
+      camera.take_picture();
         set_timer();
+   }
   }
   return retval;
 }

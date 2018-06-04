@@ -131,7 +131,6 @@ static void buffer_callback(
     }
   }
   if (END_FLAG & flags) {
-    fprintf(stderr, "OK here %s:%d\n", __FILE__, __LINE__);
     sem_post(userdata->data_ready);
   } else if (port->is_enabled) {
     MMAL_BUFFER_HEADER_T *new_buffer =
