@@ -16,7 +16,7 @@
     },
     "Data": {
       "path_prefix": "data/backup",
-      "sample_period": 1,
+      "sample_period": 2,
       "count": 1000
     },
     "Server": {

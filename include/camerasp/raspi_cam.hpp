@@ -105,7 +105,7 @@ class cam_still:public cam_still_base {
 
     bool is_initialized;
     bool stop_capture_flag;
-    boost::signals2::signal<void(img_info&)> on_image_capture;
+    boost::signals2::signal<void(const img_info&)> on_image_capture;
     RASPICAM_USERDATA userdata;
     MMAL_FOURCC_T encoding;
     MMAL_PARAM_EXPOSUREMETERINGMODE_T metering;
@@ -117,6 +117,10 @@ class cam_still:public cam_still_base {
   public:
     ~cam_still();
     cam_still(asio::io_context& );
+    cam_still(const cam_still&) = delete;
+    cam_still(const cam_still&&) = delete;
+    cam_still& operator=(const cam_still&) = delete;
+    cam_still& operator=(const cam_still&&) = delete;
     int initialize();
     void release();
     bool open();
@@ -127,7 +131,7 @@ class cam_still:public cam_still_base {
     void stop_data_wait();
 
 
-    void connect(std::function<void(img_info&)> slot)
+    void connect(std::function<void(const img_info&)> slot)
     {
       on_image_capture.connect(slot);
     }
