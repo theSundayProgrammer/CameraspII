@@ -35,8 +35,8 @@ void configure_logger(Json::Value &root)
   auto count_files = log_config["count"].asInt();
 
    console = spdlog::stdout_color_mt("fg");
-  console = spd::rotating_logger_mt("fg", logpath.string(), 1048576 * size_mega_bytes, count_files);
-  //console->set_level(spd::level::debug);
+  //console = spd::rotating_logger_mt("fg", logpath.string(), 1048576 * size_mega_bytes, count_files);
+  console->set_level(spd::level::info);
   console->debug("console configured");
 }
 int main(int argc, char *argv[])
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
     }};
     std::thread thread2([&](){ image_grabber.begin_data_wait();});
     frame_grabber_service.run();
-    //std::string uri=request.get();
+    image_grabber.stop_data_wait();
     thread2.join();
     thread1.join();
     console->info("frame_grabber_service.run complete, shutdown successful");
