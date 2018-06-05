@@ -34,14 +34,15 @@ void configure_logger(Json::Value &root)
   auto size_mega_bytes = log_config["size"].asInt();
   auto count_files = log_config["count"].asInt();
 
+   console = spdlog::stdout_color_mt("fg");
   console = spd::rotating_logger_mt("fg", logpath.string(), 1048576 * size_mega_bytes, count_files);
-  console->set_level(spd::level::debug);
+  //console->set_level(spd::level::debug);
+  console->debug("console configured");
 }
 int main(int argc, char *argv[])
 {
   using namespace boost::interprocess;
   auto &root = camerasp::get_root();
-  //configure console
   home_path = root["home_path"].asString();
   const int no_error=0;
   try
@@ -63,7 +64,7 @@ int main(int argc, char *argv[])
     //configure frame grabber
     camerasp::periodic_frame_grabber frame_grabber(frame_grabber_service, root);
     camerasp::frame_grabber image_grabber(frame_grabber_service, root);
-    image_grabber.connect([&](camerasp::img_info& img){frame_grabber(img);});
+    image_grabber.connect([&](const camerasp::img_info& img){frame_grabber(img);});
     bool retval = image_grabber.resume();
     if (!retval) {
       console->error("Unable to open Camera");

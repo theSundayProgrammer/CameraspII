@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef RASPICAM_MOCK
 #include <fstream>
 #include <camerasp/cam_still.hpp>
+#include <execinfo.h>
 #include <mmal/mmal.h>
 #include <mmal/mmal_buffer.h>
 #include <mmal/util/mmal_connection.h>
@@ -53,6 +54,30 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdexcept>
 using namespace std;
 #define API_NAME "raspicam_still"
+void print_call_stack(void)
+ {
+     int  const BT_BUF_SIZE=10;
+     int j, nptrs;
+     void *buffer[BT_BUF_SIZE];
+     char **strings;
+
+     nptrs = backtrace(buffer, BT_BUF_SIZE);
+     printf("backtrace() returned %d addresses\n", nptrs);
+
+     /* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
+        would produce similar output to the following: */
+
+     strings = backtrace_symbols(buffer, nptrs);
+     if (strings == NULL) {
+         perror("backtrace_symbols");
+         exit(EXIT_FAILURE);
+     }
+
+     for (j = 0; j < nptrs; j++)
+         printf("%s\n", strings[j]);
+
+     free(strings);
+ }
 namespace camerasp
 {
 /** \brief type used in call back of frame grabber
@@ -116,6 +141,7 @@ static void buffer_callback(
 }
 
 cam_still::~cam_still() {
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
   sem_destroy(&data_ready);
   release();
 }
@@ -135,12 +161,15 @@ void cam_still::await_data_ready()
       continue;
     stop_capture();
 
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
     img_info info;
     info.buffer = std::string((char*)userdata.data,userdata.length);
     info.width = get_width();
     info.height = get_height();
     info.quality = 100;
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
     asio::post(io_service, [this,info]() {
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
     on_image_capture(info);});
   }
 }
@@ -400,6 +429,7 @@ int cam_still::create_encoder() {
 }
 
 void cam_still::destroy_camera() {
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
   if (camera) {
     mmal_component_destroy(camera);
     camera = NULL;
@@ -407,6 +437,8 @@ void cam_still::destroy_camera() {
 }
 
 void cam_still::destroy_encoder() {
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
+  //print_call_stack();
   if (encoder_pool) {
     mmal_port_pool_destroy(encoder->output[0], encoder_pool);
     encoder_pool = NULL;
@@ -454,6 +486,7 @@ int cam_still::initialize() {
   userdata.encoderPool = encoder_pool;
   userdata.length = image_buffer_size();
   userdata.offset = 0;
+  userdata.data_ready = &data_ready;
   userdata.data = new unsigned char[userdata.length];
   is_initialized = true;
   return 0;
@@ -462,8 +495,9 @@ int cam_still::take_picture() {
   initialize();
   int ret = 0;
   timespec ts = {0, 0};
-  encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *)userdata;
-
+  userdata.offset=0;
+  encoder_output_port->userdata = (struct MMAL_PORT_USERDATA_T *)&userdata;
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
   return start_capture();
 }
 int cam_still::start_capture()
@@ -472,6 +506,7 @@ int cam_still::start_capture()
   // However if the parameters weren't changed, the function won't do anything - it will return right away
   commit_parameters();
 
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
   if (encoder_output_port->is_enabled)
   {
     console->error(API_NAME
@@ -505,6 +540,7 @@ int cam_still::start_capture()
     console->error(API_NAME ": Failed to start capture.");
     return -1;
   }
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
   return 0;
 }
 

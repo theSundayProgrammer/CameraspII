@@ -26,16 +26,16 @@ frame_grabber::frame_grabber(
   auto secs = backup["sample_period"].asInt();
   sampling_period = std::chrono::seconds(secs);
   quit_flag = 1;
-  auto camera = root["Camera"];
-  camera.set_width(camera["width"].asInt());
-  camera.set_height(camera["height"].asInt());
-  camera.setISO(camera["iso"].asInt());
-  camera.set_vertical_flip(camera["vertical"].asInt());
-  camera.set_horizontal_flip(camera["horizontal"].asInt());
-  camera.connect([this](img_info& info) { grab_picture(info);});
+  auto camera_node = root["Camera"];
+  camera.set_width(camera_node["width"].asInt());
+  camera.set_height(camera_node["height"].asInt());
+  camera.setISO(camera_node["iso"].asInt());
+  camera.set_vertical_flip(camera_node["vertical"].asInt());
+  camera.set_horizontal_flip(camera_node["horizontal"].asInt());
+  camera.connect([this](const img_info& info) { grab_picture(info);});
 }
 
-void frame_grabber::grab_picture(img_info& info)
+void frame_grabber::grab_picture(const img_info& info)
 {
 
   //  At any point in time only one instance of this function will be running
@@ -109,11 +109,15 @@ buffer_t frame_grabber::get_image(unsigned int k)
 bool frame_grabber::resume()
 {
   bool retval = quit_flag;
+  console->debug("OK here {0}:{1}", __FILE__, __LINE__);
   if (quit_flag)
   {
     quit_flag = 0;
     if(retval = camera.open())
+    {
+      camera.take_picture();
         set_timer();
+   }
   }
   return retval;
 }

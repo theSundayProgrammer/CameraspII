@@ -26,6 +26,7 @@ void init_smtp(smtp_client &smtp)
   smtp.set_to(email["to"].asString());
   smtp.set_subject(email["subject"].asString());
   smtp.set_server(email["server"].asString());
+  console->debug("Init_smtp {0}", __LINE__);
   //smtp.recipient_ids.push_back("joseph.mariadassou@outlook.com");
   //smtp.recipient_ids.push_back("parama_chakra@yahoo.com");
 }
@@ -54,7 +55,7 @@ namespace camerasp
   ctx.load_verify_file("/home/pi/bin/cacert.pem");
   init_smtp(smtp);
   }
-  void periodic_frame_grabber::operator()(img_info& img)
+  void periodic_frame_grabber::operator()(img_info const& img)
   {
     static motion_detector detector;
     static int number_of_sequence=0;

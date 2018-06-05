@@ -26,7 +26,7 @@ namespace camerasp
     bool pause();
     errno_t set_vertical_flip(bool on);
     errno_t set_horizontal_flip(bool on);
-    void connect(std::function<void(img_info&)> slot)
+    void connect(std::function<void(const img_info&)> slot)
     {
       on_image_capture.connect(slot);
     }
@@ -34,7 +34,7 @@ namespace camerasp
     void stop_data_wait();
     private:
 
-    void grab_picture(img_info& );
+    void grab_picture(const img_info& );
     void handle_timeout(const asio::error_code&);
     void set_timer();
 
@@ -47,7 +47,7 @@ namespace camerasp
     std::atomic<unsigned>  current_count;
     std::atomic<bool> quit_flag;
     unsigned cur_img;
-    boost::signals2::signal<void(img_info&)> on_image_capture;
+    boost::signals2::signal<void(const img_info&)> on_image_capture;
     bool running;
   };
 }

@@ -19,7 +19,7 @@ namespace camerasp
     periodic_frame_grabber(asio::io_context& io_service, Json::Value const&);
     ~periodic_frame_grabber(){}
 
-    void operator()(img_info&);
+    void operator()(const img_info&);
 
   asio::ssl::context ctx;
   smtp_client smtp;

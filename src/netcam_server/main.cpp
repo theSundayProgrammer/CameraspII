@@ -42,7 +42,7 @@ void configure_logger(Json::Value &root)
 
   console = spd::stdout_color_mt("console");
 //  console = spd::rotating_logger_mt("fg", logpath.string(), 1048576 * size_mega_bytes, count_files);
-  console->set_level(spd::level::debug);
+  console->set_level(spd::level::info);
 }
 using tcp=asio::ip::tcp;
 const int no_error=0;
@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
     asio::signal_set signals_(frame_grabber_service);
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
-
+    console->debug("OK here {0}: {1}", __FILE__, __LINE__);
     // register the handle_stop callback
     signals_.async_wait([&](asio::error_code const &error, int signal_number) {
       frame_grabber_service.stop();
@@ -256,6 +256,8 @@ int main(int argc, char *argv[])
 
     //configure frame grabber
     camerasp::frame_grabber frame_grabber(frame_grabber_service, root);
+    std::thread thread2([&](){ frame_grabber.begin_data_wait();});
+    console->debug("OK here {0}: {1}", __FILE__, __LINE__);
     bool retval = frame_grabber.resume();
     if (!retval) {
       console->error("Unable to open Camera");
@@ -264,7 +266,10 @@ int main(int argc, char *argv[])
 
     auto port_no = root["Server"]["port"].asInt();
     server s(frame_grabber_service, frame_grabber, port_no);
+    console->debug("OK here {0}: {1}", __FILE__, __LINE__);
     frame_grabber_service.run();
+    frame_grabber.stop_data_wait();
+    thread2.join();
     console->info("frame_grabber_service.run complete, shutdown successful");
   }
   catch (Json::LogicError &err)

@@ -1,6 +1,6 @@
 
 INCLUDES = -I ../../include
-CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
+CXX_FLAGS = -std=c++14 -g -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
 CXX=g++-6
 MKDIR_P = mkdir -p
@@ -29,7 +29,7 @@ ${BUILD_DIR}:
 	${MKDIR_P} ${BUILD_DIR}/../frame_grabber
 
 netcam:  $(controller_objs)
-	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
+	$(CXX)   -o $@ $^  -g -pthread -O3 -Wunused -L/opt/vc/lib\
                    -L../../lib -ljson \
                    -lrt -lboost_filesystem -lboost_system
 
