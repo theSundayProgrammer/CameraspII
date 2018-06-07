@@ -23,9 +23,6 @@ camerasp: $(objs)
                    -lrt -lboost_filesystem -lboost_system\
                    -lssl -lcrypto \
                    -lopencv_features2d \
-                   -lopencv_highgui \
-                   -lopencv_videoio \
-                   -lopencv_imgcodecs \
                    -lopencv_objdetect \
                    -lopencv_imgproc \
                    -lopencv_core\
