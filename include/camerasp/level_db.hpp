@@ -8,23 +8,22 @@
 //////////////////////////////////////////////////////////////////////////////
 
 
-#include <camerasp/leveldb.hpp>
-#include <camerasp/logger.hpp>
-#include <camerasp/utils.hpp>
 #include <leveldb/db.h>
 #include <leveldb/slice.h>
 #include <leveldb/comparator.h>
 #include <jpeg/jpgconvert.hpp>
 #include <gsl/gsl_util>
-
+#include <string>
 namespace camerasp
 {
   class db_archive{
     public:
       ~db_archive();
       db_archive();
-      handle_motion(img_info const& img);
-      std::string get_image(string const& start);
+      void handle_motion(img_info const& img);
+      std::string get_image(std::string const& start);
+   private:
+leveldb::DB* db;
   };
 }
 

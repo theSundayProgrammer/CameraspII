@@ -1,8 +1,8 @@
 
 INCLUDES = -I ../../include
-CXX_FLAGS = -std=c++14 -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
+CXX_FLAGS = -std=c++17 -Wno-psabi -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
-CXX=g++-6
+CXX=g++-8.1.0
 MKDIR_P = mkdir -p
 LIB_DIR=../../lib
 
@@ -17,6 +17,7 @@ srcs = cam_still_base.cpp \
 	img_info.cpp \
 	jpgconvert.cpp \
 	timer.cpp \
+	level_db.cpp \
 	frame_grabber.cpp \
 	client_msg_queues.cpp\
 	mot_detect.cpp \

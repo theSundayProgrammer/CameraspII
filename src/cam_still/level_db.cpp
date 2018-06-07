@@ -7,6 +7,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 
+#include <camerasp/utils.hpp>
 #include <camerasp/level_db.hpp>
 #include <leveldb/db.h>
 #include <leveldb/slice.h>
@@ -16,27 +17,27 @@
 namespace camerasp
 {
 
-  level_db::~level_db(){
+  db_archive::~db_archive(){
     delete db;
   }
-  level_db::level_db()
+  db_archive::db_archive()
   {
     // Erode kernel -- used in motion detection
     leveldb::Options options;
     options.create_if_missing = true;
     leveldb::Status status = leveldb::DB::Open(options, "/home/pi/data/image.db", &db);
-    db_ok = (bool)status.ok();
+    auto db_ok = (bool)status.ok();
     //console->debug("Level Db opn db status = {0}", db_ok);
   }
-  void level_db::handle_motion(img_info const& img)
+  void db_archive::handle_motion(img_info const& img)
   {
 
     auto buffer = write_JPEG_dat(img);
-    auto status = db->Put(leveldb::WriteOptions(),get_gmt_time(),buffer);
-    db_ok = status.ok();
+    auto status = db->Put(leveldb::WriteOptions(),current_GMT_time(),buffer);
+    auto db_ok = status.ok();
     return;
   }
-  std::string level_db::get_image(string const& start)
+  std::string db_archive::get_image(std::string const& start)
   {
     leveldb::Iterator *it = db->NewIterator(leveldb::ReadOptions());
     auto on_end = gsl::finally([it]() { delete it; });
@@ -45,12 +46,7 @@ namespace camerasp
     {
       return it->value().ToString();
     }
-    //  it->SeekToLast();
-    //  if (it->Valid())
-    //  {
-    //    return it->value().ToString();
-    //  }
-    return "Database is Empty"
+    return "Database is Empty";
   }
 }
 
