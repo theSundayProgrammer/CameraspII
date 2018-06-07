@@ -70,7 +70,7 @@ bool server_msg_queues::recv_message()
     size_t recv_count=0;
     unsigned int  priority = 0;
     usleep(100*1000);
-    recv_q.try_receive(msg, buf_size, recv_count,priority);
+    return    recv_q.try_receive(msg, buf_size, recv_count,priority);
 }
 
 void server_msg_queues::stop_recv()

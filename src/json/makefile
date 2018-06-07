@@ -1,8 +1,8 @@
 INCLUDES = -I ../../include
-CXX_FLAGS = -pthread -std=c++14
+CXX_FLAGS = -pthread -std=c++17 -Wno-psabi
 BUILD_DIR=./build
 LIB_DIR=../../lib
-CXX=g++-6
+CXX=g++-8.1.0
 
 MKDIR_P = mkdir -p
 
