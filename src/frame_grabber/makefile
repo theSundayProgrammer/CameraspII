@@ -10,18 +10,7 @@ all : directories camerasp
 
 directories: ${BUILD_DIR} 
 
-srcs = main.cpp \
-	cam_still_base.cpp \
-	cam_still.cpp \
-	fopen.cpp \
-	img_info.cpp \
-	jpgconvert.cpp \
-	timer.cpp \
-	frame_grabber.cpp \
-	client_msg_queues.cpp\
-	mot_detect.cpp \
-	smtp_client.cpp \
-	utils.cpp
+srcs = main.cpp 
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
@@ -30,7 +19,7 @@ ${BUILD_DIR}:
 
 camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
-                   -L../../lib -ljson -lleveldb\
+                   -L../../lib -ljson -lleveldb  -lcamera\
                    -lrt -lboost_filesystem -lboost_system\
                    -lssl -lcrypto \
                    -lopencv_features2d \

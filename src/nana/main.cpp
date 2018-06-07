@@ -93,6 +93,7 @@ class client{
         nana::place& place_,
         nana::picture& pic_
         ):s(io_context),
+    err(0),
     place(place_),
     pic(pic_),
     host(host_),
@@ -111,6 +112,9 @@ class client{
       request_length = strlen(request);
       probe_data();
       io_context.run();
+    }
+    int get_err() {
+      return err;
     }
 
   private:
@@ -135,13 +139,20 @@ class client{
           probe_data();
         }
       } else  {
+        err=-1;
         fprintf(stderr,"Error in read %s\n", ec.message().c_str()); 
       }
     }
     void probe_data()
     {
+      try {
       asio::write(s, asio::buffer(request, request_length));
       size_t reply_length = asio::read(s, asio::buffer((char*)&response,sizeof response));
+      } catch (std::system_error& error) {
+        fprintf(stderr, "Error in probe %s\n", error.what());
+        err=-1;
+        return ;
+      }
       response.error = ntohl(response.error);
       if(response.error == 0) {
         response.length = ntohl(response.length);
@@ -151,6 +162,7 @@ class client{
             handle_input(ec,length);
             });
       } else {
+        err=-1;
         fprintf(stderr,"Error in read %x\n", response.error);
       }
     } 
@@ -158,7 +170,7 @@ class client{
   private:
     asio::io_context io_context;
     tcp::socket s;
-
+    int err;
     asio::ip::address& host;
     std::string port;
     char const* request= "image?prev=0\r\n";
@@ -178,20 +190,23 @@ int main(int argc ,char* argv[])
     using namespace nana;
   try
   {
-    form fm;
-    picture pic(fm);
-    place place{fm};
-    place.div("pic"); 
-    place["pic"] << pic ;
-    fprintf(stderr,"%s:%d\n",__FILE__, __LINE__);
     auto endpoints = get_endpoints();
     if(!endpoints.empty())
     {  
-        auto loc =endpoints.begin();
+      auto loc =endpoints.begin();
+        form fm;
+        picture pic(fm);
+        place place{fm};
+        place.div("pic"); 
+        place["pic"] << pic ;
         client cl(loc->address,loc->port,place,pic);
-        
+
         fm.events().unload([&](){cl.stop();});
-        std::thread thread([&]() { cl.run() ; });
+        std::thread thread([&]() { 
+            cl.run() ;
+            if (cl.get_err() != 0)
+              fm.close();
+            });
         fm.show();
         exec();
         thread.join();
