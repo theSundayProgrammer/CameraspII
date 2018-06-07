@@ -19,7 +19,7 @@ ${BUILD_DIR}:
 
 camerasp: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
-                   -L../../lib -ljson -lleveldb  -lcamera\
+                   -L../../lib -lcamera -ljson -lleveldb  \
                    -lrt -lboost_filesystem -lboost_system\
                    -lssl -lcrypto \
                    -lopencv_features2d \
