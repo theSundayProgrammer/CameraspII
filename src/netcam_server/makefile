@@ -1,8 +1,8 @@
 
 INCLUDES = -I ../../include
-CXX_FLAGS = -std=c++14 -g -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
+CXX_FLAGS = -std=c++17 -Wno-psabi -g -pthread -O3 -DASIO_STANDALONE -Wtrigraphs
 BUILD_DIR=./build
-CXX=g++-6
+CXX=g++-8.1.0
 MKDIR_P = mkdir -p
 
 all : directories netcam server 
@@ -10,17 +10,11 @@ all : directories netcam server
 
 directories: ${BUILD_DIR} 
 
-srcs = main.cpp \
-	../frame_grabber/cam_still_base.cpp \
-	../frame_grabber/cam_still.cpp \
-	../frame_grabber/img_info.cpp \
-	../frame_grabber/jpgconvert.cpp \
-	../frame_grabber/frame_grabber.cpp \
-	../frame_grabber/utils.cpp
+srcs = main.cpp 
 objs = $(srcs:%.cpp=$(BUILD_DIR)/%.o)
 deps = $(srcs:.cpp=$(BUILD_DIR)/.d)
 
-controller_srcs = controller.cpp ../frame_grabber/utils.cpp
+controller_srcs = controller.cpp 
 controller_objs = $(controller_srcs:%.cpp=$(BUILD_DIR)/%.o)
 controller_deps = $(controller_srcs:.cpp=$(BUILD_DIR)/.d)
 
@@ -30,13 +24,24 @@ ${BUILD_DIR}:
 
 netcam:  $(controller_objs)
 	$(CXX)   -o $@ $^  -g -pthread -O3 -Wunused -L/opt/vc/lib\
-                   -L../../lib -ljson \
-                   -lrt -lboost_filesystem -lboost_system
+                   -L../../lib -lcamera -ljson -lleveldb  \
+                   -lrt -lboost_filesystem -lboost_system\
+                   -lssl -lcrypto \
+                   -lopencv_features2d \
+                   -lopencv_objdetect \
+                   -lopencv_imgproc \
+                   -lopencv_core\
+                   -ljpeg -lmmal -lmmal_core -lmmal_util
 
 server: $(objs)
 	$(CXX)   -o $@ $^ -pthread -O3 -Wunused -L/opt/vc/lib\
-                   -L../../lib -ljson -lleveldb\
+                   -L../../lib -lcamera -ljson -lleveldb  \
                    -lrt -lboost_filesystem -lboost_system\
+                   -lssl -lcrypto \
+                   -lopencv_features2d \
+                   -lopencv_objdetect \
+                   -lopencv_imgproc \
+                   -lopencv_core\
                    -ljpeg -lmmal -lmmal_core -lmmal_util
 
 $(BUILD_DIR)/%.o: %.cpp

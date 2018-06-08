@@ -21,6 +21,8 @@
 #include <memory>
 #include <camerasp/network.hpp>
 #include <camerasp/frame_grabber.hpp>
+#include <jpeg/jpgconvert.hpp>
+#include <camerasp/save_ldb.hpp>
 #include <arpa/inet.h>
 #include <asio/signal_set.hpp>
 #include <asio/ts/buffer.hpp>
@@ -70,9 +72,10 @@ int main(int argc, char *argv[])
       frame_grabber_service.stop();
       console->debug("SIGTERM received");
     });
-
+    camerasp::save_ldb ldb("/home/pi/data/images.db");
     //configure frame grabber
     camerasp::frame_grabber frame_grabber(frame_grabber_service, root);
+    frame_grabber.connect([&](camerasp::img_info const& img) { ldb(img); });
     std::thread thread2([&](){ frame_grabber.begin_data_wait();});
     //console->debug("OK here {0}: {1}", __FILE__, __LINE__);
     bool retval = frame_grabber.resume();

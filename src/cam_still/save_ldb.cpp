@@ -8,15 +8,17 @@
 // detect motion and save in level db
 //////////////////////////////////////////////////////////////////////////////
 
-#include <camerasp/save_ldb.hpp>
+//#include <camerasp/timer.hpp>
+#include <jpeg/jpgconvert.hpp>
 #include <fstream>
 #include <sstream>
 #include <camerasp/mot_detect.hpp>
+#include <camerasp/save_ldb.hpp>
 
 namespace camerasp
 {
   save_ldb::save_ldb(std::string const& db_location):
-    dB(location)
+    dB(db_location)
   {
   }
   void save_ldb::operator()(img_info const& img)
@@ -24,7 +26,7 @@ namespace camerasp
     static motion_detector detector;
     if(detector.handle_motion(img))
     {
-      db.save_img(current_GMT_time(), img);
+      dB.save_img(current_GMT_time(), img);
     }
   }
 }

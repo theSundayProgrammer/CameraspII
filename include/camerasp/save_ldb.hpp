@@ -7,7 +7,8 @@
 // 
 // detect motion and save in level db
 //////////////////////////////////////////////////////////////////////////////
-
+#pragma once
+#include <camerasp/utils.hpp>
 #include <camerasp/level_db.hpp>
 
 namespace camerasp
@@ -15,7 +16,8 @@ namespace camerasp
   class save_ldb{
     public:
   save_ldb(std::string const& db_location);
-  void save_ldb::operator()(img_info const& img);
+  void operator()(img_info const& img);
     private:
   db_archive dB;
+};
 }

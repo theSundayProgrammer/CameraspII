@@ -29,11 +29,11 @@ namespace camerasp
     auto db_ok = (bool)status.ok();
     console->debug("Level Db opn db status = {0}", db_ok);
   }
-  void db_archive::save_img(img_info const& img)
+  void db_archive::save_img(std::string const& date,img_info const& img)
   {
 
     auto buffer = write_JPEG_dat(img);
-    auto status = db->Put(leveldb::WriteOptions(),current_GMT_time(),buffer);
+    auto status = db->Put(leveldb::WriteOptions(),date,buffer);
     auto db_ok = status.ok();
     return;
   }

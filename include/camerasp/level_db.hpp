@@ -11,6 +11,7 @@
 #include <leveldb/db.h>
 #include <leveldb/slice.h>
 #include <leveldb/comparator.h>
+#include <jpeg/jpgconvert.hpp>
 #include <string>
 namespace camerasp
 {
@@ -18,7 +19,7 @@ namespace camerasp
     public:
       ~db_archive();
       db_archive(std::string const& db_loc);
-      void save_img(img_info const& img);
+      void save_img(std::string const& date, img_info const& img);
       std::string get_image(std::string const& start);
    private:
 leveldb::DB* db;

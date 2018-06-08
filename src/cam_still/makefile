@@ -17,6 +17,7 @@ srcs = cam_still_base.cpp \
 	img_info.cpp \
 	jpgconvert.cpp \
 	timer.cpp \
+	save_ldb.cpp \
 	level_db.cpp \
 	frame_grabber.cpp \
 	client_msg_queues.cpp\
