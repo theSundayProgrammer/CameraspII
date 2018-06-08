@@ -20,16 +20,16 @@ namespace camerasp
   db_archive::~db_archive(){
     delete db;
   }
-  db_archive::db_archive()
+  db_archive::db_archive(std::string const& db_loc)
+    //"/home/pi/data/image.db"
   {
-    // Erode kernel -- used in motion detection
     leveldb::Options options;
     options.create_if_missing = true;
-    leveldb::Status status = leveldb::DB::Open(options, "/home/pi/data/image.db", &db);
+    leveldb::Status status = leveldb::DB::Open(options, db_loc , &db);
     auto db_ok = (bool)status.ok();
-    //console->debug("Level Db opn db status = {0}", db_ok);
+    console->debug("Level Db opn db status = {0}", db_ok);
   }
-  void db_archive::handle_motion(img_info const& img)
+  void db_archive::save_img(img_info const& img)
   {
 
     auto buffer = write_JPEG_dat(img);
