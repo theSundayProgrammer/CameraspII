@@ -21,6 +21,19 @@
 #include <camerasp/timer.hpp>
 #include <camerasp/msgq.hpp>
 #include <boost/filesystem.hpp>
+/****************************************************************
+                 +--------------+
+                 |frame_grabber +----------contains-----------+
+                 +--^-----+---^-+                             |
+                    |     |   |                               |
+                    |     |   |                           +---v---+
++-------+           |     |   +----------on_image_capture-+Camera |
+| Main  +-contains--+  on_|mage_capture                   +-------+
++-------+           |     |
+                 +--v-----v--------------+
+                 |periodic_frame_grabber |
+                 +-----------------------+
+*****************************************************************/
 std::shared_ptr<spdlog::logger> console;
 #define ASIO_ERROR_CODE 
 std::string home_path;
