@@ -1,42 +1,12 @@
-/**********************************************************
- Copyright (c) 2017 Joseph Mariadassou theSundayProgrammer@gmail.com.
- 
-This header was inspired by raspicam 
-http://github.com/cedric/raspicam
-
-original copyright follows:
--------------------------------------------------------------------
-Copyright (c) 2013, AVA ( Ava Group University of Cordoba, ava  at uco dot es)
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-3. All advertising materials mentioning features or use of this software
-   must display the following acknowledgement:
-
-   This product includes software developed by the Ava group of the University of Cordoba.
-
-4. Neither the name of the University nor the names of its contributors
-   may be used to endorse or promote products derived from this software
-   without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY AVA ''AS IS'' AND ANY
-EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL AVA BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-****************************************************************/
+//////////////////////////////////////////////////////////////////////////////
+// Copyright (c) Joseph Mariadassou
+// theSundayProgrammer@gmail.com
+// Distributed under the Boost Software License, Version 1.0.
+// 
+// http://www.boost.org/LICENSE_1_0.txt)
+// This header was inspired by raspicam 
+// http://github.com/cedric/raspicam
+//////////////////////////////////////////////////////////////////////////////
 #pragma once
 #ifndef CAMERASP_CAM_STILL_HPP
 #define CAMERASP_CAM_STILL_HPP
@@ -61,15 +31,31 @@ namespace asio
 namespace camerasp {
 
   typedef void(*imageTakenCallback) (unsigned char * data, int error, unsigned int length);
-
+/**
+ * \brief Used in call back function
+ *
+ * The MMAL library does a call back on data ready
+ * This structure is passed on as a void pointer
+ * to the callback without
+ */
 struct RASPICAM_USERDATA
 {
-  MMAL_POOL_T *encoderPool;
-  sem_t* data_ready;
-  unsigned char *data;
-  unsigned int offset;
-  unsigned int length;
+  MMAL_POOL_T *encoderPool; //< MMAL stuff
+  sem_t* data_ready; //< semaphore that is raised when data is ready
+  unsigned char *data; //< data buffer used to collect image
+  unsigned int offset; //< pointer to first free location in data
+  unsigned int length; //< total length of data
 };
+/**
+ * \brief Uses MMAL to access camera
+ *
+ * This camera object uses Boost Signals/Slots library.
+ * On launch a separate thread is created that waits for 
+ * a semaphore and when it arrives all the connected slots
+ * are signalled. When take_pictuure is called it triggers
+ * a frame capture without waiting for completion.
+ * Needs to be a singleton..
+ */
 class cam_still:public cam_still_base {
 
   private:
@@ -135,8 +121,8 @@ class cam_still:public cam_still_base {
     {
       on_image_capture.connect(slot);
     }
-    //Returns an id of the camera. We assume the camera id is the one of the raspberry
-    //the id is obtained using raspberry serial number obtained in /proc/cpuinfo
+    ///Returns an id of the camera. We assume the camera id is the one of the raspberry
+    ///the id is obtained using raspberry serial number obtained in /proc/cpuinfo
     static std::string getId();
 
 };

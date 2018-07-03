@@ -1,3 +1,10 @@
+//////////////////////////////////////////////////////////////////////////////
+// Copyright (c) Joseph Mariadassou
+// theSundayProgrammer@gmail.com
+// Distributed under the Boost Software License, Version 1.0.
+// 
+// http://www.boost.org/LICENSE_1_0.txt)
+//////////////////////////////////////////////////////////////////////////////
 #ifndef SERVER_HTTP_HPP
 #define	SERVER_HTTP_HPP
 
@@ -136,16 +143,22 @@ typedef asio::basic_waitable_timer<std::chrono::steady_clock>   high_resolution_
             }
         };
     public:
+        typedef std::shared_ptr<typename ServerBase<socket_type>::Response> response_ptr;
+        typedef std::shared_ptr<typename ServerBase<socket_type>::Request> request_ptr;
         /// Warning: do not add or remove resources after start() is called
-        std::map<regex_orderable, std::map<std::string,
-            std::function<void(std::shared_ptr<typename ServerBase<socket_type>::Response>, std::shared_ptr<typename ServerBase<socket_type>::Request>)> > > resource;
+        std::map<regex_orderable, 
+                 std::map<std::string,
+                          std::function<void( response_ptr, request_ptr)> 
+                  > 
+                > resource;
         
         std::map<std::string,
-            std::function<void(std::shared_ptr<typename ServerBase<socket_type>::Response>, std::shared_ptr<typename ServerBase<socket_type>::Request>)> > default_resource;
+                 std::function<void( response_ptr, request_ptr)> 
+                > default_resource;
         
-        std::function<void(std::shared_ptr<typename ServerBase<socket_type>::Request>, const std::error_code&)> on_error;
+        std::function<void(request_ptr, const std::error_code&)> on_error;
         
-        std::function<void(std::shared_ptr<socket_type> socket, std::shared_ptr<typename ServerBase<socket_type>::Request>)> on_upgrade;
+        std::function<void(std::shared_ptr<socket_type> socket, request_ptr)> on_upgrade;
         
         virtual void start() {
             if(!io_service)
@@ -194,8 +207,14 @@ typedef asio::basic_waitable_timer<std::chrono::steady_clock>   high_resolution_
         }
         
         ///Use this function if you need to recursively send parts of a longer message
-        void send(const std::shared_ptr<Response> &response, const std::function<void(const std::error_code&)>& callback=nullptr) const {
-            asio::async_write(*response->socket, response->streambuf, [this, response, callback](const std::error_code& ec, size_t /*bytes_transferred*/) {
+        void send(const std::shared_ptr<Response> &response,
+                  const std::function<void(const std::error_code&)>& callback=nullptr) const {
+            asio::async_write(
+                      *response->socket, 
+                       response->streambuf, 
+                       [this, response, callback](
+                          const std::error_code& ec,
+                          size_t /*bytes_transferred*/) {
                 if(callback)
                     callback(ec);
             });
@@ -212,7 +231,8 @@ typedef asio::basic_waitable_timer<std::chrono::steady_clock>   high_resolution_
         
         virtual void accept()=0;
         
-        std::shared_ptr<high_resolution_timer> get_timeout_timer(const std::shared_ptr<socket_type> &socket, long seconds) {
+        std::shared_ptr<high_resolution_timer>
+         get_timeout_timer(const std::shared_ptr<socket_type> &socket, long seconds) {
             if(seconds==0)
                 return nullptr;
             
@@ -356,9 +376,10 @@ typedef asio::basic_waitable_timer<std::chrono::steady_clock>   high_resolution_
             }
         }
         
-        void write_response(const std::shared_ptr<socket_type> &socket, const std::shared_ptr<Request> &request, 
-                std::function<void(std::shared_ptr<typename ServerBase<socket_type>::Response>,
-                                   std::shared_ptr<typename ServerBase<socket_type>::Request>)>& resource_function) {
+        void write_response(
+             const std::shared_ptr<socket_type> &socket, 
+             const std::shared_ptr<Request> &request, 
+             std::function<void(response_ptr, request_ptr)>& resource_function) {
             //Set timeout on the following asio::async-read or write function
             auto timer=this->get_timeout_timer(socket, config.timeout_content);
 

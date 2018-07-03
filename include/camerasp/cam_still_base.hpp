@@ -1,3 +1,10 @@
+//////////////////////////////////////////////////////////////////////////////
+// Copyright (c) Joseph Mariadassou
+// theSundayProgrammer@gmail.com
+// Distributed under the Boost Software License, Version 1.0.
+// 
+// http://www.boost.org/LICENSE_1_0.txt)
+//////////////////////////////////////////////////////////////////////////////
 #pragma once
 #ifndef CAMERASP_CAM_STILL_BASE_HPP 
 #define CAMERASP_CAM_STILL_BASE_HPP 
@@ -7,6 +14,9 @@ namespace camerasp {
 ///
 /// \brief base class for still camera 
 ///
+/** 
+ * This is a simple struct wrapped around a class
+ */
   class cam_still_base {
 
 
@@ -39,8 +49,8 @@ protected:
     void setSharpness(int sharpness);
     void setContrast(int contrast);
     void setSaturation(int saturation);
-    void set_horizontal_flip(bool hFlip);
-    void set_vertical_flip(bool vFlip);
+    void set_horizontal_flip(bool horizontalFlip);
+    void set_vertical_flip(bool verticalFlip);
 
     unsigned int get_width()const;
     unsigned int get_height()const;
