@@ -10,6 +10,10 @@
 #define CAMERASP_CAM_STILL_BASE_HPP 
 #include <cstddef>
 #include "raspicamtypes.h"
+/**
+ * \brief Utilities for Camerasp
+ *
+ */
 namespace camerasp {
 ///
 /// \brief base class for still camera 
