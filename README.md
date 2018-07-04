@@ -11,7 +11,10 @@ The application  consists of
 
  The frame grabber has two threads. The first one is solely for IPC with controller (web server) and the second thread is used for periodic image capture. The captured images are analysed for motion detection (need to cite original source/inspiration for this) and a mail is sent if motion is detected.
 
- The project uses C++ (GCC 6). 
+ The project uses C++ (GCC 8). 
+
+## Documentation
+The Doxygen generated output can be found at my [home page](http://thesundayprogrammer.com/camerasp/md_README.html).
 
 ## Acknowledgements
 TheSundayProgrammer acknowledges with thanks the use of the following projects in [CameraspII](http://github.com/theSundayProgrammer/CameraspII)
