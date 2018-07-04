@@ -83,9 +83,9 @@ private:
 char const *log_folder = "/tmp/frame_grabber.log";
 #define ASIO_ERROR_CODE asio::error_code
 typedef SimpleWeb::Server<SimpleWeb::HTTP> http_server;
-using server_base = SimpleWeb::ServerBase<SimpleWeb::HTTP>;
+using sb = SimpleWeb::ServerBase<SimpleWeb::HTTP>;
 void default_resource_send(const http_server &server,
-                           const std::shared_ptr<http_server::Response> &response,
+                           const sb::response_ptr &response,
                            const std::shared_ptr<std::ifstream> &ifs);
 enum class process_state
 {
@@ -111,7 +111,7 @@ namespace ipc = boost::interprocess;
 using namespace camerasp;
 using std::string;
 auto send_success(
-    std::shared_ptr<http_server::Response> http_response,
+    sb::response_ptr http_response,
     std::string const &message)
 {
   *http_response << "HTTP/1.1 200 OK\r\n"
@@ -124,7 +124,7 @@ auto send_success(
 }
 
 auto send_failure(
-    std::shared_ptr<http_server::Response> http_response,
+    sb::response_ptr http_response,
     std::string const &message)
 {
   *http_response << "HTTP/1.1 400 Bad Request\r\n"
@@ -154,7 +154,7 @@ public:
   }
 
   void exec_cmd(
-      std::shared_ptr<http_server::Response> http_response,
+      sb::response_ptr http_response,
       std::shared_ptr<http_server::Request> http_request)
 
   {
@@ -183,7 +183,7 @@ public:
     }
   }
   auto send_image(
-      std::shared_ptr<http_server::Response> http_response,
+      sb::response_ptr http_response,
       std::shared_ptr<http_server::Request> http_request)
 
   {
@@ -221,7 +221,7 @@ public:
     }
   }
   void set_props(
-      std::shared_ptr<http_server::Response> http_response,
+      sb::response_ptr http_response,
       std::shared_ptr<http_server::Request> http_request)
   {
     try
@@ -261,7 +261,7 @@ public:
     }
   }
   void stop_camera(
-      std::shared_ptr<http_server::Response> http_response,
+      sb::response_ptr http_response,
       std::shared_ptr<http_server::Request> http_request)
   {
     std::string success("Succeeded");
@@ -310,7 +310,7 @@ public:
   }
 
   void do_fallback(
-      std::shared_ptr<http_server::Response> http_response,
+      sb::response_ptr http_response,
       std::shared_ptr<http_server::Request> http_request)
   {
     try
@@ -359,7 +359,7 @@ public:
                      << content;
     }
   }
-  void flip(std::shared_ptr<http_server::Response> http_response,
+  void flip(sb::response_ptr http_response,
             std::shared_ptr<http_server::Request> http_request)
   {
     try
@@ -416,7 +416,7 @@ private:
 };
 
 void default_resource_send(const http_server &server,
-                           const std::shared_ptr<http_server::Response> &response,
+                           const sb::response_ptr &response,
                            const std::shared_ptr<std::ifstream> &ifs)
 {
   //read and send 128 KB at a time
@@ -488,50 +488,50 @@ void web_server::run(std::shared_ptr<asio::io_context> io_service, char *argv[],
 
   // get previous image
   server.resource[R"(^/image\?prev=([0-9]+)$)"]["GET"] = [&](
-                                                             std::shared_ptr<http_server::Response> http_response,
+                                                             sb::response_ptr http_response,
                                                              std::shared_ptr<http_server::Request> http_request) {
     send_image(http_response, http_request);
   };
 
   // replace camera properties
   server.resource["^/camera"]["PUT"] = [&](
-                                           std::shared_ptr<http_server::Response> http_response,
+                                           sb::response_ptr http_response,
                                            std::shared_ptr<http_server::Request> http_request) {
     set_props(http_response, http_request);
   };
   // flip horizontal vertical
   server.resource["^/flip"]["PUT"] = [&]( //\\?horizontal=(0|1)$
-                                         std::shared_ptr<http_server::Response> http_response,
+                                         sb::response_ptr http_response,
                                          std::shared_ptr<http_server::Request> http_request) {
     flip(http_response, http_request);
 
   };
   server.resource["^/resume$"]["GET"] = [&](
-                                            std::shared_ptr<http_server::Response> http_response,
+                                            sb::response_ptr http_response,
                                             std::shared_ptr<http_server::Request> http_request) {
     exec_cmd(http_response, http_request);
   };
   // pause/resume
   server.resource["^/pause$"]["GET"] = [&](
-                                           std::shared_ptr<http_server::Response> http_response,
+                                           sb::response_ptr http_response,
                                            std::shared_ptr<http_server::Request> http_request) {
     exec_cmd(http_response, http_request);
   };
   server.resource["^/resume$"]["GET"] = [&](
-                                            std::shared_ptr<http_server::Response> http_response,
+                                            sb::response_ptr http_response,
                                             std::shared_ptr<http_server::Request> http_request) {
     exec_cmd(http_response, http_request);
   };
   // get current image
   server.resource["^/image"]["GET"] = [&](
-                                          std::shared_ptr<http_server::Response> http_response,
+                                          sb::response_ptr http_response,
                                           std::shared_ptr<http_server::Request> http_request) {
     send_image(http_response, http_request);
   };
 
   //restart capture
   server.resource["^/config$"]["GET"] = [&](
-                                            std::shared_ptr<http_server::Response> http_response,
+                                            sb::response_ptr http_response,
                                             std::shared_ptr<http_server::Request> http_request) {
     Json::Value root = camerasp::get_DOM(config_path + "options.json");
 
@@ -541,7 +541,7 @@ void web_server::run(std::shared_ptr<asio::io_context> io_service, char *argv[],
     send_success(http_response, response);
   };
   server.resource["^/start$"]["GET"] = [&](
-                                           std::shared_ptr<http_server::Response> http_response,
+                                           sb::response_ptr http_response,
                                            std::shared_ptr<http_server::Request> http_request) {
     std::string success("Succeeded");
 
@@ -584,7 +584,7 @@ void web_server::run(std::shared_ptr<asio::io_context> io_service, char *argv[],
   auto _1 = gsl::finally([=]() { kill_child(); });
   //stop capture
   server.resource["^/abort$"]["GET"] = [&](
-                                           std::shared_ptr<http_server::Response> http_response,
+                                           sb::response_ptr http_response,
                                            std::shared_ptr<http_server::Request> http_request) {
     std::string success("Succeeded");
     //
@@ -607,13 +607,13 @@ void web_server::run(std::shared_ptr<asio::io_context> io_service, char *argv[],
   };
   //stop capture
   server.resource["^/stop$"]["GET"] = [&](
-                                          std::shared_ptr<http_server::Response> http_response,
+                                          sb::response_ptr http_response,
                                           std::shared_ptr<http_server::Request> http_request) {
     stop_camera(http_response, http_request);
   };
   //default page server
   server.default_resource["GET"] = [&](
-                                       std::shared_ptr<http_server::Response> http_response,
+                                       sb::response_ptr http_response,
                                        std::shared_ptr<http_server::Request> http_request) {
     do_fallback(http_response, http_request);
   };
