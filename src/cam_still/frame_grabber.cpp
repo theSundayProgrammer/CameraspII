@@ -29,7 +29,7 @@ frame_grabber::frame_grabber(
   auto camera_node = root["Camera"];
   camera.set_width(camera_node["width"].asInt());
   camera.set_height(camera_node["height"].asInt());
-  camera.setISO(camera_node["iso"].asInt());
+  camera.set_ISO(camera_node["iso"].asInt());
   camera.set_vertical_flip(camera_node["vertical"].asInt());
   camera.set_horizontal_flip(camera_node["horizontal"].asInt());
   camera.connect([this](const img_info& info) { grab_picture(info);});
