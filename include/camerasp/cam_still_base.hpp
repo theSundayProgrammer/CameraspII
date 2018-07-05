@@ -45,14 +45,14 @@ protected:
 
     void set_width(unsigned int width);
     void set_height(unsigned int height);
-    void setCaptureSize(unsigned int width, unsigned int height);
-    void setBrightness(unsigned int brightness);
-    void setQuality(unsigned int quality);
-    void setRotation(int rotation);
-    void setISO(int iso);
-    void setSharpness(int sharpness);
-    void setContrast(int contrast);
-    void setSaturation(int saturation);
+    void set_capture_size(unsigned int width, unsigned int height);
+    void set_brightness(unsigned int brightness);
+    void set_quality(unsigned int quality);
+    void set_rotation(int rotation);
+    void set_ISO(int iso);
+    void set_sharpness(int sharpness);
+    void set_contrast(int contrast);
+    void set_saturation(int saturation);
     void set_horizontal_flip(bool horizontalFlip);
     void set_vertical_flip(bool verticalFlip);
 

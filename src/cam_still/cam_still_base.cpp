@@ -39,26 +39,26 @@ namespace camerasp
     changed_settings = true;
   }
 
-  void cam_still_base::setCaptureSize(unsigned int width, unsigned int height)  {
+  void cam_still_base::set_capture_size(unsigned int width, unsigned int height)  {
     set_width(width);
     set_height(height);
   }
 
-  void cam_still_base::setBrightness(unsigned int brightness)  {
+  void cam_still_base::set_brightness(unsigned int brightness)  {
     if (brightness > 100)
       brightness = brightness % 100;
     this->brightness = brightness;
     changed_settings = true;
   }
 
-  void cam_still_base::setQuality(unsigned int quality)  {
+  void cam_still_base::set_quality(unsigned int quality)  {
     if (quality > 100)
       quality = 100;
     this->quality = quality;
     changed_settings = true;
   }
 
-  void cam_still_base::setRotation(int rotation)  {
+  void cam_still_base::set_rotation(int rotation)  {
     while (rotation < 0)
       rotation += 360;
     if (rotation >= 360)
@@ -67,12 +67,12 @@ namespace camerasp
     changed_settings = true;
   }
 
-  void cam_still_base::setISO(int iso)  {
+  void cam_still_base::set_ISO(int iso)  {
     this->iso = iso;
     changed_settings = true;
   }
 
-  void cam_still_base::setSharpness(int sharpness)  {
+  void cam_still_base::set_sharpness(int sharpness)  {
     if (sharpness < -100)
       sharpness = -100;
     if (sharpness > 100)
@@ -81,7 +81,7 @@ namespace camerasp
     changed_settings = true;
   }
 
-  void cam_still_base::setContrast(int contrast)  {
+  void cam_still_base::set_contrast(int contrast)  {
     if (contrast < -100)
       contrast = -100;
     if (contrast > 100)
@@ -90,7 +90,7 @@ namespace camerasp
     changed_settings = true;
   }
 
-  void cam_still_base::setSaturation(int saturation)  {
+  void cam_still_base::set_saturation(int saturation)  {
     if (saturation < -100)
       saturation = -100;
     if (saturation > 100)
