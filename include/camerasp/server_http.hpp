@@ -41,7 +41,9 @@ public:
 
 #include <regex>
 
-
+/**
+ * \brief third part library
+ */
 namespace SimpleWeb {
 typedef asio::basic_waitable_timer<std::chrono::steady_clock>   high_resolution_timer;
     template <class socket_type>

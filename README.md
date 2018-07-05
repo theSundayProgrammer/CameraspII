@@ -9,7 +9,7 @@ The application  consists of
 
  The need for two processes is that once the camera is opened with a specific height and width, it is not possible to change it unless the application is launched again. The web server is essentially a REST API interface. The aim is to develop a single page web application that talks to the web server and sets or collects values as json files. The current <code>index.html</code> has significant scope for improvement. The web server also hosts an echo server to allow the IP address of the devive to be located.
 
- The frame grabber has two threads. The first one is solely for IPC with controller (web server) and the second thread is used for periodic image capture. The captured images are analysed for motion detection (need to cite original source/inspiration for this) and a mail is sent if motion is detected.
+ The frame grabber has two threads. The first one is solely for IPC with controller (web server) and the second thread is used for periodic image capture. The captured images are analysed for motion detection  and a mail is sent if motion is detected.
 
  The project uses C++ (GCC 8). 
 
@@ -24,7 +24,7 @@ TheSundayProgrammer acknowledges with thanks the use of the following projects i
  * [Boost](www.boost.org): IPC, Base64, Filesystem etc.
  * The [json parser](https://github.com/open-source-parsers/jsoncpp)
  * [GSL](https://github.com/Microsoft/GSL) from Microsoft
- * [OpenCV](https://opencv.org/) for motion detection
+ * [Cédric Verstraeten] (https://github.com/cedricve/motion-detection/blob/master/motion_src/src/motion_detection.cpp) who uses [OpenCV](https://opencv.org/) for motion detection
 
  Above all thanks to Linus Travold for Linux/Git and the GNU Foundation for all the tools used in the development. Thanks also
  to Microsoft and Github for hosting the repo. 
